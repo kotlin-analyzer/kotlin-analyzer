@@ -1,0 +1,14 @@
+[workspace]
+members = ["crates/*"]
+resolver = "2"
+
+[workspace.package]
+name = "kotlin-analyzer"
+version = "0.0.1"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+authors = ["Ikechukwu Eze"]
+rust-version = "1.77.1"
+
+
+[workspace.dependencies]
