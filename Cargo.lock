@@ -3,6 +3,10 @@
 version = 3
 
 [[package]]
+name = "ast"
+version = "0.0.1"
+
+[[package]]
 name = "beef"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
