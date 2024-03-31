@@ -1,5 +1,4 @@
-mod keywords;
+mod lexer;
+mod tokens;
 
-pub fn add(a: u32, b: u32) -> u32 {
-    a + b
-}
+pub use {lexer::lexer, tokens::Token};

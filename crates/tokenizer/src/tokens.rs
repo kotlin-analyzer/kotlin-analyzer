@@ -2,18 +2,6 @@
 
 use logos::Logos;
 
-// LF => \u{000A}
-// CR => \u{000D}
-// DelimitedComment => /\*[^\*/]*\*/
-// LineComment => //[^\u{000A}\u{000D}]*
-// Hidden => /\*[^\*/]*\*/|//[^\u{000A}\u{000D}]*|\u{0020}|\u{0009}|\u{000C}
-// Nl => \u{000A}|(\u{000D}\u{000A}?)
-// Letters => p{Lu}|p{Ll}|p{Lt}|p{Lm}|p{Lo}
-// QuotedSymbol => [^LFCF`]
-// UnicodeDigit => p{Nd}
-// Identifier => (Letter | '_') {Letter | '_' | UnicodeDigit}| '`' QuotedSymbol {QuotedSymbol} '`'
-// (p{Lu}|p{Ll}|p{Lt}|p{Lm}|p{Lo}|_)(p{Lu}|p{Ll}|p{Lt}|p{Lm}|p{Lo}|_|p{Nd})*?|`[^\u{000A}\u{000D}`]`
-
 #[derive(Debug, Logos, PartialEq)]
 pub enum Token {
     ///! White Space and Comments
@@ -423,8 +411,58 @@ pub enum Token {
     #[token("actual")]
     Actual,
 
+    //# Literals
+    #[regex(r"[1-9](?:\d|_)*\d|\d")]
+    IntegerLiteral,
+
+    #[regex(r"(?:(?:\d[\d_]*\d|\d)?\.(?:\d[\d_]*\d|\d)(:?[eE][-+]?(?:\d[\d_]*\d|\d))?|(?:\d[\d_]*\d|\d)(:?[eE][-+]?(?:\d[\d_]*\d|\d))?)[Ff]")]
+    RealLiteral,
+
+    #[regex(r"0[xX](?:[0-9A-Fa-f](?:[0-9A-Fa-f]|_)*[0-9A-Fa-f]|[0-9A-Fa-f])")]
+    HexLiteral,
+
+    #[regex(r"0[bB](?:[01](?:[01]|_)*[01]|[01])")]
+    BinLiteral,
+
+    #[regex(r"(?:0[bB](?:[01](?:[01]|_)*[01]|[01])|0[xX](?:[0-9A-Fa-f](?:[0-9A-Fa-f]|_)*[0-9A-Fa-f]|[0-9A-Fa-f])|[1-9](?:\d|_)*\d|\d)L")]
+    LongLiteral,
+
+    #[regex("true|false")]
+    BooleanLiteral,
+
+    #[token("null")]
+    NullLiteral,
+
+    #[regex(r#"'(?:\\u[0-9A-Fa-f]{4}|\\[tbrn\\'"$]|[^'\\\u{000A}\u{000D}])'"#)]
+    CharacterLiteral,
+
+    /// Serves as both opening and closing quote, we do not disambiguate at this stage
+    #[token("\"")]
+    Quote,
+
+    /// Serves as both opening and closing triple quote, we do not disambiguate at this stage
+    #[token(r#"""""#)]
+    TripleQuote,
+
     #[regex(r"(?:\p{Lu}|\p{Ll}|\p{Lt}|\p{Lm}|\p{Lo}|_)(?:\p{Lu}|\p{Ll}|\p{Lt}|\p{Lm}|\p{Lo}|_|\p{Nd})*|`[^\u{000A}\u{000D}`]*`")]
     Identifier,
+
+    /// An identifier preceded by $. Serves as both LineStrRef and MultiLineStrRef, we do not disambiguate at this stage
+    #[regex(r"\$(?:\p{Lu}|\p{Ll}|\p{Lt}|\p{Lm}|\p{Lo}|_)(?:\p{Lu}|\p{Ll}|\p{Lt}|\p{Lm}|\p{Lo}|_|\p{Nd})*|`[^\u{000A}\u{000D}`]*`")]
+    StrRef,
+
+    // TODO: we should not distinguish between multi and single line in this phase
+    // #[regex(r#"[^\\"$]+|\$"#, priority = 1)]
+    // LineStrText,
+
+    // #[regex(r#"[^"$]+|\$"#, priority = 0)]
+    // MultiLineStrText,
+
+    // #[regex(r#"\\u[0-9A-Fa-f]{4}|\\[tbrn\\'"$]"#)]
+    // LineStrEscapedChar,
+    /// Serves as both LineStrExprStart and MultiStrExprStart, we do not disambiguate at this stage
+    #[token("${")]
+    StrExprStart,
 }
 
 #[cfg(test)]
@@ -443,7 +481,8 @@ mod test {
 #! sh echo "hey"
 hey
 "#,
-        );
+        )
+        .spanned();
         for lex in lex {
             println!("{:?}", lex);
         }
