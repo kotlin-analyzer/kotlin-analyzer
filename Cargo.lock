@@ -177,7 +177,6 @@ name = "tokenizer"
 version = "0.0.1"
 dependencies = [
  "logos",
- "phf",
  "token_maps",
  "tokens",
 ]

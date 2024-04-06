@@ -10,7 +10,5 @@ rust-version.workspace = true
 
 [dependencies]
 logos = "0.14.0"
-
-phf = { version = "0.11", features = ["macros"] }
 tokens = { workspace = true }
 token_maps = { workspace = true }
