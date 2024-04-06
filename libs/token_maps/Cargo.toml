@@ -1,5 +1,5 @@
 [package]
-name = "tokenizer"
+name = "token_maps"
 version = "0.0.1"
 description = "TBD"
 
@@ -9,8 +9,5 @@ license.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-logos = "0.14.0"
-
 phf = { version = "0.11", features = ["macros"] }
 tokens = { workspace = true }
-token_maps = { workspace = true }

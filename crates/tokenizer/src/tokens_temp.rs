@@ -21,7 +21,7 @@ pub enum Token {
     #[regex(r"\u{0020}|\u{0009}|\u{000C}")]
     Ws,
 
-    #[regex(r"\u{000A}|(?:\u{000D}\u{000A}?)")]
+    #[regex(r"\u{000A}|(\u{000D}\u{000A}?)")]
     Nl,
 
     ///! Keywords and operators
@@ -77,7 +77,7 @@ pub enum Token {
     #[token("||")]
     Disj,
 
-    #[regex(r#"!(?:/\*[^\*/]*\*/|//[^\u{000A}\u{000D}]*|[\u{0020}\u{0009}\u{000C}])"#)]
+    #[regex(r#"!(/\*[^\*/]*\*/|//[^\u{000A}\u{000D}]*|[\u{0020}\u{0009}\u{000C}])"#)]
     ExclWs,
 
     #[token("!")]
@@ -125,16 +125,16 @@ pub enum Token {
     #[token("@")]
     AtNoWs,
 
-    #[regex(r#"@(?:\u{000A}|(?:\u{000D}\u{000A}?)|/\*[^\*/]*\*/|//[^\u{000A}\u{000D}]*|[\u{0020}\u{0009}\u{000C}])"#)]
+    #[regex(r#"@(\u{000A}|(\u{000D}\u{000A}?)|/\*[^\*/]*\*/|//[^\u{000A}\u{000D}]*|[\u{0020}\u{0009}\u{000C}])"#)]
     AtPostWs,
 
-    #[regex(r#"(?:\u{000A}|(?:\u{000D}\u{000A}?)|/\*[^\*/]*\*/|//[^\u{000A}\u{000D}]*|[\u{0020}\u{0009}\u{000C}])@"#, priority = 3)]
+    #[regex(r#"(\u{000A}|(\u{000D}\u{000A}?)|/\*[^\*/]*\*/|//[^\u{000A}\u{000D}]*|[\u{0020}\u{0009}\u{000C}])@"#, priority = 3)]
     AtPreWs,
 
-    #[regex(r#"(?:\u{000A}|(?:\u{000D}\u{000A}?)|/\*[^\*/]*\*/|//[^\u{000A}\u{000D}]*|[\u{0020}\u{0009}\u{000C}])@(?:\u{000A}|(?:\u{000D}\u{000A}?)|/\*[^\*/]*\*/|//[^\u{000A}\u{000D}]*|[\u{0020}\u{0009}\u{000C}])"#)]
+    #[regex(r#"(\u{000A}|(\u{000D}\u{000A}?)|/\*[^\*/]*\*/|//[^\u{000A}\u{000D}]*|[\u{0020}\u{0009}\u{000C}])@(\u{000A}|(\u{000D}\u{000A}?)|/\*[^\*/]*\*/|//[^\u{000A}\u{000D}]*|[\u{0020}\u{0009}\u{000C}])"#)]
     AtBothWs,
 
-    #[regex(r#"\?(?:\u{000A}|(?:\u{000D}\u{000A}?)|/\*[^\*/]*\*/|//[^\u{000A}\u{000D}]*|[\u{0020}\u{0009}\u{000C}])"#)]
+    #[regex(r#"\?(\u{000A}|(\u{000D}\u{000A}?)|/\*[^\*/]*\*/|//[^\u{000A}\u{000D}]*|[\u{0020}\u{0009}\u{000C}])"#)]
     QuestWs,
 
     #[token("?")]
@@ -170,19 +170,19 @@ pub enum Token {
     #[token("'")]
     SingleQuote,
 
-    #[regex(r"return@(?:[\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}_][\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}_\p{Nd}]*|`[^\u{000A}\u{000D}`]*`)")]
+    #[regex(r"return@([\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}_][\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}_\p{Nd}]*|`[^\u{000A}\u{000D}`]*`)")]
     ReturnAt,
 
     #[regex(r"continue@[\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}_][\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}_\p{Nd}]*|`[^\u{000A}\u{000D}`]*`")]
     ContinueAt,
 
-    #[regex(r"break@(?:[\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}_][\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}_\p{Nd}]*|`[^\u{000A}\u{000D}`]*`)")]
+    #[regex(r"break@([\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}_][\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}_\p{Nd}]*|`[^\u{000A}\u{000D}`]*`)")]
     BreakAt,
 
-    #[regex(r"this@(?:[\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}_][\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}_\p{Nd}]*|`[^\u{000A}\u{000D}`]*`)")]
+    #[regex(r"this@([\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}_][\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}_\p{Nd}]*|`[^\u{000A}\u{000D}`]*`)")]
     ThisAt,
 
-    #[regex(r"super@(?:[\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}_][\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}_\p{Nd}]*|`[^\u{000A}\u{000D}`]*`)")]
+    #[regex(r"super@([\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}_][\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}_\p{Nd}]*|`[^\u{000A}\u{000D}`]*`)")]
     SuperAt,
 
     #[token("file")]
@@ -311,10 +311,10 @@ pub enum Token {
     #[token("in")]
     In,
 
-    #[regex(r#"!is(?:\u{000A}|(?:\u{000D}\u{000A}?)|/\*[^\*/]*\*/|//[^\u{000A}\u{000D}]*|[\u{0020}\u{0009}\u{000C}])"#)]
+    #[regex(r#"!is(\u{000A}|(\u{000D}\u{000A}?)|/\*[^\*/]*\*/|//[^\u{000A}\u{000D}]*|[\u{0020}\u{0009}\u{000C}])"#)]
     NotIs,
 
-    #[regex(r#"!in(?:\u{000A}|(?:\u{000D}\u{000A}?)|/\*[^\*/]*\*/|//[^\u{000A}\u{000D}]*|[\u{0020}\u{0009}\u{000C}])"#)]
+    #[regex(r#"!in(\u{000A}|(\u{000D}\u{000A}?)|/\*[^\*/]*\*/|//[^\u{000A}\u{000D}]*|[\u{0020}\u{0009}\u{000C}])"#)]
     NotIn,
 
     #[token("out")]
@@ -405,19 +405,17 @@ pub enum Token {
     Actual,
 
     //# Literals
-    #[regex(r"[1-9](?:\d|_)*\d|\d")]
+    #[regex(r"(?:[1-9](\d|_)*\d)|\d")]
     IntegerLiteral,
 
-    #[regex(r"(?:(?:\d[\d_]*\d|\d)?\.(?:\d[\d_]*\d|\d)(:?[eE][-+]?(?:\d[\d_]*\d|\d))?|(?:\d[\d_]*\d|\d)(:?[eE][-+]?(?:\d[\d_]*\d|\d))?)[Ff]")]
+    #[regex(r"(?:(?:\d[\d_]*\d|\d)?\.(?:\d[\d_]*\d|\d)(?:[eE][-+]?(?:\d[\d_]*\d|\d))?|(?:\d[\d_]*\d|\d)(?:[eE][-+]?(?:\d[\d_]*\d|\d))?)[Ff]?", priority = 3)]
     RealLiteral,
-
-    #[regex(r"0[xX](?:[0-9A-Fa-f](?:[0-9A-Fa-f]|_)*[0-9A-Fa-f]|[0-9A-Fa-f])")]
+    #[regex(r"0[xX]([0-9A-Fa-f]([0-9A-Fa-f]|_)*[0-9A-Fa-f]|[0-9A-Fa-f])")]
     HexLiteral,
 
-    #[regex(r"0[bB](?:[01](?:[01]|_)*[01]|[01])")]
+    #[regex(r"0[bB]([01]([01]|_)*[01]|[01])")]
     BinLiteral,
-
-    #[regex(r"(?:0[bB](?:[01](?:[01]|_)*[01]|[01])|0[xX](?:[0-9A-Fa-f](?:[0-9A-Fa-f]|_)*[0-9A-Fa-f]|[0-9A-Fa-f])|[1-9](?:\d|_)*\d|\d)L")]
+    #[regex(r"(0[bB]([01]([01]|_)*[01]|[01])|0[xX]([0-9A-Fa-f]([0-9A-Fa-f]|_)*[0-9A-Fa-f]|[0-9A-Fa-f])|[1-9](\d|_)*\d|\d)L")]
     LongLiteral,
 
     #[regex("true|false")]
@@ -426,34 +424,34 @@ pub enum Token {
     #[token("null")]
     NullLiteral,
 
-    #[regex(r#"'(?:\\u[0-9A-Fa-f]{4}|\\[tbrn\\'"$]|[^'\\\u{000A}\u{000D}])'"#)]
+    #[regex(r#"'(\\u[0-9A-Fa-f]{4}|\\[tbrn\\'"$]|[^'\\\u{000A}\u{000D}])'"#)]
     CharacterLiteral,
 
     /// Serves as both opening and closing quote, we do not disambiguate at this stage
     #[token("\"")]
     Quote,
 
-    /// Serves as both opening and closing triple quote, we do not disambiguate at this stage
+    // Serves as both opening and closing triple quote, we do not disambiguate at this stage
     #[token(r#"""""#)]
     TripleQuote,
 
-    #[regex(r"(?:[\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}_][\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}_\p{Nd}]*|`[^\u{000A}\u{000D}`]*`)")]
+    #[regex(r"([\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}_][\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}_\p{Nd}]*|`[^\u{000A}\u{000D}`]*`)")]
     Identifier,
 
     /// An identifier preceded by $. Serves as both LineStrRef and MultiLineStrRef, we do not disambiguate at this stage
-    #[regex(r"\$(?:[\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}_][\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}_\p{Nd}]*|`[^\u{000A}\u{000D}`]*`)")]
+    #[regex(r"\$([\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}_][\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}_\p{Nd}]*|`[^\u{000A}\u{000D}`]*`)")]
     StrRef,
 
     // FIXME: we should not distinguish between multi and single line in this phase
-    // #[regex(r#"[^\\"$]+|\$"#, priority = 1)]
-    // LineStrText,
+    #[regex(r#"[^\\"$]+|\$"#, priority = 1)]
+    LineStrText,
 
-    // #[regex(r#"[^"$]+|\$"#, priority = 0)]
-    // MultiLineStrText,
+    #[regex(r#"[^"$]+|\$"#, priority = 0)]
+    MultiLineStrText,
 
-    // #[regex(r#"\\u[0-9A-Fa-f]{4}|\\[tbrn\\'"$]"#)]
-    // LineStrEscapedChar,
-    /// Serves as both LineStrExprStart and MultiStrExprStart, we do not disambiguate at this stage
+    #[regex(r#"\\u[0-9A-Fa-f]{4}|\\[tbrn\\'"$]"#)]
+    LineStrEscapedChar,
+    // Serves as both LineStrExprStart and MultiStrExprStart, we do not disambiguate at this stage
     #[token("${")]
     StrExprStart,
 }
@@ -468,6 +466,7 @@ mod test {
     fn simple() -> Result<(), Box<dyn Error>> {
         let lex = Token::lexer(
             r#"
+0444.10_99e+4f
 [],--
 /* comments */
 //line comment
@@ -480,5 +479,47 @@ hey
             println!("{:?}", lex);
         }
         Ok(())
+    }
+
+    #[test]
+    fn real_literal() {
+        let input = [
+            ("0444.99e+4f", true),
+            ("3333.4e+3f", true),
+            ("3e+4f", true),
+            (".444f", true),
+            ("366_39338e+4f", true),
+            ("444_.", false),
+            // ("38.38_390f", true),
+            // ("45.44e+940_", false),
+            (".445_444f", true),
+            ("666.", false),
+        ];
+        for entry in input {
+            let mut res = Token::lexer(entry.0);
+
+            if entry.1 {
+                let next = res.next();
+                // assert_eq!(
+                //     next,
+                //     Some(Ok(Token::RealLiteral)),
+                //     "{} == {}",
+                //     entry.0,
+                //     res.slice()
+                // );
+
+                assert_eq!(entry.0, res.slice());
+                assert_eq!(res.next(), None);
+            } else {
+                assert_eq!(
+                    res.next(),
+                    Some(Ok(Token::IntegerLiteral)),
+                    "{} == {}",
+                    entry.0,
+                    res.slice()
+                );
+                assert!(matches!(res.next(), Some(Ok(_))), "slice = {}", res.slice());
+            }
+        }
     }
 }
