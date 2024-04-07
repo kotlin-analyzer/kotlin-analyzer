@@ -234,7 +234,6 @@ fn parse_comment<'a>(step: Step<'a>) -> Option<Step<'a>> {
             }
         }
     }
-    // parse remaining
 
     None
 }
@@ -272,6 +271,31 @@ fn parse_keyword<'a>(step: Step<'a>) -> Option<Step<'a>> {
     }
 
     None
+}
+
+fn parse_or<'a, F>(step: Step<'a>, p1: F, p2: F) -> Option<Step<'a>>
+where
+    F: Fn(Step<'a>) -> Option<Step<'a>>,
+{
+    if let Some(step) = p1(step.clone()) {
+        Some(step)
+    } else {
+        p2(step)
+    }
+}
+
+fn parse_and<'a, F>(
+    step: Step<'a>,
+    p1: F,
+    p2: F,
+    combine: impl Fn(TokenKind, TokenKind) -> TokenKind,
+) -> Option<Step<'a>>
+where
+    F: Fn(Step<'a>) -> Option<Step<'a>>,
+{
+    p1(step.clone())
+        .zip(p2(step))
+        .map(|(a, b)| b.clone().advance_with(0, combine(a.res, b.res)))
 }
 
 #[cfg(test)]
