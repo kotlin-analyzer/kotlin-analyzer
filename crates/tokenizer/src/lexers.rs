@@ -7,9 +7,10 @@ use logos::Source;
 use token_maps::{PrefixForComment, COMMENTS, KEYWORDS, OPERATORS};
 use tokens::Token;
 
+#[macro_export]
 macro_rules! assert_success {
     ($parser: expr, $source: expr) => {
-        let result = $parser(Step::new($source, None)).unwrap();
+        $parser(Step::new($source, None)).unwrap();
     };
     ($parser: expr, $source: expr, $pos: expr) => {
         let result = $parser(Step::new($source, None)).unwrap();
@@ -22,6 +23,7 @@ macro_rules! assert_success {
     };
 }
 
+#[macro_export]
 macro_rules! assert_failure {
     ($parser: expr, $source: expr) => {
         let result = $parser(Step::new($source, None));
