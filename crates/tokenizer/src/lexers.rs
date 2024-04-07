@@ -11,75 +11,83 @@ pub type Span = Range<usize>;
 
 #[derive(Debug, Clone)]
 pub struct TokenInfo {
-    token: Result<Token, ()>,
+    kind: TokenKind,
     span: Span,
 }
 
 impl Display for TokenInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let token = self
-            .token
-            .map(|t| format!("{t:?}"))
-            .unwrap_or("Error".into());
-        write!(f, "{token} @ {:?}", self.span)
+        write!(f, "{} @ {:?}", self.kind, self.span)
     }
 }
 
-impl TokenInfo {
-    fn success(token: Token, span: Span) -> Self {
-        Self {
-            token: Ok(token),
-            span,
-        }
-    }
-
-    fn error(span: Span) -> Self {
-        Self {
-            token: Err(()),
-            span,
-        }
-    }
-}
+#[derive(Debug, Clone)]
 enum LexGrammarMode {
     Normal,
     String,
     MultilineString,
 }
 
+#[derive(Debug, Clone)]
 pub struct Lexer<'a> {
     input: &'a str,
     pos: usize,
-    last_token: Option<TokenKind>,
     mode: LexGrammarMode,
+    token: TokenKind,
+}
+
+#[derive(Debug, Clone)]
+pub struct Step<'a> {
+    pos: usize,
+    res: TokenKind,
+    mode: LexGrammarMode,
+    input: &'a str,
+}
+
+impl<'a> Step<'a> {
+    fn advance(&self, increment: usize) -> Step<'a> {
+        let mut step = self.clone();
+        step.pos += increment;
+        step
+    }
+
+    fn advance_with(&self, increment: usize, kind: TokenKind) -> Step<'a> {
+        let mut step = self.advance(increment);
+        step.res = kind;
+        step
+    }
 }
 
 #[derive(Debug, Clone)]
 pub enum TokenKind {
-    Operator(TokenInfo),
-    Keyword(TokenInfo),
-    Identifier(TokenInfo),
-    Comment(TokenInfo),
-    Err(TokenInfo),
+    Operator(Token),
+    Keyword(Token),
+    Identifier(Token),
+    Comment(Token),
+    Err,
+    Begin,
 }
 
 impl Display for TokenKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.token_info().fmt(f)
+        let token = self
+            .token()
+            .as_ref()
+            .map(|t| format!("{t:?}"))
+            .unwrap_or("Error".into());
+        write!(f, "{token}")
     }
 }
 
 impl TokenKind {
-    fn span(&self) -> Span {
-        self.token_info().span.clone()
-    }
-
-    fn token_info(&self) -> &TokenInfo {
+    fn token(&self) -> Option<&Token> {
         match self {
-            TokenKind::Operator(info) => info,
-            TokenKind::Keyword(info) => info,
-            TokenKind::Identifier(info) => info,
-            TokenKind::Comment(info) => info,
-            TokenKind::Err(info) => info,
+            TokenKind::Operator(token) => Some(token),
+            TokenKind::Keyword(token) => Some(token),
+            TokenKind::Identifier(token) => Some(token),
+            TokenKind::Comment(token) => Some(token),
+            TokenKind::Err => None,
+            TokenKind::Begin => None,
         }
     }
 
@@ -93,27 +101,66 @@ impl<'a> Lexer<'a> {
         Self {
             input,
             pos: 0,
-            last_token: None,
             mode: LexGrammarMode::Normal,
+            token: TokenKind::Begin,
         }
+    }
+
+    fn to_step(&self) -> Step<'a> {
+        Step {
+            pos: self.pos,
+            res: self.token.clone(),
+            mode: self.mode.clone(),
+            input: self.input,
+        }
+    }
+
+    fn apply_step(&mut self, step: &Step<'a>) {
+        self.pos = step.pos;
+        self.token = step.res.clone();
+        self.mode = step.mode.clone();
+    }
+
+    pub fn spanned(self) -> impl Iterator<Item = TokenInfo> + 'a {
+        self.scan(0, |start, step| {
+            let next = TokenInfo {
+                kind: step.res.clone(),
+                span: (*start)..step.pos,
+            };
+            *start = step.pos;
+            Some(next)
+        })
     }
 }
 
 impl<'a> Iterator for Lexer<'a> {
-    type Item = TokenKind;
+    type Item = Step<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
         // comments
-        // keywords
-        // operators
         // strings
-        // handle EOF
+        if self.input.len() == self.pos + 1 && matches!(self.token, TokenKind::Operator(Token::EOF))
+        {
+            return None;
+        };
+
+        if self.input.len() == self.pos + 1 {
+            let eof_step = self
+                .to_step()
+                .advance_with(0, TokenKind::Operator(Token::EOF));
+            self.apply_step(&eof_step);
+            return Some(eof_step);
+        };
+
         let all_parsers = [parse_operator, parse_keyword, err_parser];
-        let result = apply_parsers(&all_parsers, &self.input, self.pos, &self.last_token);
-        if let Some(res) = result.clone() {
-            self.pos = res.span().end;
-            self.last_token = result;
-            Some(res)
+
+        let old_step = self.to_step();
+
+        let step = apply_parsers(&all_parsers, old_step);
+
+        if let Some(step) = step {
+            self.apply_step(&step);
+            Some(step)
         } else {
             None
         }
@@ -123,82 +170,65 @@ impl<'a> Iterator for Lexer<'a> {
 const OPERATORS_KEY_LENGTH_RANGE: RangeInclusive<u8> = 1..=3;
 const KEYWORDS_KEY_LENGTH_RANGE: RangeInclusive<u8> = 2..=11;
 
-fn apply_parsers(
-    ps: &[impl Fn(&str, usize, &Option<TokenKind>) -> Option<TokenKind>],
-    input: &str,
-    offset: usize,
-    previous: &Option<TokenKind>,
-) -> Option<TokenKind> {
+fn apply_parsers<'a, 'b>(
+    ps: &'b [impl Fn(Step<'a>) -> Option<Step<'a>>],
+    step: Step<'a>,
+) -> Option<Step<'a>> {
     for p in ps {
-        if let Some(token_info) = (p)(input, offset, previous) {
-            return Some(token_info);
+        let new_step = (p)(step.clone());
+        if new_step.is_some() {
+            return new_step;
         }
     }
     None
 }
 
-fn err_parser(input: &str, offset: usize, prev: &Option<TokenKind>) -> Option<TokenKind> {
-    if input.len() == offset {
-        return None;
-    };
-
+fn err_parser<'a>(step: Step<'a>) -> Option<Step<'a>> {
     let all_parsers = [parse_operator, parse_keyword];
-    let mut next_offset = offset;
 
-    let mut res = apply_parsers(&all_parsers, input, next_offset, prev);
-    loop {
-        if res.is_none() {
-            next_offset += 1;
-            res = apply_parsers(&all_parsers, input, next_offset, &res)
-        } else {
-            break;
-        }
+    let mut found = false;
+    let mut next_step = step;
+
+    while let None = apply_parsers(&all_parsers, next_step.clone()) {
+        found = true;
+        next_step = next_step.advance_with(1, TokenKind::Err);
     }
 
-    if offset == next_offset {
-        None
-    } else {
-        Some(TokenKind::Err(TokenInfo::error(offset..next_offset)))
-    }
+    found.then_some(next_step)
 }
 
-fn parse_operator(input: &str, offset: usize, _: &Option<TokenKind>) -> Option<TokenKind> {
-    if input.len() == offset {
-        return None;
-    };
+fn parse_operator<'a>(step: Step<'a>) -> Option<Step<'a>> {
     // we prioritize bigger lengths
     for size in OPERATORS_KEY_LENGTH_RANGE.rev() {
-        let span = offset..offset + size as usize;
-        let slice = input.slice(span.clone());
+        let slice = step.input.slice(step.pos..step.pos + size as usize);
+
         if let Some(key) = slice {
             let matched = OPERATORS.get(key);
             if let Some(token) = matched {
-                return Some(TokenKind::Operator(TokenInfo::success(*token, span)));
+                return Some(step.advance_with(size.into(), TokenKind::Operator(*token)));
             }
         }
     }
     None
 }
 
-fn parse_keyword(input: &str, offset: usize, prev: &Option<TokenKind>) -> Option<TokenKind> {
-    if input.len() == offset {
+fn parse_keyword<'a>(step: Step<'a>) -> Option<Step<'a>> {
+    if !step.res.is_operator() {
         return None;
-    };
+    }
+
     // we prioritize bigger lengths
     for size in KEYWORDS_KEY_LENGTH_RANGE.rev() {
-        let span = offset..offset + size as usize;
-        let slice = input.slice(span.clone());
-        if let Some(key) = slice {
+        if let Some(key) = step.input.slice(step.pos..step.pos + size as usize) {
             let matched = KEYWORDS.get(key);
-            let test = prev.as_ref().map(|p| p.is_operator()).unwrap_or_default();
-            if let Some((token, _)) = test
-                .then(|| matched.zip(parse_operator(input, span.end, prev)))
-                .flatten()
-            {
-                return Some(TokenKind::Keyword(TokenInfo::success(*token, span)));
+            let next = matched.zip((parse_operator(step.advance(size.into()))).map(|op| op.res));
+
+            if let Some((token, TokenKind::Operator(_))) = next {
+                return Some(step.advance_with(size.into(), TokenKind::Keyword(*token)));
             }
         }
     }
+
     None
 }
 
@@ -221,7 +251,8 @@ hey
 fun hello() = "Hello"
 var funvar = 3
 "#,
-        );
+        )
+        .spanned();
         for lex in lex {
             println!("{}", lex);
         }
