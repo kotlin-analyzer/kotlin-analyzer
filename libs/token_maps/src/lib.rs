@@ -149,6 +149,8 @@ pub static KEYWORDS: phf::Map<&'static str, Token> = phf_map! {
 
    // literals
    "null" => Token::NullLiteral,
+   "true" => Token::BooleanLiteral,
+   "false" => Token::BooleanLiteral,
 };
 
 pub static OPERATORS: phf::Map<&'static str, Token> = phf_map! {

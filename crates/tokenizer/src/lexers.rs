@@ -7,6 +7,28 @@ use logos::Source;
 use token_maps::{PrefixForComment, COMMENTS, KEYWORDS, OPERATORS};
 use tokens::Token;
 
+macro_rules! assert_success {
+    ($parser: expr, $source: expr) => {
+        let result = $parser(Step::new($source, None)).unwrap();
+    };
+    ($parser: expr, $source: expr, $pos: expr) => {
+        let result = $parser(Step::new($source, None)).unwrap();
+        assert_eq!(result.pos, $pos);
+    };
+    ($parser: expr, $source: expr, $pos: expr, $token: expr) => {
+        let result = $parser(Step::new($source, None)).unwrap();
+        assert_eq!(result.pos, $pos);
+        assert_eq!(result.res.token(), Some(&$token));
+    };
+}
+
+macro_rules! assert_failure {
+    ($parser: expr, $source: expr) => {
+        let result = $parser(Step::new($source, None));
+        assert_eq!(result, None);
+    };
+}
+
 pub type Span = Range<usize>;
 
 #[derive(Debug, Clone)]
@@ -17,11 +39,19 @@ pub struct TokenInfo {
 
 impl Display for TokenInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} @ {:?}", self.kind, self.span)
+        write!(
+            f,
+            "{}{}",
+            self.kind,
+            self.kind
+                .is_eof()
+                .then_some("")
+                .unwrap_or(&format!(" @ {:?}", self.span))
+        )
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 enum LexGrammarMode {
     Normal,
     String,
@@ -36,7 +66,7 @@ pub struct Lexer<'a> {
     token: TokenKind,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Step<'a> {
     pos: usize,
     res: TokenKind,
@@ -45,6 +75,22 @@ pub struct Step<'a> {
 }
 
 impl<'a> Step<'a> {
+    fn new(input: &'a str, kind: Option<TokenKind>) -> Self {
+        match kind {
+            Some(token_kind) => Self {
+                pos: 0,
+                res: token_kind,
+                mode: LexGrammarMode::Normal,
+                input,
+            },
+            None => Self {
+                pos: 0,
+                res: TokenKind::Begin,
+                mode: LexGrammarMode::Normal,
+                input,
+            },
+        }
+    }
     fn advance(&self, increment: usize) -> Step<'a> {
         let mut step = self.clone();
         step.pos += increment;
@@ -56,14 +102,27 @@ impl<'a> Step<'a> {
         step.res = kind;
         step
     }
+
+    fn find(&self, incr: usize, pat: impl Fn(char) -> bool) -> usize {
+        self.input[self.pos + incr..]
+            .find(pat)
+            .unwrap_or(self.input.len() - (self.pos + incr))
+    }
+
+    fn find_str_index(&self, incr: usize, pat: &str) -> usize {
+        self.input[self.pos + incr..]
+            .find(pat)
+            .unwrap_or(self.input.len() - (self.pos + incr))
+    }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum TokenKind {
     Operator(Token),
     Keyword(Token),
     Identifier(Token),
     Comment(Token),
+    Literal(Token),
     Err,
     Begin,
 }
@@ -86,6 +145,7 @@ impl TokenKind {
             TokenKind::Keyword(token) => Some(token),
             TokenKind::Identifier(token) => Some(token),
             TokenKind::Comment(token) => Some(token),
+            TokenKind::Literal(token) => Some(token),
             TokenKind::Err => None,
             TokenKind::Begin => None,
         }
@@ -93,6 +153,10 @@ impl TokenKind {
 
     fn is_operator(&self) -> bool {
         matches!(self, Self::Operator(_))
+    }
+
+    fn is_eof(&self) -> bool {
+        matches!(self, Self::Operator(Token::EOF))
     }
 }
 
@@ -137,14 +201,12 @@ impl<'a> Iterator for Lexer<'a> {
     type Item = Step<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        // comments
         // strings
-        if self.input.len() == self.pos + 1 && matches!(self.token, TokenKind::Operator(Token::EOF))
-        {
+        if self.input.len() <= self.pos + 1 && self.token.is_eof() {
             return None;
         };
 
-        if self.input.len() == self.pos + 1 {
+        if self.input.len() <= self.pos + 1 {
             let eof_step = self
                 .to_step()
                 .advance_with(0, TokenKind::Operator(Token::EOF));
@@ -152,7 +214,13 @@ impl<'a> Iterator for Lexer<'a> {
             return Some(eof_step);
         };
 
-        let all_parsers = [parse_comment, parse_operator, parse_keyword, err_parser];
+        let all_parsers = [
+            parse_comment,
+            parse_operator,
+            parse_keyword,
+            parse_literals,
+            err_parser,
+        ];
 
         let old_step = self.to_step();
 
@@ -184,7 +252,7 @@ fn apply_parsers<'a, 'b>(
 }
 
 fn err_parser<'a>(step: Step<'a>) -> Option<Step<'a>> {
-    let all_parsers = [parse_comment, parse_operator, parse_keyword];
+    let all_parsers = [parse_comment, parse_operator, parse_keyword, parse_literals];
 
     let mut found = false;
     let mut next_step = step;
@@ -273,29 +341,119 @@ fn parse_keyword<'a>(step: Step<'a>) -> Option<Step<'a>> {
     None
 }
 
-fn parse_or<'a, F>(step: Step<'a>, p1: F, p2: F) -> Option<Step<'a>>
-where
-    F: Fn(Step<'a>) -> Option<Step<'a>>,
-{
-    if let Some(step) = p1(step.clone()) {
-        Some(step)
-    } else {
-        p2(step)
+fn parse_or<'a>(
+    p1: impl Fn(Step<'a>) -> Option<Step<'a>>,
+    p2: impl Fn(Step<'a>) -> Option<Step<'a>>,
+) -> impl Fn(Step<'a>) -> Option<Step<'a>> {
+    move |step| {
+        if let Some(step) = p1(step.clone()) {
+            Some(step)
+        } else {
+            p2(step)
+        }
     }
 }
 
-fn parse_and<'a, F>(
-    step: Step<'a>,
+fn bin_or_hex_lit<'a>(step: Step<'a>) -> Option<Step<'a>> {
+    match step.input.slice(step.pos..step.pos + 2) {
+        Some("0b" | "0B") => {
+            let index = step.find(2, |ch| ch != '0' && ch != '1' && ch != '_');
+            let entry = &step.input[step.pos + 2..step.pos + 2 + index];
+            if entry.starts_with('_') || entry.ends_with('_') {
+                return None;
+            }
+            Some(step.advance_with(index + 2, TokenKind::Literal(Token::BinLiteral)))
+        }
+        Some("0x" | "0X") => {
+            let index = step.find(2, |ch| match ch {
+                '0'..='9' | 'a'..='f' | 'A'..='F' | '_' => false,
+                _ => true,
+            });
+
+            let entry = &step.input[step.pos + 2..step.pos + 2 + index];
+            if entry.starts_with('_') || entry.ends_with('_') {
+                return None;
+            }
+            Some(step.advance_with(index + 2, TokenKind::Literal(Token::HexLiteral)))
+        }
+        _ => None,
+    }
+}
+
+fn int_lit<'a>(step: Step<'a>) -> Option<Step<'a>> {
+    match step
+        .input
+        .slice(step.pos..step.pos + 1)
+        .and_then(|s| s.chars().next())
+    {
+        Some('0'..='9') => {
+            let index = step.find(0, |ch| !('0'..='9').contains(&ch) && ch != '_');
+
+            let entry = &step.input[step.pos..step.pos + index];
+            if entry.ends_with('_') {
+                return None;
+            }
+            if entry.contains('_') {
+                if entry
+                    .chars()
+                    .next()
+                    .map(|ch| ('1'..'9').contains(&ch))
+                    .unwrap_or_default()
+                {
+                    return Some(
+                        step.advance_with(index, TokenKind::Literal(Token::IntegerLiteral)),
+                    );
+                }
+                return None;
+            }
+            Some(step.advance_with(index, TokenKind::Literal(Token::IntegerLiteral)))
+        }
+        _ => None,
+    }
+}
+
+fn tag<'a>(pattern: &'static str) -> impl Fn(Step<'a>) -> Option<Step<'a>> {
+    move |step| {
+        if step
+            .input
+            .slice(step.pos..step.pos + pattern.len())
+            .is_some()
+        {
+            Some(step.advance(pattern.len()))
+        } else {
+            None
+        }
+    }
+}
+
+fn long_lit<'a>(step: Step<'a>) -> Option<Step<'a>> {
+    parse_and(
+        parse_or(bin_or_hex_lit, int_lit),
+        tag("L"),
+        TokenKind::Literal(Token::LongLiteral),
+    )(step)
+}
+
+fn parse_literals<'a>(step: Step<'a>) -> Option<Step<'a>> {
+    parse_or(long_lit, parse_or(bin_or_hex_lit, int_lit))(step)
+}
+
+fn parse_and<'a, F, F2>(
     p1: F,
-    p2: F,
-    combine: impl Fn(TokenKind, TokenKind) -> TokenKind,
-) -> Option<Step<'a>>
+    p2: F2,
+    token_kind: TokenKind,
+) -> impl Fn(Step<'a>) -> Option<Step<'a>>
 where
     F: Fn(Step<'a>) -> Option<Step<'a>>,
+    F2: Fn(Step<'a>) -> Option<Step<'a>>,
 {
-    p1(step.clone())
-        .zip(p2(step))
-        .map(|(a, b)| b.clone().advance_with(0, combine(a.res, b.res)))
+    move |step| {
+        if let Some(step1) = p1(step) {
+            p2(step1).map(|s| s.advance_with(0, token_kind.clone()))
+        } else {
+            None
+        }
+    }
 }
 
 #[cfg(test)]
@@ -313,6 +471,11 @@ mod test {
 //line comment
 #! sh echo "hey"
 hey
+0b101_010
+0xff_ff
+true
+false
+null
 fun hello() = "Hello"
 var funvar = 3
 "#;
@@ -322,5 +485,72 @@ var funvar = 3
             println!("{:?}", &source[lex.span]);
         }
         Ok(())
+    }
+
+    #[test]
+    fn combinators() {
+        assert_success!(tag("Mine"), "Mineral", 4);
+        assert_success!(parse_or(tag("Mine"), tag("ral")), "Mineral", 4);
+
+        let and_test = parse_and(
+            tag("Mine"),
+            tag("ral"),
+            TokenKind::Identifier(Token::Identifier),
+        )(Step::new("Mineral", None))
+        .unwrap();
+
+        assert_eq!(and_test.pos, 7);
+    }
+
+    #[test]
+    fn int_literals() {
+        assert_success!(int_lit, "23419", 5, Token::IntegerLiteral);
+        assert_success!(int_lit, "2_341_567", 9, Token::IntegerLiteral);
+
+        assert_failure!(int_lit, "2_341_567_");
+        assert_failure!(int_lit, "_2_341_567");
+        assert_failure!(int_lit, "0_341_567");
+        assert_failure!(int_lit, "u2341");
+    }
+
+    #[test]
+    fn hex_bin_literals() {
+        assert_success!(bin_or_hex_lit, "0b101_010", 9, Token::BinLiteral);
+        assert_success!(bin_or_hex_lit, "0xff_ff_bb", 10, Token::HexLiteral);
+
+        assert_failure!(bin_or_hex_lit, "0b101_010_");
+        assert_failure!(bin_or_hex_lit, "0xff_ff_bb_");
+        assert_failure!(bin_or_hex_lit, "_0b101_010");
+    }
+
+    #[test]
+    fn long_literals() {
+        assert_success!(long_lit, "23419L", 6, Token::LongLiteral);
+        assert_success!(long_lit, "2_341_567L", 10, Token::LongLiteral);
+
+        assert_failure!(long_lit, "23419");
+        assert_failure!(long_lit, "2_341_567");
+
+        assert_success!(long_lit, "0b101_010L", 10, Token::LongLiteral);
+        assert_success!(long_lit, "0xff_ff_bbL", 11, Token::LongLiteral);
+
+        assert_failure!(long_lit, "0b101_010");
+        assert_failure!(long_lit, "0xff_ff_bb");
+        assert_failure!(long_lit, "0xff_ff");
+    }
+
+    #[test]
+    fn literals() {
+        assert_success!(parse_literals, "23419L", 6, Token::LongLiteral);
+        assert_success!(parse_literals, "2_341_567L", 10, Token::LongLiteral);
+
+        assert_success!(parse_literals, "23419", 5, Token::IntegerLiteral);
+        assert_success!(parse_literals, "2_341_567", 9, Token::IntegerLiteral);
+
+        assert_success!(parse_literals, "0b101_010L", 10, Token::LongLiteral);
+        assert_success!(parse_literals, "0xff_ff_bbL", 11, Token::LongLiteral);
+
+        assert_success!(parse_literals, "0b101_010", 9, Token::BinLiteral);
+        assert_success!(parse_literals, "0xff_ff_bb", 10, Token::HexLiteral);
     }
 }
