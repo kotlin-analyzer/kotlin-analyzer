@@ -4,7 +4,7 @@ use std::{
 };
 
 use logos::Source;
-use token_maps::{KEYWORDS, OPERATORS};
+use token_maps::{PrefixForComment, COMMENTS, KEYWORDS, OPERATORS};
 use tokens::Token;
 
 pub type Span = Range<usize>;
@@ -152,7 +152,7 @@ impl<'a> Iterator for Lexer<'a> {
             return Some(eof_step);
         };
 
-        let all_parsers = [parse_operator, parse_keyword, err_parser];
+        let all_parsers = [parse_comment, parse_operator, parse_keyword, err_parser];
 
         let old_step = self.to_step();
 
@@ -184,7 +184,7 @@ fn apply_parsers<'a, 'b>(
 }
 
 fn err_parser<'a>(step: Step<'a>) -> Option<Step<'a>> {
-    let all_parsers = [parse_operator, parse_keyword];
+    let all_parsers = [parse_comment, parse_operator, parse_keyword];
 
     let mut found = false;
     let mut next_step = step;
@@ -195,6 +195,48 @@ fn err_parser<'a>(step: Step<'a>) -> Option<Step<'a>> {
     }
 
     found.then_some(next_step)
+}
+
+fn parse_comment<'a>(step: Step<'a>) -> Option<Step<'a>> {
+    // comment prefix can always be identified with the first two chars
+    if let Some(key) = &step.input.slice(step.pos..step.pos + 2) {
+        if let Some(prefix) = COMMENTS.get(key) {
+            match prefix {
+                PrefixForComment::ShebangLine => {
+                    let new_line_index =
+                        step.input[step.pos..].find(|ch| ch == '\u{000A}' || ch == '\u{000D}');
+                    if let Some(index) = new_line_index {
+                        return Some(
+                            step.advance_with(index, TokenKind::Comment(Token::ShebangLine)),
+                        );
+                    }
+                }
+                PrefixForComment::DelimitedComment => {
+                    let comment_end_idx = step.input[step.pos..].find("*/");
+                    if let Some(index) = comment_end_idx {
+                        return Some(
+                            step.advance_with(
+                                index + 2,
+                                TokenKind::Comment(Token::DelimitedComment),
+                            ),
+                        );
+                    }
+                }
+                PrefixForComment::LineComment => {
+                    let new_line_index =
+                        step.input[step.pos..].find(|ch| ch == '\u{000A}' || ch == '\u{000D}');
+                    if let Some(index) = new_line_index {
+                        return Some(
+                            step.advance_with(index, TokenKind::Comment(Token::LineComment)),
+                        );
+                    }
+                }
+            }
+        }
+    }
+    // parse remaining
+
+    None
 }
 
 fn parse_operator<'a>(step: Step<'a>) -> Option<Step<'a>> {
@@ -240,8 +282,7 @@ mod test {
 
     #[test]
     fn simple() -> Result<(), Box<dyn Error>> {
-        let lex = Lexer::new(
-            r#"
+        let source = r#"
 0444.10_99e+4f
 [],--
 /* comments */
@@ -250,11 +291,11 @@ mod test {
 hey
 fun hello() = "Hello"
 var funvar = 3
-"#,
-        )
-        .spanned();
+"#;
+        let lex = Lexer::new(source).spanned();
         for lex in lex {
-            println!("{}", lex);
+            print!("{} - ", &lex);
+            println!("{:?}", &source[lex.span]);
         }
         Ok(())
     }

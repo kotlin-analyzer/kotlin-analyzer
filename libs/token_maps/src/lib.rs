@@ -261,10 +261,10 @@ pub enum PrefixForComment {
     LineComment,
 }
 
-pub static WHITESPACE_AND_COMMENTS: phf::Map<&'static str, PrefixForComment> = phf_map! {
+pub static COMMENTS: phf::Map<&'static str, PrefixForComment> = phf_map! {
     "#!" => PrefixForComment::ShebangLine,
     "/*" => PrefixForComment::DelimitedComment,
-    "//" => PrefixForComment::DelimitedComment,
+    "//" => PrefixForComment::LineComment,
 };
 
 // TODO: ensure we factore fieldRef
