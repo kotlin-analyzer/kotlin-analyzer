@@ -251,10 +251,7 @@ impl<'a> Iterator for Lexer<'a> {
 const OPERATORS_KEY_LENGTH_RANGE: RangeInclusive<u8> = 1..=3;
 const KEYWORDS_KEY_LENGTH_RANGE: RangeInclusive<u8> = 2..=11;
 
-fn apply_parsers<'a, 'b>(
-    ps: &'b [impl Fn(Step<'a>) -> Option<Step<'a>>],
-    step: Step<'a>,
-) -> Option<Step<'a>> {
+fn apply_parsers<'a, 'b>(ps: &'b [impl ParseFn<'a>], step: Step<'a>) -> Option<Step<'a>> {
     for p in ps {
         let new_step = (p)(step.clone());
         if new_step.is_some() {
@@ -354,10 +351,7 @@ fn parse_keyword(step: Step<'_>) -> Option<Step<'_>> {
     None
 }
 
-fn parse_or<'a>(
-    p1: impl Fn(Step<'a>) -> Option<Step<'a>>,
-    p2: impl Fn(Step<'a>) -> Option<Step<'a>>,
-) -> impl Fn(Step<'a>) -> Option<Step<'a>> {
+fn parse_or<'a>(p1: impl ParseFn<'a>, p2: impl ParseFn<'a>) -> impl ParseFn<'a> {
     move |step| {
         if let Some(step) = p1(step.clone()) {
             Some(step)
@@ -461,7 +455,7 @@ fn dec_digits(step: Step<'_>) -> Option<Step<'_>> {
     }
 }
 
-fn tag<'a>(pattern: &'static str) -> impl Fn(Step<'a>) -> Option<Step<'a>> {
+fn tag<'a>(pattern: &'static str) -> impl ParseFn<'a> {
     move |step| {
         if step
             .input
@@ -529,10 +523,10 @@ where
     }
 }
 
-fn parse_and<'a, F, F2>(p1: F, p2: F2) -> impl Fn(Step<'a>) -> Option<Step<'a>>
+fn parse_and<'a, F, F2>(p1: F, p2: F2) -> impl ParseFn<'a>
 where
-    F: Fn(Step<'a>) -> Option<Step<'a>>,
-    F2: Fn(Step<'a>) -> Option<Step<'a>>,
+    F: ParseFn<'a>,
+    F2: ParseFn<'a>,
 {
     move |step| {
         if let Some(step1) = p1(step) {
