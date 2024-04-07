@@ -106,13 +106,15 @@ impl<'a> Step<'a> {
     fn find(&self, incr: usize, pat: impl Fn(char) -> bool) -> usize {
         self.input[self.pos + incr..]
             .find(pat)
-            .unwrap_or(self.input.len() - (self.pos + incr))
+            .map(|pos| pos + incr)
+            .unwrap_or(self.input.len() - self.pos)
     }
 
     fn find_str_index(&self, incr: usize, pat: &str) -> usize {
         self.input[self.pos + incr..]
             .find(pat)
-            .unwrap_or(self.input.len() - (self.pos + incr))
+            .map(|pos| pos + incr)
+            .unwrap_or(self.input.len() - self.pos)
     }
 }
 
@@ -358,11 +360,11 @@ fn bin_or_hex_lit<'a>(step: Step<'a>) -> Option<Step<'a>> {
     match step.input.slice(step.pos..step.pos + 2) {
         Some("0b" | "0B") => {
             let index = step.find(2, |ch| ch != '0' && ch != '1' && ch != '_');
-            let entry = &step.input[step.pos + 2..step.pos + 2 + index];
+            let entry = &step.input[step.pos + 2..step.pos + index];
             if entry.starts_with('_') || entry.ends_with('_') {
                 return None;
             }
-            Some(step.advance_with(index + 2, TokenKind::Literal(Token::BinLiteral)))
+            Some(step.advance_with(index, TokenKind::Literal(Token::BinLiteral)))
         }
         Some("0x" | "0X") => {
             let index = step.find(2, |ch| match ch {
@@ -370,11 +372,11 @@ fn bin_or_hex_lit<'a>(step: Step<'a>) -> Option<Step<'a>> {
                 _ => true,
             });
 
-            let entry = &step.input[step.pos + 2..step.pos + 2 + index];
+            let entry = &step.input[step.pos + 2..step.pos + index];
             if entry.starts_with('_') || entry.ends_with('_') {
                 return None;
             }
-            Some(step.advance_with(index + 2, TokenKind::Literal(Token::HexLiteral)))
+            Some(step.advance_with(index, TokenKind::Literal(Token::HexLiteral)))
         }
         _ => None,
     }
@@ -417,9 +419,10 @@ fn tag<'a>(pattern: &'static str) -> impl Fn(Step<'a>) -> Option<Step<'a>> {
         if step
             .input
             .slice(step.pos..step.pos + pattern.len())
-            .is_some()
+            .map(|t| t == pattern)
+            .unwrap_or_default()
         {
-            Some(step.advance(pattern.len()))
+            Some(step.advance_with(pattern.len(), TokenKind::Identifier(Token::Identifier)))
         } else {
             None
         }
@@ -499,6 +502,11 @@ var funvar = 3
         )(Step::new("Mineral", None))
         .unwrap();
 
+        assert_failure!(
+            parse_and(tag("Mine"), tag("gal"), TokenKind::Begin),
+            "Mineral"
+        );
+
         assert_eq!(and_test.pos, 7);
     }
 
@@ -506,6 +514,7 @@ var funvar = 3
     fn int_literals() {
         assert_success!(int_lit, "23419", 5, Token::IntegerLiteral);
         assert_success!(int_lit, "2_341_567", 9, Token::IntegerLiteral);
+        assert_success!(int_lit, "2_341_567r", 9, Token::IntegerLiteral);
 
         assert_failure!(int_lit, "2_341_567_");
         assert_failure!(int_lit, "_2_341_567");
@@ -517,6 +526,12 @@ var funvar = 3
     fn hex_bin_literals() {
         assert_success!(bin_or_hex_lit, "0b101_010", 9, Token::BinLiteral);
         assert_success!(bin_or_hex_lit, "0xff_ff_bb", 10, Token::HexLiteral);
+
+        assert_success!(bin_or_hex_lit, "0b101_010r", 9, Token::BinLiteral);
+        assert_success!(bin_or_hex_lit, "0xff_ff_bbr", 10, Token::HexLiteral);
+
+        assert_success!(bin_or_hex_lit, "0b101_010\n", 9, Token::BinLiteral);
+        assert_success!(bin_or_hex_lit, "0xff_ff_bbL\n", 10, Token::HexLiteral);
 
         assert_failure!(bin_or_hex_lit, "0b101_010_");
         assert_failure!(bin_or_hex_lit, "0xff_ff_bb_");
@@ -534,6 +549,9 @@ var funvar = 3
         assert_success!(long_lit, "0b101_010L", 10, Token::LongLiteral);
         assert_success!(long_lit, "0xff_ff_bbL", 11, Token::LongLiteral);
 
+        assert_failure!(long_lit, "0b101_010\n");
+        assert_failure!(long_lit, "0xff_ff_bb\n");
+
         assert_failure!(long_lit, "0b101_010");
         assert_failure!(long_lit, "0xff_ff_bb");
         assert_failure!(long_lit, "0xff_ff");
@@ -549,6 +567,9 @@ var funvar = 3
 
         assert_success!(parse_literals, "0b101_010L", 10, Token::LongLiteral);
         assert_success!(parse_literals, "0xff_ff_bbL", 11, Token::LongLiteral);
+
+        assert_success!(parse_literals, "0b101_010\n", 9, Token::BinLiteral);
+        assert_success!(parse_literals, "0xff_ff_bb\n", 10, Token::HexLiteral);
 
         assert_success!(parse_literals, "0b101_010", 9, Token::BinLiteral);
         assert_success!(parse_literals, "0xff_ff_bb", 10, Token::HexLiteral);
