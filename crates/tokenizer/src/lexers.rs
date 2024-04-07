@@ -496,17 +496,20 @@ fn double_lit(step: Step<'_>) -> Option<Step<'_>> {
 }
 
 fn real_lit(step: Step<'_>) -> Option<Step<'_>> {
-    parse_and(
-        parse_or(double_lit, dec_digits),
-        parse_or(tag("f"), tag("F")),
+    parse_or(
+        parse_and(
+            parse_or(double_lit, dec_digits),
+            parse_or(tag("f"), tag("F")),
+        ),
+        double_lit,
     )
     .with(TokenKind::Literal(Token::RealLiteral))(step)
 }
 
 fn parse_literals(step: Step<'_>) -> Option<Step<'_>> {
     parse_or(
-        long_lit,
-        parse_or(bin_or_hex_lit, parse_or(int_lit, real_lit)),
+        real_lit,
+        parse_or(long_lit, parse_or(bin_or_hex_lit, int_lit)),
     )(step)
 }
 
@@ -667,9 +670,6 @@ var funvar = 3
 
     #[test]
     fn double_literal() {
-        assert_success!(double_lit, "23419", 5);
-        assert_success!(double_lit, "2_341_567", 9);
-
         assert_success!(double_lit, "0444.10_99e+4f", 13);
         assert_success!(double_lit, "3333.4e+3f", 9);
         assert_success!(double_lit, "3e+4f", 4);
@@ -678,14 +678,15 @@ var funvar = 3
         assert_success!(double_lit, "38.38_390f", 9);
         assert_success!(double_lit, ".445_444f", 8);
         assert_success!(double_lit, "45.44e-940", 10);
-        assert_success!(double_lit, "666.", 3);
         assert_success!(double_lit, "45.44e+940_", 10);
+        assert_success!(double_lit, "01e+10", 6);
+
+        assert_failure!(double_lit, "666.");
+        assert_failure!(double_lit, "23419");
+        assert_failure!(double_lit, "2_341_567");
     }
     #[test]
     fn real_literal() {
-        assert_success!(real_lit, "23419", 5);
-        assert_success!(real_lit, "2_341_567", 9);
-
         assert_success!(real_lit, "0444.10_99e+4f", 14);
         assert_success!(real_lit, "3333.4e+3f", 10);
         assert_success!(real_lit, "3e+4f", 5);
@@ -694,8 +695,11 @@ var funvar = 3
         assert_success!(real_lit, "38.38_390f", 10);
         assert_success!(real_lit, ".445_444f", 9);
         assert_success!(real_lit, "45.44e-940", 10);
-        assert_success!(real_lit, "666.", 3);
         assert_success!(real_lit, "45.44e+940_", 10);
+
+        assert_failure!(real_lit, "666.");
+        assert_failure!(real_lit, "23419");
+        assert_failure!(real_lit, "2_341_567");
     }
 
     #[test]
