@@ -515,11 +515,13 @@ var funvar = 3
         assert_success!(int_lit, "23419", 5, Token::IntegerLiteral);
         assert_success!(int_lit, "2_341_567", 9, Token::IntegerLiteral);
         assert_success!(int_lit, "2_341_567r", 9, Token::IntegerLiteral);
+        assert_success!(int_lit, "0");
 
         assert_failure!(int_lit, "2_341_567_");
         assert_failure!(int_lit, "_2_341_567");
         assert_failure!(int_lit, "0_341_567");
         assert_failure!(int_lit, "u2341");
+        assert_failure!(int_lit, "0444");
     }
 
     #[test]
