@@ -1,3 +1,6 @@
+#![deny(clippy::index_refutable_slice)]
+#![deny(clippy::indexing_slicing)]
+
 use std::{
     fmt::Display,
     ops::{Range, RangeInclusive},
@@ -63,7 +66,7 @@ impl Display for TokenInfo {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-enum LexGrammarMode {
+pub enum LexGrammarMode {
     Normal,
     String,
     MultilineString,
@@ -86,7 +89,7 @@ pub struct Step<'a> {
 }
 
 impl<'a> Step<'a> {
-    fn new(input: &'a str, kind: Option<TokenKind>) -> Self {
+    pub(super) fn new(input: &'a str, kind: Option<TokenKind>) -> Self {
         match kind {
             Some(token_kind) => Self {
                 pos: 0,
@@ -115,17 +118,19 @@ impl<'a> Step<'a> {
     }
 
     fn find(&self, incr: usize, pat: impl Fn(char) -> bool) -> usize {
-        self.input[self.pos + incr..]
-            .find(pat)
-            .map(|pos| pos + incr)
-            .unwrap_or(self.input.len() - self.pos)
+        if let Some(pos) = self.input.get(self.pos + incr..).and_then(|s| s.find(pat)) {
+            pos + incr
+        } else {
+            self.input.len() - self.pos
+        }
     }
 
     fn find_str_index(&self, incr: usize, pat: &str) -> usize {
-        self.input[self.pos + incr..]
-            .find(pat)
-            .map(|pos| pos + incr)
-            .unwrap_or(self.input.len() - self.pos)
+        if let Some(pos) = self.input.get(self.pos + incr..).and_then(|s| s.find(pat)) {
+            pos + incr
+        } else {
+            self.input.len() - self.pos
+        }
     }
 }
 
@@ -281,8 +286,11 @@ fn parse_comment(step: Step<'_>) -> Option<Step<'_>> {
         if let Some(prefix) = COMMENTS.get(key) {
             match prefix {
                 PrefixForComment::ShebangLine => {
-                    let new_line_index =
-                        step.input[step.pos..].find(|ch| ch == '\u{000A}' || ch == '\u{000D}');
+                    let new_line_index = step
+                        .input
+                        .get(step.pos..)
+                        .and_then(|s| s.find(|ch| ch == '\u{000A}' || ch == '\u{000D}'));
+
                     if let Some(index) = new_line_index {
                         return Some(
                             step.advance_with(index, TokenKind::Comment(Token::ShebangLine)),
@@ -290,24 +298,17 @@ fn parse_comment(step: Step<'_>) -> Option<Step<'_>> {
                     }
                 }
                 PrefixForComment::DelimitedComment => {
-                    let comment_end_idx = step.input[step.pos..].find("*/");
-                    if let Some(index) = comment_end_idx {
-                        return Some(
-                            step.advance_with(
-                                index + 2,
-                                TokenKind::Comment(Token::DelimitedComment),
-                            ),
-                        );
-                    }
+                    let comment_end_idx = step.find_str_index(0, "*/");
+                    return Some(step.advance_with(
+                        comment_end_idx + 2,
+                        TokenKind::Comment(Token::DelimitedComment),
+                    ));
                 }
                 PrefixForComment::LineComment => {
-                    let new_line_index =
-                        step.input[step.pos..].find(|ch| ch == '\u{000A}' || ch == '\u{000D}');
-                    if let Some(index) = new_line_index {
-                        return Some(
-                            step.advance_with(index, TokenKind::Comment(Token::LineComment)),
-                        );
-                    }
+                    let new_line_index = step.find(0, |ch| ch == '\u{000A}' || ch == '\u{000D}');
+                    return Some(
+                        step.advance_with(new_line_index, TokenKind::Comment(Token::LineComment)),
+                    );
                 }
             }
         }
@@ -365,7 +366,8 @@ fn bin_or_hex_lit(step: Step<'_>) -> Option<Step<'_>> {
     match step.input.slice(step.pos..step.pos + 2) {
         Some("0b" | "0B") => {
             let index = step.find(2, |ch| ch != '0' && ch != '1' && ch != '_');
-            let entry = &step.input[step.pos + 2..step.pos + index];
+            let entry = &step.input.get(step.pos + 2..step.pos + index)?;
+
             if entry.starts_with('_') {
                 return None;
             }
@@ -380,7 +382,8 @@ fn bin_or_hex_lit(step: Step<'_>) -> Option<Step<'_>> {
                 |ch| !matches!(ch, '0'..='9' | 'a'..='f' | 'A'..='F' | '_'),
             );
 
-            let entry = &step.input[step.pos + 2..step.pos + index];
+            let entry = &step.input.get(step.pos + 2..step.pos + index)?;
+
             if entry.starts_with('_') {
                 return None;
             }
@@ -403,7 +406,7 @@ fn int_lit(step: Step<'_>) -> Option<Step<'_>> {
         Some(fc @ '0'..='9') => {
             let index = step.find(0, |ch| !ch.is_ascii_digit() && ch != '_');
 
-            let entry = &step.input[step.pos..step.pos + index];
+            let entry = &step.input.get(step.pos..step.pos + index)?;
 
             if entry.ends_with('_') {
                 return Some(
@@ -437,7 +440,7 @@ fn dec_digits(step: Step<'_>) -> Option<Step<'_>> {
         Some(fc @ '0'..='9') => {
             let index = step.find(0, |ch| !ch.is_ascii_digit() && ch != '_');
 
-            let entry = &step.input[step.pos..step.pos + index];
+            let entry = &step.input.get(step.pos..step.pos + index)?;
 
             if entry.ends_with('_') {
                 return Some(
@@ -549,21 +552,26 @@ mod test {
     #[test]
     fn simple() -> Result<(), Box<dyn Error>> {
         let source = r#"
-0444.10_99e+4f
-[],--
-/* comments */
-//line comment
-#! sh echo "hey"
-hey
-0b101_010
-0xff_ff
-true
-false
-null
-fun hello() = "Hello"
-var funvar = 3
-"#;
-        let lex = Lexer::new(source).spanned();
+            0444.10_99e+4f
+            [],--
+            /* comments */
+            //line comment
+            #! sh echo "hey"
+            hey
+            0b101_010
+            0xff_ff
+            true
+            false
+            null
+            fun hello() = "Hello"
+            var funvar = 3
+            "#
+        .lines()
+        .map(|l| l.trim_start())
+        .collect::<Vec<_>>()
+        .join("\n");
+
+        let lex = Lexer::new(&source).spanned();
         for lex in lex {
             print!("{} - ", &lex);
             println!("{:?}", &source[lex.span]);
