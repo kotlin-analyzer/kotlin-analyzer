@@ -14,6 +14,14 @@ trait ParseFn<'a>: Fn(Step<'a>) -> Option<Step<'a>> {
     fn with(&self, kind: TokenKind) -> impl ParseFn<'a> {
         move |step: Step<'a>| self(step).map(|s| s.advance_with(0, kind.clone()))
     }
+
+    fn and(&self, p: impl ParseFn<'a>) -> impl ParseFn<'a> {
+        parse_and(self, p)
+    }
+
+    fn or(&self, p: impl ParseFn<'a>) -> impl ParseFn<'a> {
+        parse_or(self, p)
+    }
 }
 
 impl<'a, F> ParseFn<'a> for F where F: Fn(Step<'a>) -> Option<Step<'a>> {}
@@ -242,6 +250,18 @@ fn apply_parsers<'a, 'b>(ps: &'b [impl ParseFn<'a>], step: Step<'a>) -> Option<S
     None
 }
 
+fn apply_parsers_seq<'a, 'b>(ps: &'b [impl ParseFn<'a>], step: Step<'a>) -> Option<Step<'a>> {
+    let mut step = step;
+    for p in ps {
+        if let Some(new_step) = (p)(step) {
+            step = new_step;
+        } else {
+            return None;
+        }
+    }
+    Some(step)
+}
+
 fn err_parser(step: Step<'_>) -> Option<Step<'_>> {
     let all_parsers = [parse_comment, parse_operator, parse_keyword, parse_literals];
 
@@ -301,11 +321,38 @@ fn parse_operator(step: Step<'_>) -> Option<Step<'_>> {
         if let Some(key) = slice {
             let matched = OPERATORS.get(key);
             if let Some(token) = matched {
-                return Some(step.advance_with(size.into(), TokenKind::Operator(*token)));
+                return handle_operator(&step, size, token);
             }
         }
     }
     None
+}
+
+fn unicode_char_lit(step: Step<'_>) -> Option<Step<'_>> {
+    tag("\\u").and(repeat::<4>(
+        char_range('0'..='9')
+            .or(char_range('a'..='f'))
+            .or(char_range('A'..='F')),
+    ))(step)
+}
+
+fn handle_operator<'a>(step: &Step<'a>, size: u8, token: &Token) -> Option<Step<'a>> {
+    match token {
+        Token::SingleQuote => {
+            unicode_char_lit.or(tag("\\").and(
+                tag("n")
+                    .or(tag("t"))
+                    .or(tag("\\"))
+                    .or(tag("'"))
+                    .or(tag("\""))
+                    .or(tag("$"))
+                    .or(tag("r"))
+                    .or(tag("b")),
+            ))(step.clone())
+            // None
+        }
+        _ => Some(step.advance_with(size.into(), TokenKind::Operator(*token))),
+    }
 }
 
 fn parse_keyword(step: Step<'_>) -> Option<Step<'_>> {
@@ -449,6 +496,26 @@ fn tag<'a>(pattern: &'static str) -> impl ParseFn<'a> {
     }
 }
 
+fn char_range<'a>(range: RangeInclusive<char>) -> impl ParseFn<'a> {
+    move |step| {
+        if step
+            .input
+            .get(step.pos..step.pos + 1)
+            .and_then(|s| Some(range.contains(&s.chars().next()?)))
+            .unwrap_or_default()
+        {
+            Some(step.advance(1))
+        } else {
+            None
+        }
+    }
+}
+
+#[inline]
+fn repeat<'a, const N: usize>(p1: impl ParseFn<'a>) -> impl ParseFn<'a> {
+    move |step| apply_parsers_seq(&[&p1; N], step)
+}
+
 fn long_lit(step: Step<'_>) -> Option<Step<'_>> {
     parse_and(parse_or(bin_or_hex_lit, int_lit), tag("L"))
         .with(TokenKind::Literal(Token::LongLiteral))(step)
@@ -543,6 +610,7 @@ mod playground {
             true
             false
             null
+            'A'
             fun hello() = "Hello"
             var funvar = 3
             "#
