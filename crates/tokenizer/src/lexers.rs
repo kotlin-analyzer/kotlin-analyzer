@@ -11,16 +11,19 @@ use token_maps::{PrefixForComment, COMMENTS, KEYWORDS, OPERATORS};
 use tokens::Token;
 
 trait ParseFn<'a>: Fn(Step<'a>) -> Option<Step<'a>> {
+    #[inline]
     fn with(&self, kind: TokenKind) -> impl ParseFn<'a> {
         move |step: Step<'a>| self(step).map(|s| s.advance_with(0, kind.clone()))
     }
 
+    #[inline]
     fn and(&self, p: impl ParseFn<'a>) -> impl ParseFn<'a> {
-        parse_and(self, p)
+        and(self, p)
     }
 
+    #[inline]
     fn or(&self, p: impl ParseFn<'a>) -> impl ParseFn<'a> {
-        parse_or(self, p)
+        or(self, p)
     }
 }
 
@@ -375,7 +378,8 @@ fn parse_keyword(step: Step<'_>) -> Option<Step<'_>> {
     None
 }
 
-fn parse_or<'a>(p1: impl ParseFn<'a>, p2: impl ParseFn<'a>) -> impl ParseFn<'a> {
+#[inline]
+fn or<'a>(p1: impl ParseFn<'a>, p2: impl ParseFn<'a>) -> impl ParseFn<'a> {
     move |step| {
         if let Some(step) = p1(step.clone()) {
             Some(step)
@@ -481,6 +485,7 @@ fn dec_digits(step: Step<'_>) -> Option<Step<'_>> {
     }
 }
 
+#[inline]
 fn tag<'a>(pattern: &'static str) -> impl ParseFn<'a> {
     move |step| {
         if step
@@ -517,49 +522,40 @@ fn repeat<'a, const N: usize>(p1: impl ParseFn<'a>) -> impl ParseFn<'a> {
 }
 
 fn long_lit(step: Step<'_>) -> Option<Step<'_>> {
-    parse_and(parse_or(bin_or_hex_lit, int_lit), tag("L"))
-        .with(TokenKind::Literal(Token::LongLiteral))(step)
+    and(or(bin_or_hex_lit, int_lit), tag("L")).with(TokenKind::Literal(Token::LongLiteral))(step)
 }
 
 fn exponent_lit(step: Step<'_>) -> Option<Step<'_>> {
-    parse_and(
-        parse_and(
-            parse_or(tag("e"), tag("E")),
-            parse_opt(parse_or(tag("+"), tag("-"))),
-        ),
+    and(
+        and(or(tag("e"), tag("E")), opt(or(tag("+"), tag("-")))),
         dec_digits,
     )(step)
 }
 
 fn double_lit(step: Step<'_>) -> Option<Step<'_>> {
-    parse_or(
-        parse_and(
-            parse_and(parse_opt(dec_digits), parse_and(tag("."), dec_digits)),
-            parse_opt(exponent_lit),
+    or(
+        and(
+            and(opt(dec_digits), and(tag("."), dec_digits)),
+            opt(exponent_lit),
         ),
-        parse_and(dec_digits, exponent_lit),
+        and(dec_digits, exponent_lit),
     )(step)
 }
 
 fn real_lit(step: Step<'_>) -> Option<Step<'_>> {
-    parse_or(
-        parse_and(
-            parse_or(double_lit, dec_digits),
-            parse_or(tag("f"), tag("F")),
-        ),
+    or(
+        and(or(double_lit, dec_digits), or(tag("f"), tag("F"))),
         double_lit,
     )
     .with(TokenKind::Literal(Token::RealLiteral))(step)
 }
 
 fn parse_literals(step: Step<'_>) -> Option<Step<'_>> {
-    parse_or(
-        real_lit,
-        parse_or(long_lit, parse_or(bin_or_hex_lit, int_lit)),
-    )(step)
+    or(real_lit, or(long_lit, or(bin_or_hex_lit, int_lit)))(step)
 }
 
-fn parse_opt<'a, F>(p: F) -> impl ParseFn<'a>
+#[inline]
+fn opt<'a, F>(p: F) -> impl ParseFn<'a>
 where
     F: ParseFn<'a>,
 {
@@ -572,7 +568,8 @@ where
     }
 }
 
-fn parse_and<'a, F, F2>(p1: F, p2: F2) -> impl ParseFn<'a>
+#[inline]
+fn and<'a, F, F2>(p1: F, p2: F2) -> impl ParseFn<'a>
 where
     F: ParseFn<'a>,
     F2: ParseFn<'a>,
@@ -634,47 +631,31 @@ mod test {
     fn combinators() {
         assert_success!(tag("Mine"), "Mineral", 4);
         assert_success!(tag("."), ".Mineral", 1);
-        assert_success!(parse_or(tag("Mine"), tag("ral")), "Mineral", 4);
+        assert_success!(or(tag("Mine"), tag("ral")), "Mineral", 4);
 
-        let and_test = parse_and(tag("Mine"), tag("ral"))(Step::new("Mineral", None)).unwrap();
+        let and_test = and(tag("Mine"), tag("ral"))(Step::new("Mineral", None)).unwrap();
 
         assert_eq!(and_test.pos, 7);
 
-        assert_failure!(parse_and(tag("Mine"), tag("gal")), "Mineral");
+        assert_failure!(and(tag("Mine"), tag("gal")), "Mineral");
     }
 
     #[test]
-    fn opt() {
-        assert_success!(parse_opt(tag("Mine")), "Mineral", 4);
-        assert_success!(parse_and(tag("Mine"), parse_opt(tag("ral"))), "Mineral", 7);
-        assert_success!(
-            parse_and(parse_opt(tag("Mine")), parse_opt(tag("ral"))),
-            "Mineral",
-            7
-        );
-        assert_success!(parse_opt(tag("Nine")), "Mineral", 0);
-        assert_success!(parse_and(tag("Mine"), parse_opt(tag("gal"))), "Mineral", 4);
-        assert_success!(
-            parse_and(parse_opt(tag("Hi")), parse_opt(tag("Mine"))),
-            "Mineral",
-            4
-        );
-        assert_success!(parse_and(parse_opt(tag("Hi")), tag("Mine")), "Mineral", 4);
+    fn opt_test() {
+        assert_success!(opt(tag("Mine")), "Mineral", 4);
+        assert_success!(and(tag("Mine"), opt(tag("ral"))), "Mineral", 7);
+        assert_success!(and(opt(tag("Mine")), opt(tag("ral"))), "Mineral", 7);
+        assert_success!(opt(tag("Nine")), "Mineral", 0);
+        assert_success!(and(tag("Mine"), opt(tag("gal"))), "Mineral", 4);
+        assert_success!(and(opt(tag("Hi")), opt(tag("Mine"))), "Mineral", 4);
+        assert_success!(and(opt(tag("Hi")), tag("Mine")), "Mineral", 4);
 
-        assert_success!(parse_or(tag("Mine"), parse_opt(tag("ral"))), "Mineral", 4);
-        assert_success!(
-            parse_or(parse_opt(tag("Mine")), parse_opt(tag("ral"))),
-            "Mineral",
-            4
-        );
-        assert_success!(parse_opt(tag("Nine")), "Mineral", 0);
-        assert_success!(parse_or(tag("Mine"), parse_opt(tag("gal"))), "Mineral", 4);
-        assert_success!(
-            parse_or(parse_opt(tag("Hi")), parse_opt(tag("Mine"))),
-            "Mineral",
-            0
-        );
-        assert_success!(parse_and(parse_opt(tag("Hi")), tag("Mine")), "Mineral", 4);
+        assert_success!(or(tag("Mine"), opt(tag("ral"))), "Mineral", 4);
+        assert_success!(or(opt(tag("Mine")), opt(tag("ral"))), "Mineral", 4);
+        assert_success!(opt(tag("Nine")), "Mineral", 0);
+        assert_success!(or(tag("Mine"), opt(tag("gal"))), "Mineral", 4);
+        assert_success!(or(opt(tag("Hi")), opt(tag("Mine"))), "Mineral", 0);
+        assert_success!(and(opt(tag("Hi")), tag("Mine")), "Mineral", 4);
     }
 
     #[test]
