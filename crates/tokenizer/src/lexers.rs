@@ -10,30 +10,6 @@ use logos::Source;
 use token_maps::{PrefixForComment, COMMENTS, KEYWORDS, OPERATORS};
 use tokens::Token;
 
-#[macro_export]
-macro_rules! assert_success {
-    ($parser: expr, $source: expr) => {
-        $parser(Step::new($source, None)).unwrap();
-    };
-    ($parser: expr, $source: expr, $pos: expr) => {
-        let result = $parser(Step::new($source, None)).unwrap();
-        assert_eq!(result.pos, $pos);
-    };
-    ($parser: expr, $source: expr, $pos: expr, $token: expr) => {
-        let result = $parser(Step::new($source, None)).unwrap();
-        assert_eq!(result.pos, $pos);
-        assert_eq!(result.res.token(), Some(&$token));
-    };
-}
-
-#[macro_export]
-macro_rules! assert_failure {
-    ($parser: expr, $source: expr) => {
-        let result = $parser(Step::new($source, None));
-        assert_eq!(result, None);
-    };
-}
-
 trait ParseFn<'a>: Fn(Step<'a>) -> Option<Step<'a>> {
     fn with(&self, kind: TokenKind) -> impl ParseFn<'a> {
         move |step: Step<'a>| self(step).map(|s| s.advance_with(0, kind.clone()))
@@ -544,14 +520,18 @@ where
 }
 
 #[cfg(test)]
-mod test {
+mod playground {
     use std::error::Error;
+
+    use macros::multiline_str;
 
     use super::*;
 
     #[test]
+    #[ignore]
     fn simple() -> Result<(), Box<dyn Error>> {
-        let source = r#"
+        let source = multiline_str!(
+            r#"
             0444.10_99e+4f
             [],--
             /* comments */
@@ -566,10 +546,7 @@ mod test {
             fun hello() = "Hello"
             var funvar = 3
             "#
-        .lines()
-        .map(|l| l.trim_start())
-        .collect::<Vec<_>>()
-        .join("\n");
+        );
 
         let lex = Lexer::new(&source).spanned();
         for lex in lex {
@@ -578,6 +555,12 @@ mod test {
         }
         Ok(())
     }
+}
+#[cfg(test)]
+mod test {
+    use macros::{assert_failure, assert_success};
+
+    use super::*;
 
     #[test]
     fn combinators() {

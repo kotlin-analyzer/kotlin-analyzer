@@ -16,3 +16,4 @@ nonempty = "0.10.0"
 tokenizer = { path = "./crates/tokenizer" }
 tokens = { path = "./libs/tokens" }
 token_maps = { path = "./libs/token_maps" }
+macros = { path = "./libs/macros" }
