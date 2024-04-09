@@ -6,27 +6,6 @@ use logos::Logos;
 
 #[derive(Debug, Logos, PartialEq)]
 pub enum Token {
-    #[regex(r#"!(/\*[^\*/]*\*/|//[^\u{000A}\u{000D}]*|[\u{0020}\u{0009}\u{000C}])"#)]
-    ExclWs,
-
-    #[regex(r#"@(\u{000A}|(\u{000D}\u{000A}?)|/\*[^\*/]*\*/|//[^\u{000A}\u{000D}]*|[\u{0020}\u{0009}\u{000C}])"#)]
-    AtPostWs,
-
-    #[regex(r#"(\u{000A}|(\u{000D}\u{000A}?)|/\*[^\*/]*\*/|//[^\u{000A}\u{000D}]*|[\u{0020}\u{0009}\u{000C}])@"#, priority = 3)]
-    AtPreWs,
-
-    #[regex(r#"(\u{000A}|(\u{000D}\u{000A}?)|/\*[^\*/]*\*/|//[^\u{000A}\u{000D}]*|[\u{0020}\u{0009}\u{000C}])@(\u{000A}|(\u{000D}\u{000A}?)|/\*[^\*/]*\*/|//[^\u{000A}\u{000D}]*|[\u{0020}\u{0009}\u{000C}])"#)]
-    AtBothWs,
-
-    #[regex(r#"\?(\u{000A}|(\u{000D}\u{000A}?)|/\*[^\*/]*\*/|//[^\u{000A}\u{000D}]*|[\u{0020}\u{0009}\u{000C}])"#)]
-    QuestWs,
-
-    #[regex(r#"!is(\u{000A}|(\u{000D}\u{000A}?)|/\*[^\*/]*\*/|//[^\u{000A}\u{000D}]*|[\u{0020}\u{0009}\u{000C}])"#)]
-    NotIs,
-
-    #[regex(r#"!in(\u{000A}|(\u{000D}\u{000A}?)|/\*[^\*/]*\*/|//[^\u{000A}\u{000D}]*|[\u{0020}\u{0009}\u{000C}])"#)]
-    NotIn,
-
     /// An identifier preceded by $. Serves as both LineStrRef and MultiLineStrRef, we do not disambiguate at this stage
     #[regex(r"\$([\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}_][\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}_\p{Nd}]*|`[^\u{000A}\u{000D}`]*`)")]
     StrRef,

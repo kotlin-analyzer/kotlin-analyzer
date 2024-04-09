@@ -298,7 +298,18 @@ fn err_parser(step: Step<'_>) -> Option<Step<'_>> {
 }
 
 fn parse_comment(step: Step<'_>) -> Option<Step<'_>> {
-    shebang.or(line_comment).or(delimited_comment)(step)
+    if let Some(step) = shebang.or(line_comment).or(delimited_comment)(step) {
+        match step.res {
+            TokenKind::Comment(Token::DelimitedComment | Token::LineComment) => {
+                opt(opt(hidden.or(nl))
+                    .and(tag("@"))
+                    .with(TokenKind::Operator(Token::AtPreWs)))(step)
+            }
+            _ => None,
+        }
+    } else {
+        None
+    }
 }
 
 fn parse_operator(step: Step<'_>) -> Option<Step<'_>> {
@@ -373,6 +384,15 @@ fn handle_operator<'a>(step: Step<'a>, token: &Token) -> Option<Step<'a>> {
 
             Some(new_step)
         }
+        Token::ExclNoWs => opt(hidden.with(TokenKind::Operator(Token::ExclWs)))(step),
+        Token::AtNoWs => opt(hidden.or(nl).with(TokenKind::Operator(Token::AtPostWs)))(step),
+        Token::QuestNoWs => opt(hidden.or(nl).with(TokenKind::Operator(Token::QuestWs)))(step),
+        Token::Nl | Token::Ws => {
+            // TODO: handle multiple hidden | nl before
+            opt(tag("@")
+                .with(TokenKind::Operator(Token::AtPreWs))
+                .and(opt(hidden.with(TokenKind::Operator(Token::AtBothWs)))))(step)
+        }
         _ => Some(step),
     }
 }
@@ -417,6 +437,8 @@ fn handle_keyword<'a>(step: Step<'a>, token: &Token) -> Option<Step<'a>> {
         Token::Continue => opt(tag("@")
             .and(parse_identifier)
             .with(TokenKind::Keyword(Token::ContinueAt)))(step),
+        Token::NotIn => opt(hidden)(step),
+        Token::NotIs => opt(hidden)(step),
         _ => Some(step),
     }
 }
@@ -428,8 +450,14 @@ fn ws(step: Step<'_>) -> Option<Step<'_>> {
         .with(TokenKind::Whitespace(Token::Ws))(step)
 }
 
+fn nl(step: Step<'_>) -> Option<Step<'_>> {
+    tag("\u{000A}")
+        .or(tag("\u{000D}").and(opt(tag("\u{000A}"))))
+        .with(TokenKind::Whitespace(Token::Ws))(step)
+}
+
 fn hidden(step: Step<'_>) -> Option<Step<'_>> {
-    ws.or(line_comment).or(delimited_comment)(step)
+    many(ws.or(line_comment).or(delimited_comment))(step)
 }
 
 fn shebang(step: Step<'_>) -> Option<Step<'_>> {
@@ -756,6 +784,13 @@ mod playground {
             this
             this@me
             super
+            !in//comment
+            /* pre */@man
+            name@ // post
+              @  // both
+            !is/* comment */
+            var name: String?/*ddjjd*/ = null;
+            var name2: String? /*ddjjd*/ // = null;
             super@me
             continue
             continue@where
