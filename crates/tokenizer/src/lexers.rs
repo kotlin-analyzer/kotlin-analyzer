@@ -403,7 +403,10 @@ fn parse_keyword(step: Step<'_>) -> Option<Step<'_>> {
             let next = matched.zip((parse_operator(step.advance(size.into()))).map(|op| op.res));
 
             if let Some((token, TokenKind::Operator(_))) = next {
-                return Some(step.advance_with(size.into(), TokenKind::Keyword(*token)));
+                return handle_keyword(
+                    step.advance_with(size.into(), TokenKind::Keyword(*token)),
+                    token,
+                );
             }
         }
     }
@@ -413,13 +416,21 @@ fn parse_keyword(step: Step<'_>) -> Option<Step<'_>> {
 
 fn handle_keyword<'a>(step: Step<'a>, token: &Token) -> Option<Step<'a>> {
     match token {
-        Token::This => {
-            if let Some(step) = tag("@").and(parse_identifier)(step.clone()) {
-                Some(step)
-            } else {
-                Some(step)
-            }
-        }
+        Token::This => opt(tag("@")
+            .and(parse_identifier)
+            .with(TokenKind::Keyword(Token::ThisAt)))(step),
+        Token::Super => opt(tag("@")
+            .and(parse_identifier)
+            .with(TokenKind::Keyword(Token::SuperAt)))(step),
+        Token::Return => opt(tag("@")
+            .and(parse_identifier)
+            .with(TokenKind::Keyword(Token::ReturnAt)))(step),
+        Token::Break => opt(tag("@")
+            .and(parse_identifier)
+            .with(TokenKind::Keyword(Token::BreakAt)))(step),
+        Token::Continue => opt(tag("@")
+            .and(parse_identifier)
+            .with(TokenKind::Keyword(Token::ContinueAt)))(step),
         _ => Some(step),
     }
 }
@@ -723,6 +734,16 @@ mod playground {
             'A'
             '\uffac'
             '\n'
+            this
+            this@me
+            super
+            super@me
+            continue
+            continue@where
+            return
+            return@here
+            break
+            break@now
             `backticks baby`
             fun hello() = "Hello"
             var funvar = 3
