@@ -339,20 +339,29 @@ fn unicode_char_lit(step: Step<'_>) -> Option<Step<'_>> {
     ))(step)
 }
 
+fn escaped_char(step: Step<'_>) -> Option<Step<'_>> {
+    tag("\\").and(
+        tag("n")
+            .or(tag("t"))
+            .or(tag("\\"))
+            .or(tag("'"))
+            .or(tag("\""))
+            .or(tag("$"))
+            .or(tag("r"))
+            .or(tag("b")),
+    )(step)
+}
+
 fn handle_operator<'a>(step: &Step<'a>, size: u8, token: &Token) -> Option<Step<'a>> {
     match token {
         Token::SingleQuote => {
-            unicode_char_lit.or(tag("\\").and(
-                tag("n")
-                    .or(tag("t"))
-                    .or(tag("\\"))
-                    .or(tag("'"))
-                    .or(tag("\""))
-                    .or(tag("$"))
-                    .or(tag("r"))
-                    .or(tag("b")),
-            ))(step.clone())
-            // None
+            unicode_char_lit
+                .or(escaped_char)
+                .or(not(
+                    tag("'").or(tag("\u{000A}").or(tag("\u{000D}")).or(tag("\\")))
+                ))
+                .and(tag("'"))
+                .with(TokenKind::Literal(Token::CharacterLiteral))(step.advance(1))
         }
         _ => Some(step.advance_with(size.into(), TokenKind::Operator(*token))),
     }
@@ -385,6 +394,17 @@ fn or<'a>(p1: impl ParseFn<'a>, p2: impl ParseFn<'a>) -> impl ParseFn<'a> {
             Some(step)
         } else {
             p2(step)
+        }
+    }
+}
+
+#[inline]
+fn not<'a>(p: impl ParseFn<'a>) -> impl ParseFn<'a> {
+    move |step| {
+        if let Some(_) = p(step.clone()) {
+            None
+        } else {
+            Some(step.advance(1))
         }
     }
 }
@@ -527,7 +547,7 @@ fn long_lit(step: Step<'_>) -> Option<Step<'_>> {
 
 fn exponent_lit(step: Step<'_>) -> Option<Step<'_>> {
     and(
-        and(or(tag("e"), tag("E")), opt(or(tag("+"), tag("-")))),
+        and(tag("e").or(tag("E")), opt(or(tag("+"), tag("-")))),
         dec_digits,
     )(step)
 }
@@ -608,6 +628,8 @@ mod playground {
             false
             null
             'A'
+            '\uffac'
+            '\n'
             fun hello() = "Hello"
             var funvar = 3
             "#
@@ -626,6 +648,11 @@ mod test {
     use macros::{assert_failure, assert_success};
 
     use super::*;
+
+    #[test]
+    fn char_literal() {
+        assert_success!(parse_operator, "'A'", 3);
+    }
 
     #[test]
     fn combinators() {
