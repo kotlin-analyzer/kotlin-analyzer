@@ -13,6 +13,7 @@ logos = "0.14.0"
 tokens = { workspace = true }
 token_maps = { workspace = true }
 macros = { workspace = true }
+unicode_categories = "0.1.1"
 
 [dev-dependencies]
 rstest = "0.18.2"

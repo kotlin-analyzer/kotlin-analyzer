@@ -9,6 +9,7 @@ use std::{
 use logos::Source;
 use token_maps::{PrefixForComment, COMMENTS, KEYWORDS, OPERATORS};
 use tokens::Token;
+use unicode_categories::UnicodeCategories;
 
 trait ParseFn<'a>: Fn(Step<'a>) -> Option<Step<'a>> {
     #[inline]
@@ -119,6 +120,12 @@ impl<'a> Step<'a> {
             self.input.len() - self.pos
         }
     }
+
+    fn next_char(&self) -> Option<char> {
+        self.input
+            .get(self.pos..self.pos + 1)
+            .and_then(|s| s.chars().next())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -224,6 +231,7 @@ impl<'a> Iterator for Lexer<'a> {
             parse_operator,
             parse_keyword,
             parse_literals,
+            parse_identifier,
             err_parser,
         ];
 
@@ -266,7 +274,13 @@ fn apply_parsers_seq<'a, 'b>(ps: &'b [impl ParseFn<'a>], step: Step<'a>) -> Opti
 }
 
 fn err_parser(step: Step<'_>) -> Option<Step<'_>> {
-    let all_parsers = [parse_comment, parse_operator, parse_keyword, parse_literals];
+    let all_parsers = [
+        parse_comment,
+        parse_operator,
+        parse_keyword,
+        parse_literals,
+        parse_identifier,
+    ];
 
     let mut found = false;
     let mut next_step = step;
@@ -324,7 +338,7 @@ fn parse_operator(step: Step<'_>) -> Option<Step<'_>> {
         if let Some(key) = slice {
             let matched = OPERATORS.get(key);
             if let Some(token) = matched {
-                return handle_operator(&step, size, token);
+                return handle_operator(step, size, token);
             }
         }
     }
@@ -352,7 +366,7 @@ fn escaped_char(step: Step<'_>) -> Option<Step<'_>> {
     )(step)
 }
 
-fn handle_operator<'a>(step: &Step<'a>, size: u8, token: &Token) -> Option<Step<'a>> {
+fn handle_operator<'a>(step: Step<'a>, size: u8, token: &Token) -> Option<Step<'a>> {
     match token {
         Token::SingleQuote => {
             unicode_char_lit
@@ -362,6 +376,16 @@ fn handle_operator<'a>(step: &Step<'a>, size: u8, token: &Token) -> Option<Step<
                 ))
                 .and(tag("'"))
                 .with(TokenKind::Literal(Token::CharacterLiteral))(step.advance(1))
+        }
+        Token::QuoteOpen => {
+            let mut new_step = step.clone();
+            new_step.mode = LexGrammarMode::String;
+            Some(new_step.advance_with(size.into(), TokenKind::Operator(*token)))
+        }
+        Token::TripleQuoteOpen => {
+            let mut new_step = step.clone();
+            new_step.mode = LexGrammarMode::MultilineString;
+            Some(new_step.advance_with(size.into(), TokenKind::Operator(*token)))
         }
         _ => Some(step.advance_with(size.into(), TokenKind::Operator(*token))),
     }
@@ -387,6 +411,19 @@ fn parse_keyword(step: Step<'_>) -> Option<Step<'_>> {
     None
 }
 
+fn handle_keyword<'a>(step: Step<'a>, token: &Token) -> Option<Step<'a>> {
+    match token {
+        Token::This => {
+            if let Some(step) = tag("@").and(parse_identifier)(step.clone()) {
+                Some(step)
+            } else {
+                Some(step)
+            }
+        }
+        _ => Some(step),
+    }
+}
+
 #[inline]
 fn or<'a>(p1: impl ParseFn<'a>, p2: impl ParseFn<'a>) -> impl ParseFn<'a> {
     move |step| {
@@ -401,7 +438,7 @@ fn or<'a>(p1: impl ParseFn<'a>, p2: impl ParseFn<'a>) -> impl ParseFn<'a> {
 #[inline]
 fn not<'a>(p: impl ParseFn<'a>) -> impl ParseFn<'a> {
     move |step| {
-        if let Some(_) = p(step.clone()) {
+        if p(step.clone()).is_some() {
             None
         } else {
             Some(step.advance(1))
@@ -521,6 +558,42 @@ fn tag<'a>(pattern: &'static str) -> impl ParseFn<'a> {
     }
 }
 
+#[inline]
+fn when<'a>(condition: impl Fn(char) -> bool) -> impl ParseFn<'a> {
+    move |step| {
+        if step.next_char().map(&condition).unwrap_or_default() {
+            Some(step.advance(1))
+        } else {
+            None
+        }
+    }
+}
+
+/// This matches one or more p
+/// Looking to match at zero or more, use `many1`
+#[inline]
+fn many<'a>(p: impl ParseFn<'a>) -> impl ParseFn<'a> {
+    move |step| {
+        let start = step.pos;
+        let mut next_step = step;
+        while let Some(step) = p(next_step.clone()) {
+            next_step = step;
+        }
+        if start == next_step.pos {
+            None
+        } else {
+            Some(next_step)
+        }
+    }
+}
+
+/// This matches zero or more p.
+/// Looking to match atleast one, use `many`
+#[inline]
+fn many0<'a>(p: impl ParseFn<'a>) -> impl ParseFn<'a> {
+    opt(many(p))
+}
+
 fn char_range<'a>(range: RangeInclusive<char>) -> impl ParseFn<'a> {
     move |step| {
         if step
@@ -550,6 +623,26 @@ fn exponent_lit(step: Step<'_>) -> Option<Step<'_>> {
         and(tag("e").or(tag("E")), opt(or(tag("+"), tag("-")))),
         dec_digits,
     )(step)
+}
+
+fn letter(step: Step<'_>) -> Option<Step<'_>> {
+    tag("_")
+        .or(when(|ch| ch.is_letter_lowercase()))
+        .or(when(|ch| ch.is_letter_uppercase()))
+        .or(when(|ch| ch.is_letter_titlecase()))
+        .or(when(|ch| ch.is_letter_modifier()))(step)
+}
+
+fn escaped_identifier<'a>(step: Step<'a>) -> Option<Step<'a>> {
+    tag("`")
+        .and(many0(not(tag("\u{000A}").or(tag("\u{000D}").or(tag("`"))))))
+        .and(tag("`"))(step)
+}
+
+fn parse_identifier<'a>(step: Step<'a>) -> Option<Step<'a>> {
+    escaped_identifier
+        .or(letter.and(many0(letter.or(when(|ch| ch.is_number_decimal_digit())))))
+        .with(TokenKind::Literal(Token::Identifier))(step)
 }
 
 fn double_lit(step: Step<'_>) -> Option<Step<'_>> {
@@ -630,6 +723,7 @@ mod playground {
             'A'
             '\uffac'
             '\n'
+            `backticks baby`
             fun hello() = "Hello"
             var funvar = 3
             "#
@@ -650,8 +744,35 @@ mod test {
     use super::*;
 
     #[test]
+    fn escaped_identifier_test() {
+        assert_success!(escaped_identifier, "`backticks baby`", 16);
+    }
+    #[test]
+    fn identifier_test() {
+        assert_success!(parse_identifier, "`backticks baby`", 16);
+        assert_success!(parse_identifier, "hello", 5);
+    }
+
+    #[test]
     fn char_literal() {
         assert_success!(parse_operator, "'A'", 3);
+    }
+    #[test]
+    fn many_test() {
+        assert_success!(many(tag("A")), "A", 1);
+        assert_success!(many(tag("A")), "AAA", 3);
+        assert_success!(many(tag("A")), "AAAB", 3);
+
+        assert_failure!(many(tag("BA")), "A");
+    }
+
+    #[test]
+    fn many0_test() {
+        assert_success!(many0(tag("A")), "A", 1);
+        assert_success!(many0(tag("A")), "AAA", 3);
+        assert_success!(many0(tag("A")), "AAAB", 3);
+
+        assert_success!(many0(tag("BA")), "A", 0);
     }
 
     #[test]
