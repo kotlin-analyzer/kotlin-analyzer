@@ -338,7 +338,10 @@ fn parse_operator(step: Step<'_>) -> Option<Step<'_>> {
         if let Some(key) = slice {
             let matched = OPERATORS.get(key);
             if let Some(token) = matched {
-                return handle_operator(step, size, token);
+                return handle_operator(
+                    step.advance_with(size.into(), TokenKind::Operator(*token)),
+                    token,
+                );
             }
         }
     }
@@ -366,28 +369,40 @@ fn escaped_char(step: Step<'_>) -> Option<Step<'_>> {
     )(step)
 }
 
-fn handle_operator<'a>(step: Step<'a>, size: u8, token: &Token) -> Option<Step<'a>> {
+fn handle_operator<'a>(step: Step<'a>, token: &Token) -> Option<Step<'a>> {
     match token {
-        Token::SingleQuote => {
-            unicode_char_lit
-                .or(escaped_char)
-                .or(not(
-                    tag("'").or(tag("\u{000A}").or(tag("\u{000D}")).or(tag("\\")))
-                ))
-                .and(tag("'"))
-                .with(TokenKind::Literal(Token::CharacterLiteral))(step.advance(1))
-        }
+        Token::SingleQuote => unicode_char_lit
+            .or(escaped_char)
+            .or(not(
+                tag("'").or(tag("\u{000A}").or(tag("\u{000D}")).or(tag("\\")))
+            ))
+            .and(tag("'"))
+            .with(TokenKind::Literal(Token::CharacterLiteral))(step),
         Token::QuoteOpen => {
             let mut new_step = step.clone();
-            new_step.mode = LexGrammarMode::String;
-            Some(new_step.advance_with(size.into(), TokenKind::Operator(*token)))
+
+            if let LexGrammarMode::String = step.mode {
+                new_step.mode = LexGrammarMode::Normal;
+                new_step.res = TokenKind::Operator(Token::QuoteClose)
+            } else {
+                new_step.mode = LexGrammarMode::String;
+            }
+
+            Some(new_step)
         }
         Token::TripleQuoteOpen => {
             let mut new_step = step.clone();
-            new_step.mode = LexGrammarMode::MultilineString;
-            Some(new_step.advance_with(size.into(), TokenKind::Operator(*token)))
+
+            if let LexGrammarMode::MultilineString = step.mode {
+                new_step.mode = LexGrammarMode::Normal;
+                new_step.res = TokenKind::Operator(Token::TripleQuoteClose)
+            } else {
+                new_step.mode = LexGrammarMode::MultilineString;
+            }
+
+            Some(new_step)
         }
-        _ => Some(step.advance_with(size.into(), TokenKind::Operator(*token))),
+        _ => Some(step),
     }
 }
 

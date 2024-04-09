@@ -21,21 +21,6 @@ pub enum Token {
     #[regex(r#"\?(\u{000A}|(\u{000D}\u{000A}?)|/\*[^\*/]*\*/|//[^\u{000A}\u{000D}]*|[\u{0020}\u{0009}\u{000C}])"#)]
     QuestWs,
 
-    #[regex(r"return@([\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}_][\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}_\p{Nd}]*|`[^\u{000A}\u{000D}`]*`)")]
-    ReturnAt,
-
-    #[regex(r"continue@[\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}_][\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}_\p{Nd}]*|`[^\u{000A}\u{000D}`]*`")]
-    ContinueAt,
-
-    #[regex(r"break@([\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}_][\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}_\p{Nd}]*|`[^\u{000A}\u{000D}`]*`)")]
-    BreakAt,
-
-    #[regex(r"this@([\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}_][\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}_\p{Nd}]*|`[^\u{000A}\u{000D}`]*`)")]
-    ThisAt,
-
-    #[regex(r"super@([\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}_][\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}_\p{Nd}]*|`[^\u{000A}\u{000D}`]*`)")]
-    SuperAt,
-
     #[regex(r#"!is(\u{000A}|(\u{000D}\u{000A}?)|/\*[^\*/]*\*/|//[^\u{000A}\u{000D}]*|[\u{0020}\u{0009}\u{000C}])"#)]
     NotIs,
 
