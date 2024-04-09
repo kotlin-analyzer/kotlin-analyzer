@@ -85,9 +85,15 @@ pub static KEYWORDS: phf::Map<&'static str, Token> = phf_map! {
 
    "as" => Token::As,
 
+   "as?" => Token::AsSafe,
+
    "is" => Token::Is,
 
    "in" => Token::In,
+
+   "!is" => Token::NotIs,
+
+   "!in" => Token::NotIn,
 
    "out" => Token::Out,
 
@@ -231,8 +237,6 @@ pub static OPERATORS: phf::Map<&'static str, Token> = phf_map! {
    "!=" => Token::ExclEq,
 
    "!==" => Token::ExclEqEq,
-
-   "as?" => Token::AsSafe,
 
    "==" => Token::EqEq,
 

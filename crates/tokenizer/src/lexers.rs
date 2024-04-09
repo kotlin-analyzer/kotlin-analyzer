@@ -77,7 +77,8 @@ pub struct Step<'a> {
 }
 
 impl<'a> Step<'a> {
-    pub(super) fn new(input: &'a str, kind: Option<TokenKind>) -> Self {
+    #[allow(dead_code)]
+    fn new(input: &'a str, kind: Option<TokenKind>) -> Self {
         match kind {
             Some(token_kind) => Self {
                 pos: 0,
@@ -135,6 +136,7 @@ pub enum TokenKind {
     Identifier(Token),
     Comment(Token),
     Literal(Token),
+    Whitespace(Token),
     Err,
     Begin,
 }
@@ -158,6 +160,7 @@ impl TokenKind {
             TokenKind::Identifier(token) => Some(token),
             TokenKind::Comment(token) => Some(token),
             TokenKind::Literal(token) => Some(token),
+            TokenKind::Whitespace(token) => Some(token),
             TokenKind::Err => None,
             TokenKind::Begin => None,
         }
@@ -173,6 +176,7 @@ impl TokenKind {
 }
 
 impl<'a> Lexer<'a> {
+    #[allow(dead_code)]
     fn new(input: &'a str) -> Self {
         Self {
             input,
@@ -294,40 +298,7 @@ fn err_parser(step: Step<'_>) -> Option<Step<'_>> {
 }
 
 fn parse_comment(step: Step<'_>) -> Option<Step<'_>> {
-    // comment prefix can always be identified with the first two chars
-    if let Some(key) = &step.input.slice(step.pos..step.pos + 2) {
-        if let Some(prefix) = COMMENTS.get(key) {
-            match prefix {
-                PrefixForComment::ShebangLine => {
-                    let new_line_index = step
-                        .input
-                        .get(step.pos..)
-                        .and_then(|s| s.find(|ch| ch == '\u{000A}' || ch == '\u{000D}'));
-
-                    if let Some(index) = new_line_index {
-                        return Some(
-                            step.advance_with(index, TokenKind::Comment(Token::ShebangLine)),
-                        );
-                    }
-                }
-                PrefixForComment::DelimitedComment => {
-                    let comment_end_idx = step.find_str_index(0, "*/");
-                    return Some(step.advance_with(
-                        comment_end_idx + 2,
-                        TokenKind::Comment(Token::DelimitedComment),
-                    ));
-                }
-                PrefixForComment::LineComment => {
-                    let new_line_index = step.find(0, |ch| ch == '\u{000A}' || ch == '\u{000D}');
-                    return Some(
-                        step.advance_with(new_line_index, TokenKind::Comment(Token::LineComment)),
-                    );
-                }
-            }
-        }
-    }
-
-    None
+    shebang.or(line_comment).or(delimited_comment)(step)
 }
 
 fn parse_operator(step: Step<'_>) -> Option<Step<'_>> {
@@ -450,6 +421,36 @@ fn handle_keyword<'a>(step: Step<'a>, token: &Token) -> Option<Step<'a>> {
     }
 }
 
+fn ws(step: Step<'_>) -> Option<Step<'_>> {
+    tag("\u{0020}")
+        .or(tag("\u{0009}"))
+        .or(tag("\u{000C}"))
+        .with(TokenKind::Whitespace(Token::Ws))(step)
+}
+
+fn hidden(step: Step<'_>) -> Option<Step<'_>> {
+    ws.or(line_comment).or(delimited_comment)(step)
+}
+
+fn shebang(step: Step<'_>) -> Option<Step<'_>> {
+    tag("#!")
+        .and(many0(not(tag("\u{000A}").or(tag("\u{000D}")))))
+        .with(TokenKind::Comment(Token::ShebangLine))(step)
+}
+
+fn line_comment(step: Step<'_>) -> Option<Step<'_>> {
+    tag("//")
+        .and(many0(not(tag("\u{000A}").or(tag("\u{000D}")))))
+        .with(TokenKind::Comment(Token::LineComment))(step)
+}
+
+fn delimited_comment(step: Step<'_>) -> Option<Step<'_>> {
+    tag("/*")
+        .and(many0(delimited_comment.or(not(tag("*/")))))
+        .and(tag("*/"))
+        .with(TokenKind::Comment(Token::DelimitedComment))(step)
+}
+
 #[inline]
 fn or<'a>(p1: impl ParseFn<'a>, p2: impl ParseFn<'a>) -> impl ParseFn<'a> {
     move |step| {
@@ -464,6 +465,9 @@ fn or<'a>(p1: impl ParseFn<'a>, p2: impl ParseFn<'a>) -> impl ParseFn<'a> {
 #[inline]
 fn not<'a>(p: impl ParseFn<'a>) -> impl ParseFn<'a> {
     move |step| {
+        if !(step.pos < step.input.len()) {
+            return None;
+        }
         if p(step.clone()).is_some() {
             None
         } else {
@@ -778,6 +782,68 @@ mod test {
     use macros::{assert_failure, assert_success};
 
     use super::*;
+
+    #[test]
+    fn delimited_comment_test() {
+        assert_success!(delimited_comment, "/**/", 4, Token::DelimitedComment);
+        assert_success!(delimited_comment, "/**\n*/", 6, Token::DelimitedComment);
+        assert_success!(
+            delimited_comment,
+            "/* comment */",
+            13,
+            Token::DelimitedComment
+        );
+        assert_success!(
+            delimited_comment,
+            "/* comment /* inner comment */ */",
+            33,
+            Token::DelimitedComment
+        );
+        assert_success!(
+            delimited_comment,
+            "/* comment /* inner /* deep */ */ */",
+            36,
+            Token::DelimitedComment
+        );
+
+        assert_failure!(delimited_comment, "/* comment /* inner /* deep */ */");
+        assert_failure!(delimited_comment, "/* comment");
+        assert_failure!(delimited_comment, "/* comment /* inner comment */");
+    }
+
+    #[test]
+    fn shebang_test() {
+        assert_success!(shebang, "#!", 2, Token::ShebangLine);
+        assert_success!(shebang, "#!\n", 2, Token::ShebangLine);
+        assert_success!(shebang, "#! sh echo", 10, Token::ShebangLine);
+        assert_success!(shebang, "#! comment // nested", 20, Token::ShebangLine);
+        assert_success!(
+            shebang,
+            "#! comment // nested #! deep /* more */",
+            39,
+            Token::ShebangLine
+        );
+
+        assert_failure!(shebang, "// comment");
+        assert_failure!(shebang, "/* comment */");
+    }
+
+    #[test]
+    fn line_comment_test() {
+        assert_success!(line_comment, "//", 2, Token::LineComment);
+        assert_success!(line_comment, "//\n", 2, Token::LineComment);
+        assert_success!(line_comment, "// line comment", 15, Token::LineComment);
+        assert_success!(line_comment, "// comment // nested", 20, Token::LineComment);
+        assert_success!(
+            line_comment,
+            "// comment // nested /* delimited */",
+            36,
+            Token::LineComment
+        );
+
+        assert_failure!(line_comment, "/* comment");
+        assert_failure!(line_comment, "#! shebang");
+    }
 
     #[test]
     fn escaped_identifier_test() {
