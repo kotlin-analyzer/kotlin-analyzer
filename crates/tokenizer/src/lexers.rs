@@ -539,12 +539,7 @@ fn bin_or_hex_lit(step: Step<'_>) -> Option<Step<'_>> {
 }
 
 fn int_lit(step: Step<'_>) -> Option<Step<'_>> {
-    let first_char = step
-        .input
-        .slice(step.pos..step.pos + 1)
-        .and_then(|s| s.chars().next());
-
-    match first_char {
+    match step.next_char() {
         Some(fc @ '0'..='9') => {
             let index = step.find(0, |ch| !ch.is_ascii_digit() && ch != '_');
 
@@ -573,12 +568,7 @@ fn int_lit(step: Step<'_>) -> Option<Step<'_>> {
 // int_lit but without check for 0 as first char
 // TODO: refactor
 fn dec_digits(step: Step<'_>) -> Option<Step<'_>> {
-    let first_char = step
-        .input
-        .slice(step.pos..step.pos + 1)
-        .and_then(|s| s.chars().next());
-
-    match first_char {
+    match step.next_char() {
         Some(fc @ '0'..='9') => {
             let index = step.find(0, |ch| !ch.is_ascii_digit() && ch != '_');
 
