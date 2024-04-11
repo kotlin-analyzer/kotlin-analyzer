@@ -618,7 +618,7 @@ fn when<'a>(condition: impl Fn(char) -> bool) -> impl ParseFn<'a> {
 }
 
 /// This matches one or more p
-/// Looking to match at zero or more, use `many1`
+/// Looking to match at zero or more, use `many0`
 #[inline]
 fn many<'a>(p: impl ParseFn<'a>) -> impl ParseFn<'a> {
     move |step| {
@@ -913,12 +913,16 @@ mod test {
         assert_eq!(and_test.pos, 7);
 
         assert_failure!(and(tag("Mine"), tag("gal")), "Mineral");
+
+        assert_success!(not(tag("Mince")), "Mineral");
+        assert_failure!(not(tag("Mince")), "Mincer of words");
     }
 
     #[test]
     fn opt_test() {
         assert_success!(opt(tag("Mine")), "Mineral", 4);
         assert_success!(and(tag("Mine"), opt(tag("ral"))), "Mineral", 7);
+        assert_success!(and(tag("Mine"), opt(tag("ral"))), "Minefield", 4);
         assert_success!(and(opt(tag("Mine")), opt(tag("ral"))), "Mineral", 7);
         assert_success!(opt(tag("Nine")), "Mineral", 0);
         assert_success!(and(tag("Mine"), opt(tag("gal"))), "Mineral", 4);
