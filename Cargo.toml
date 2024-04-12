@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/*"]
+members = ["crates/*", "libs/*"]
 resolver = "2"
 
 [workspace.package]
@@ -12,3 +12,8 @@ rust-version = "1.77.1"
 
 
 [workspace.dependencies]
+nonempty = "0.10.0"
+tokenizer = { path = "./crates/tokenizer" }
+tokens = { path = "./libs/tokens" }
+token_maps = { path = "./libs/token_maps" }
+macros = { path = "./libs/macros" }

@@ -1,4 +1,3 @@
-mod lexer;
-mod tokens;
+mod lexers;
 
-pub use {lexer::lexer, tokens::Token};
+pub use lexers::*;

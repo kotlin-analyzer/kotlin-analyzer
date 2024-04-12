@@ -15,19 +15,19 @@ pub enum Ast {
 }
 
 pub struct KotlinFile {
-    shebang_line: Option<ShebangLine>,
-    lines_after_shebang: Vec<Nl>,
-    file_annotations: Vec<FileAnnotation>,
-    package_header: PackageHeader,
-    import_list: ImportList,
-    top_level_objects: Vec<TopLevelObject>,
+    pub shebang_line: Option<ShebangLine>,
+    pub lines_after_shebang: Vec<Nl>,
+    pub file_annotations: Vec<FileAnnotation>,
+    pub package_header: PackageHeader,
+    pub import_list: ImportList,
+    pub top_level_objects: Vec<TopLevelObject>,
 }
 
 pub struct KotlinScript {
-    shebang_line: Option<ShebangLine>,
-    lines_after_shebang: Vec<Nl>,
-    file_annotations: Vec<FileAnnotation>,
-    package_header: PackageHeader,
-    import_list: ImportList,
-    statements: Vec<Statement>,
+    pub shebang_line: Option<ShebangLine>,
+    pub lines_after_shebang: Vec<Nl>,
+    pub file_annotations: Vec<FileAnnotation>,
+    pub package_header: PackageHeader,
+    pub import_list: ImportList,
+    pub statements: Vec<Statement>,
 }
