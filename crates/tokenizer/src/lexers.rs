@@ -64,6 +64,7 @@ pub enum LexGrammarMode {
 pub struct Lexer<'a> {
     input: &'a str,
     pos: usize,
+    prev_mode: LexGrammarMode,
     mode: LexGrammarMode,
     token: TokenKind,
 }
@@ -73,6 +74,7 @@ pub struct Step<'a> {
     pos: usize,
     res: TokenKind,
     mode: LexGrammarMode,
+    prev_mode: LexGrammarMode,
     input: &'a str,
 }
 
@@ -83,6 +85,7 @@ impl<'a> Step<'a> {
             Some(token_kind) => Self {
                 pos: 0,
                 res: token_kind,
+                prev_mode: LexGrammarMode::Normal,
                 mode: LexGrammarMode::Normal,
                 input,
             },
@@ -90,6 +93,7 @@ impl<'a> Step<'a> {
                 pos: 0,
                 res: TokenKind::Begin,
                 mode: LexGrammarMode::Normal,
+                prev_mode: LexGrammarMode::Normal,
                 input,
             },
         }
@@ -104,6 +108,11 @@ impl<'a> Step<'a> {
         let mut step = self.advance(increment);
         step.res = kind;
         step
+    }
+
+    fn set_mode(&mut self, mode: LexGrammarMode) {
+        self.prev_mode = self.mode.clone();
+        self.mode = mode;
     }
 
     fn find(&self, incr: usize, pat: impl Fn(char) -> bool) -> usize {
@@ -176,6 +185,7 @@ impl<'a> Lexer<'a> {
             input,
             pos: 0,
             mode: LexGrammarMode::Normal,
+            prev_mode: LexGrammarMode::Normal,
             token: TokenKind::Begin,
         }
     }
@@ -184,6 +194,7 @@ impl<'a> Lexer<'a> {
         Step {
             pos: self.pos,
             res: self.token.clone(),
+            prev_mode: self.prev_mode.clone(),
             mode: self.mode.clone(),
             input: self.input,
         }
@@ -192,6 +203,7 @@ impl<'a> Lexer<'a> {
     fn apply_step(&mut self, step: &Step<'a>) {
         self.pos = step.pos;
         self.token = step.res.clone();
+        self.prev_mode = step.prev_mode.clone();
         self.mode = step.mode.clone();
     }
 
@@ -227,7 +239,8 @@ impl<'a> Lexer<'a> {
                     .or(str_expr_start)
                     .or(multi_line_str_text)
                     .or(multi_line_string_quote)
-                    .or(triple_quote_close),
+                    .or(triple_quote_close)
+                    .or(quote_open),
             )(step),
         }
     }
@@ -354,7 +367,7 @@ fn escaped_identifier(step: Step<'_>) -> Option<Step<'_>> {
     )(step)
 }
 
-fn handle_operator<'a>(step: Step<'a>, token: &Token) -> Option<Step<'a>> {
+fn handle_operator<'a>(mut step: Step<'a>, token: &Token) -> Option<Step<'a>> {
     match token {
         Token::SingleQuote => unicode_char_lit
             .or(escaped_identifier)
@@ -364,28 +377,12 @@ fn handle_operator<'a>(step: Step<'a>, token: &Token) -> Option<Step<'a>> {
             .and(tag("'"))
             .with(TokenKind::Literal(Token::CharacterLiteral))(step),
         Token::QuoteOpen => {
-            let mut new_step = step.clone();
-
-            if let LexGrammarMode::String = step.mode {
-                new_step.mode = LexGrammarMode::Normal;
-                new_step.res = TokenKind::Operator(Token::QuoteClose)
-            } else {
-                new_step.mode = LexGrammarMode::String;
-            }
-
-            Some(new_step)
+            step.set_mode(LexGrammarMode::String);
+            Some(step)
         }
         Token::TripleQuoteOpen => {
-            let mut new_step = step.clone();
-
-            if let LexGrammarMode::MultilineString = step.mode {
-                new_step.mode = LexGrammarMode::Normal;
-                new_step.res = TokenKind::Operator(Token::TripleQuoteClose)
-            } else {
-                new_step.mode = LexGrammarMode::MultilineString;
-            }
-
-            Some(new_step)
+            step.mode = LexGrammarMode::MultilineString;
+            Some(step)
         }
         Token::ExclNoWs => opt(hidden.with(TokenKind::Operator(Token::ExclWs)))(step),
         Token::AtNoWs => opt(hidden.or(nl).with(TokenKind::Operator(Token::AtPostWs)))(step),
@@ -780,7 +777,15 @@ fn multi_line_str_text(step: Step<'_>) -> Option<Step<'_>> {
 
 fn quote_close(step: Step<'_>) -> Option<Step<'_>> {
     if let Some(mut step) = tag("\"").with(TokenKind::StringMode(Token::QuoteClose))(step) {
-        step.mode = LexGrammarMode::Normal;
+        step.mode = step.prev_mode.clone();
+        return Some(step);
+    }
+    None
+}
+
+fn quote_open(step: Step<'_>) -> Option<Step<'_>> {
+    if let Some(mut step) = tag("\"").with(TokenKind::StringMode(Token::QuoteOpen))(step) {
+        step.set_mode(LexGrammarMode::String);
         return Some(step);
     }
     None
@@ -890,6 +895,7 @@ mod test {
         """
         """
         complex ${ref}
+        "line string iniside multi"
         """"""
         """""""""" // open with three, 4 quotes inside and 3 closing
         "#;
