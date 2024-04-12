@@ -30,8 +30,14 @@ trait ParseFn<'a>: Fn(Step<'a>) -> Option<Step<'a>> {
 
 impl<'a, F> ParseFn<'a> for F where F: Fn(Step<'a>) -> Option<Step<'a>> {}
 
+/**
+    This type represents the span of a token.
+*/
 pub type Span = Range<usize>;
 
+/**
+    This type contains information about a token including its kind and span.
+*/
 #[derive(Debug, Clone)]
 pub struct TokenInfo {
     kind: TokenKind,
@@ -53,6 +59,12 @@ impl Display for TokenInfo {
     }
 }
 
+/**
+    This represents the grammar mode of the lexer. The three states are:
+    - Normal: The default mode for all non string tokens in the syntax
+    - String: The mode for single line string literals
+    - MultilineString: The mode for multiline string literals
+*/
 #[derive(Debug, Clone, PartialEq)]
 pub enum LexGrammarMode {
     Normal,
@@ -60,6 +72,9 @@ pub enum LexGrammarMode {
     MultilineString,
 }
 
+/**
+    This is the main lexer that contains the input string and the current position.
+*/
 #[derive(Debug, Clone)]
 pub struct Lexer<'a> {
     input: &'a str,
@@ -69,6 +84,10 @@ pub struct Lexer<'a> {
     token: TokenKind,
 }
 
+/**
+    This is a single step in the lexer that contains the current position,
+    the result of the tokenization, the current mode and the previous mode.
+*/
 #[derive(Debug, Clone, PartialEq)]
 pub struct Step<'a> {
     pos: usize,
@@ -130,6 +149,9 @@ impl<'a> Step<'a> {
     }
 }
 
+/**
+    This is an enum that represents the kind of token that is being processed.
+*/
 #[derive(Debug, Clone, PartialEq)]
 pub enum TokenKind {
     Operator(Token),
@@ -207,6 +229,9 @@ impl<'a> Lexer<'a> {
         self.mode = step.mode.clone();
     }
 
+    /**
+        This method returns an iterator over the tokens in the input string.
+    */
     pub fn spanned(self) -> impl Iterator<Item = TokenInfo> + 'a {
         self.scan(0, |start, step| {
             let next = TokenInfo {
@@ -381,7 +406,7 @@ fn handle_operator<'a>(mut step: Step<'a>, token: &Token) -> Option<Step<'a>> {
             Some(step)
         }
         Token::TripleQuoteOpen => {
-            step.mode = LexGrammarMode::MultilineString;
+            step.set_mode(LexGrammarMode::MultilineString);
             Some(step)
         }
         Token::ExclNoWs => opt(hidden.with(TokenKind::Operator(Token::ExclWs)))(step),
@@ -613,8 +638,10 @@ fn when<'a>(condition: impl Fn(char) -> bool) -> impl ParseFn<'a> {
     }
 }
 
-/// This matches one or more p
-/// Looking to match at zero or more, use `many0`
+/**
+    This matches multiple entities of the same type one or more times.
+    For zero or more times, use `many0`
+*/
 #[inline]
 fn many<'a>(p: impl ParseFn<'a>) -> impl ParseFn<'a> {
     move |step| {
@@ -634,8 +661,10 @@ fn many<'a>(p: impl ParseFn<'a>) -> impl ParseFn<'a> {
     }
 }
 
-/// This matches zero or more p.
-/// Looking to match atleast one, use `many`
+/**
+    This matches multiple entities of the same type zero or more times.
+    For one or more times, use `many`
+*/
 #[inline]
 fn many0<'a>(p: impl ParseFn<'a>) -> impl ParseFn<'a> {
     opt(many(p))
@@ -892,7 +921,7 @@ mod test {
         """
         """
         complex ${ref}
-        "line string iniside multi"
+        "line string inside multi"
         """"""
         """""""""" // open with three, 4 quotes inside and 3 closing
         "#;
