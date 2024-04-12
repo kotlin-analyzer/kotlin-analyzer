@@ -260,29 +260,3 @@ pub static OPERATORS: phf::Map<&'static str, Token> = phf_map! {
    "\u{000D}" => Token::Nl,
    "\u{000A}\u{000D}" => Token::Nl,
 };
-
-pub enum PrefixForComment {
-    ShebangLine,
-    DelimitedComment,
-    LineComment,
-}
-
-pub static COMMENTS: phf::Map<&'static str, PrefixForComment> = phf_map! {
-    "#!" => PrefixForComment::ShebangLine,
-    "/*" => PrefixForComment::DelimitedComment,
-    "//" => PrefixForComment::LineComment,
-};
-
-// TODO: ensure we factore fieldRef
-pub static STRING_MODE: phf::Map<&'static str, Token> = phf_map! {
-    "${" => Token::LineStrExprStart,
-     // deactivates string mode
-    "\"" => Token::QuoteClose,
-};
-
-// TODO: ensure we factore fieldRef
-pub static MULTILINE_STRING_MODE: phf::Map<&'static str, Token> = phf_map! {
-    "${" => Token::MultiStrExprStart,
-     // deactivates multiline string mode
-   r#"""""# => Token::TripleQuoteClose,
-};

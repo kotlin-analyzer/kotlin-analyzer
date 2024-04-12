@@ -157,6 +157,7 @@ pub enum Token {
 
     LineStrRef,
     MultiLineStrRef,
+    MultiLineStringQuote,
 
     LineStrText,
     MultiLineStrText,
