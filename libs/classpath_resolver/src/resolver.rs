@@ -1,6 +1,6 @@
 use std::{
     fs,
-    io::{self, Write},
+    io::{self},
     path::{Path, PathBuf},
     process::Command,
     result,
@@ -46,8 +46,8 @@ impl ClasspathResolver {
 fn detect_workspace_type(workspace_root: &PathBuf) -> Option<WorkspaceType> {
     if workspace_root.join("pom.xml").exists() {
         return Some(WorkspaceType::Maven);
-    } else if workspace_root.join("build.gradle").exists()
-        || workspace_root.join("build.gradle.kts").exists()
+    } else if workspace_root.join("settings.gradle").exists()
+        || workspace_root.join("settings.gradle.kts").exists()
     {
         return Some(WorkspaceType::Gradle);
     }
@@ -55,20 +55,35 @@ fn detect_workspace_type(workspace_root: &PathBuf) -> Option<WorkspaceType> {
     None
 }
 
-fn resolve_maven_classpath(workspace_root: impl AsRef<Path>) -> Result<Vec<PathBuf>> {
-    // Resolve the classpath for a Maven workspace
+fn resolve_maven_classpath(workspace_root: &Path) -> Result<Vec<PathBuf>> {
+    let args = ["dependency:build-classpath"];
+
+    let output = run_shell(maven_command(), &args, workspace_root)?;
+
+    let output_buffer = output.lines().collect::<Vec<&str>>();
+    let classpath_header = output_buffer
+        .iter()
+        .position(|line| line.starts_with("[INFO] Dependencies classpath:"));
+
+    if let Some(index) = classpath_header {
+        // The classpath is on the next line
+        let path_str = output_buffer[index + 1];
+
+        return Ok(path_str
+            .split(":")
+            .map(PathBuf::from)
+            .filter(|path| path.exists())
+            .collect::<Vec<PathBuf>>());
+    }
+
     Ok(vec![])
 }
 
-fn resolve_gradle_classpath(workspace_root: impl AsRef<Path>) -> Result<Vec<PathBuf>> {
+fn resolve_gradle_classpath(workspace_root: &Path) -> Result<Vec<PathBuf>> {
     let init_script = get_init_script_location();
-    let args: [&str; 3] = ["-I", &init_script, "classpaths"];
+    let args = ["-I", &init_script, "classpaths"];
 
-    let output = run_shell(
-        gradle_command(),
-        &args,
-        workspace_root,
-    )?;
+    let output = run_shell(gradle_command(), &args, workspace_root)?;
 
     let classpaths = output
         .lines()
@@ -79,6 +94,7 @@ fn resolve_gradle_classpath(workspace_root: impl AsRef<Path>) -> Result<Vec<Path
             let path = entry.replace("gradle-classpath-resolver ", "");
             PathBuf::from(path)
         })
+        .filter(|cp| cp.exists())
         .collect::<Vec<PathBuf>>();
 
     Ok(classpaths)
@@ -88,18 +104,10 @@ fn get_init_script_location() -> String {
     let script = PathBuf::from("classpath.gradle");
 
     fs::canonicalize(script)
-        .unwrap()
+        .expect("classpath.gradle not found!")
         .to_str()
-        .unwrap()
+        .expect("classpath.gradle path is not valid UTF-8!")
         .to_string()
-}
-
-fn gradle_command() -> &'static str {
-    if cfg!(windows) {
-        "gradlew.bat"
-    } else {
-        "./gradlew"
-    }
 }
 
 type Result<T> = result::Result<T, Error>;
@@ -111,7 +119,7 @@ enum Error {
     CommandFailed,
 }
 
-fn run_shell<T: AsRef<Path>>(command: &str, args: &[&str], cwd: T) -> Result<String> {
+fn run_shell(command: &str, args: &[&str], cwd: &Path) -> Result<String> {
     let output = Command::new(command)
         .args(args)
         .current_dir(cwd)
@@ -123,4 +131,20 @@ fn run_shell<T: AsRef<Path>>(command: &str, args: &[&str], cwd: T) -> Result<Str
     }
 
     String::from_utf8(output.stdout).map_err(Error::Utf8)
+}
+
+fn gradle_command() -> &'static str {
+    if cfg!(windows) {
+        "gradlew.bat"
+    } else {
+        "./gradlew"
+    }
+}
+
+fn maven_command() -> &'static str {
+    if cfg!(windows) {
+        "mvnw.cmd"
+    } else {
+        "./mvnw"
+    }
 }
