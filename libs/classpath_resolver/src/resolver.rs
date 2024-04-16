@@ -1,4 +1,10 @@
-use std::path::PathBuf;
+use std::{
+    fs,
+    io::{self, Write},
+    path::{Path, PathBuf},
+    process::Command,
+    result,
+};
 
 #[derive(Debug)]
 pub enum WorkspaceType {
@@ -20,13 +26,13 @@ impl ClasspathResolver {
         let classpath = match workspace_type {
             Some(WorkspaceType::Maven) => resolve_maven_classpath(&workspace_root),
             Some(WorkspaceType::Gradle) => resolve_gradle_classpath(&workspace_root),
-            None => vec![],
+            None => Ok(vec![]),
         };
 
         ClasspathResolver {
             workspace_type,
             workspace_root,
-            classpath,
+            classpath: classpath.unwrap_or(vec![]),
         }
     }
 
@@ -49,12 +55,72 @@ fn detect_workspace_type(workspace_root: &PathBuf) -> Option<WorkspaceType> {
     None
 }
 
-fn resolve_maven_classpath(workspace_root: &PathBuf) -> Vec<PathBuf> {
+fn resolve_maven_classpath(workspace_root: impl AsRef<Path>) -> Result<Vec<PathBuf>> {
     // Resolve the classpath for a Maven workspace
-    vec![]
+    Ok(vec![])
 }
 
-fn resolve_gradle_classpath(workspace_root: &PathBuf) -> Vec<PathBuf> {
-    // Resolve the classpath for a Gradle workspace
-    vec![]
+fn resolve_gradle_classpath(workspace_root: impl AsRef<Path>) -> Result<Vec<PathBuf>> {
+    let init_script = get_init_script_location();
+    let args: [&str; 3] = ["-I", &init_script, "classpaths"];
+
+    let output = run_shell(
+        gradle_command(),
+        &args,
+        workspace_root,
+    )?;
+
+    let classpaths = output
+        .lines()
+        .collect::<Vec<&str>>()
+        .into_iter()
+        .filter(|entry| entry.starts_with("gradle-classpath-resolver "))
+        .map(|entry| {
+            let path = entry.replace("gradle-classpath-resolver ", "");
+            PathBuf::from(path)
+        })
+        .collect::<Vec<PathBuf>>();
+
+    Ok(classpaths)
+}
+
+fn get_init_script_location() -> String {
+    let script = PathBuf::from("classpath.gradle");
+
+    fs::canonicalize(script)
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .to_string()
+}
+
+fn gradle_command() -> &'static str {
+    if cfg!(windows) {
+        "gradlew.bat"
+    } else {
+        "./gradlew"
+    }
+}
+
+type Result<T> = result::Result<T, Error>;
+
+#[derive(Debug)]
+enum Error {
+    Io(io::Error),
+    Utf8(std::string::FromUtf8Error),
+    CommandFailed,
+}
+
+fn run_shell<T: AsRef<Path>>(command: &str, args: &[&str], cwd: T) -> Result<String> {
+    let output = Command::new(command)
+        .args(args)
+        .current_dir(cwd)
+        .output()
+        .map_err(Error::Io)?;
+
+    if !output.status.success() {
+        return Err(Error::CommandFailed);
+    }
+
+    String::from_utf8(output.stdout).map_err(Error::Utf8)
 }
