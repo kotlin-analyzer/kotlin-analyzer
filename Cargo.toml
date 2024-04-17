@@ -17,3 +17,4 @@ tokenizer = { path = "./crates/tokenizer" }
 tokens = { path = "./libs/tokens" }
 token_maps = { path = "./libs/token_maps" }
 macros = { path = "./libs/macros" }
+classpath_resolver = { path = "./libs/classpath_resolver" }

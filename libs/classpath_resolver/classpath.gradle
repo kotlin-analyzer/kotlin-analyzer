@@ -1,0 +1,78 @@
+allprojects { project ->
+    task classpaths { task ->
+        doLast {
+            System.out.println ""
+            System.out.println "gradle-version $gradleVersion"
+            System.out.println "project-name ${project.name}"
+
+            if (project.hasProperty('android')) {
+                project.android.getBootClasspath().each {
+                    System.out.println "gradle-classpath-resolver $it"
+                }
+
+                def variants = []
+
+                if (project.android.hasProperty('applicationVariants')) {
+                    variants += project.android.applicationVariants
+                }
+
+                if (project.android.hasProperty('libraryVariants')) {
+                    variants += project.android.libraryVariants
+                }
+
+                variants.each { variant ->
+                    def variantBase = variant.baseName.replaceAll("-", File.separator)
+
+                    def buildClasses = project.getBuildDir().absolutePath +
+                        File.separator + "intermediates" +
+                        File.separator + variantBase +
+                        File.separator + "classes"
+
+                    System.out.println "gradle-classpath-resolver $buildClasses"
+
+                    def userClasses = project.getBuildDir().absolutePath +
+                        File.separator + "intermediates" +
+                        File.separator + "javac" +
+                        File.separator + variantBase +
+                        File.separator + "compile" + variantBase.capitalize() + "JavaWithJavac" + File.separator + "classes"
+
+                    System.out.println "gradle-classpath-resolver $userClasses"
+
+                    def userVariantClasses = project.getBuildDir().absolutePath +
+                        File.separator + "intermediates" +
+                        File.separator + "javac" +
+                        File.separator + variantBase +
+                        File.separator + "classes"
+
+                    System.out.println "gradle-classpath-resolver $userVariantClasses"
+
+                    variant.getCompileClasspath().each {
+                        System.out.println "gradle-classpath-resolver $it"
+                    }
+                }
+            } else if (project.hasProperty('sourceSets')) {
+                // Print the list of all dependencies jar files.
+                sourceSets.forEach {
+                    it.compileClasspath.forEach {
+                        System.out.println "gradle-classpath-resolver $it"
+                    }
+                }
+            }
+
+
+            // handle kotlin multiplatform style dependencies if any
+            def kotlinExtension = project.extensions.findByName("kotlin")
+            if(kotlinExtension && kotlinExtension.hasProperty("targets")) {
+                def kotlinSourceSets = kotlinExtension.sourceSets
+
+                // Print the list of all dependencies jar files.
+                kotlinExtension.targets.names.each {
+                    def classpath = configurations["${it}CompileClasspath"]
+                    classpath.files.each {
+                        System.out.println "gradle-classpath-resolver $it"
+                    }
+                }
+            }
+        }
+    }
+}
