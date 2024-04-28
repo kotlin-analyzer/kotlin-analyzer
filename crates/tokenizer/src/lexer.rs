@@ -731,11 +731,7 @@ fn exponent_lit(step: Step<'_>) -> Option<Step<'_>> {
 }
 
 fn letter(step: Step<'_>) -> Option<Step<'_>> {
-    tag("_")
-        .or(when(|ch| ch.is_letter_lowercase()))
-        .or(when(|ch| ch.is_letter_uppercase()))
-        .or(when(|ch| ch.is_letter_titlecase()))
-        .or(when(|ch| ch.is_letter_modifier()))(step)
+    tag("_").or(when(|ch| ch.is_kotlin_letter()))(step)
 }
 
 fn quoted_symbol(step: Step<'_>) -> Option<Step<'_>> {
@@ -746,7 +742,7 @@ fn quoted_symbol(step: Step<'_>) -> Option<Step<'_>> {
 
 fn parse_identifier(step: Step<'_>) -> Option<Step<'_>> {
     quoted_symbol
-        .or(letter.and(many0(letter.or(when(|ch| ch.is_number_decimal_digit())))))
+        .or(letter.and(many0(when(|ch| ch.can_start_ident()))))
         .with(Token::Identifier)(step)
 }
 
