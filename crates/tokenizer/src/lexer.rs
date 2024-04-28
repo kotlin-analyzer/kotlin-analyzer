@@ -935,10 +935,9 @@ mod playground {
             "#
         );
 
-        let lex = Lexer::new(&source).spanned();
+        let lex = Lexer::new(&source).spanned_with_src();
         for lex in lex {
-            print!("{} - ", &lex);
-            println!("{:?}", &source[lex.span]);
+            println!("{}", lex);
         }
         Ok(())
     }
