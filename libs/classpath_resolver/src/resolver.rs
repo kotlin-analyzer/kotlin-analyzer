@@ -12,6 +12,7 @@ pub enum WorkspaceType {
     Gradle,
 }
 
+#[allow(dead_code)]
 pub struct ClasspathResolver {
     workspace_type: Option<WorkspaceType>,
     workspace_root: PathBuf,
@@ -113,6 +114,7 @@ fn get_init_script_location() -> String {
 type Result<T> = result::Result<T, Error>;
 
 #[derive(Debug)]
+#[allow(dead_code)]
 enum Error {
     Io(io::Error),
     Utf8(std::string::FromUtf8Error),
