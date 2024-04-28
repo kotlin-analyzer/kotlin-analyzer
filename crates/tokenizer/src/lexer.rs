@@ -186,7 +186,7 @@ impl SpannedWithSource<'_> {
     }
 
     pub fn substring(&self) -> &str {
-        &self.substring
+        self.substring
     }
 }
 
@@ -221,7 +221,7 @@ impl<'a> Lexer<'a> {
     fn to_step(&self) -> Step<'a> {
         Step {
             pos: self.pos,
-            res: self.token.clone(),
+            res: self.token,
             mode_queue: self.mode_queue.clone(),
             input: self.input,
         }
@@ -229,7 +229,7 @@ impl<'a> Lexer<'a> {
 
     fn apply_step(&mut self, step: &Step<'a>) {
         self.pos = step.pos;
-        self.token = step.res.clone();
+        self.token = step.res;
         self.mode_queue = step.mode_queue.clone();
     }
 
@@ -329,7 +329,7 @@ fn wrap_with_err<'a>(parser: impl ParseFn<'a>) -> impl ParseFn<'a> {
         let mut found = false;
         let mut next_step = step;
         loop {
-            if !(next_step.pos < next_step.input.len()) {
+            if next_step.pos >= next_step.input.len() {
                 break;
             }
             match parser(next_step.clone()) {
@@ -529,7 +529,7 @@ fn or<'a>(p1: impl ParseFn<'a>, p2: impl ParseFn<'a>) -> impl ParseFn<'a> {
 #[inline]
 fn not<'a>(p: impl ParseFn<'a>) -> impl ParseFn<'a> {
     move |step| {
-        if !(step.pos < step.input.len()) {
+        if step.pos >= step.input.len() {
             return None;
         }
         if p(step.clone()).is_some() {
@@ -654,7 +654,7 @@ fn many<'a>(p: impl ParseFn<'a>) -> impl ParseFn<'a> {
         let mut next_step = step;
         while let Some(step) = p(next_step.clone()) {
             next_step = step;
-            if !(next_step.pos < next_step.input.len()) {
+            if next_step.pos >= next_step.input.len() {
                 break;
             }
         }
@@ -712,13 +712,13 @@ fn letter(step: Step<'_>) -> Option<Step<'_>> {
         .or(when(|ch| ch.is_letter_modifier()))(step)
 }
 
-fn quoted_symbol<'a>(step: Step<'a>) -> Option<Step<'a>> {
+fn quoted_symbol(step: Step<'_>) -> Option<Step<'_>> {
     tag("`")
         .and(many0(not(tag("\u{000A}").or(tag("\u{000D}").or(tag("`"))))))
         .and(tag("`"))(step)
 }
 
-fn parse_identifier<'a>(step: Step<'a>) -> Option<Step<'a>> {
+fn parse_identifier(step: Step<'_>) -> Option<Step<'_>> {
     quoted_symbol
         .or(letter.and(many0(letter.or(when(|ch| ch.is_number_decimal_digit())))))
         .with(Token::Identifier)(step)
