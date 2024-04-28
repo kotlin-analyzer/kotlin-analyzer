@@ -462,14 +462,13 @@ fn parse_keyword(step: Step<'_>) -> Option<Step<'_>> {
     // we prioritize bigger lengths
     for size in KEYWORDS_KEY_LENGTH_RANGE.rev() {
         if let Some(key) = step.get_until(size.into()) {
-            let next_is_ident = step
+            if step
                 .advance(size.into())
                 .next_char()
                 .map(|ch| ch.can_start_ident())
-                .unwrap_or_default();
-
-            if next_is_ident {
-                return None;
+                .unwrap_or_default()
+            {
+                continue;
             }
 
             if let Some(token) = KEYWORDS.get(key) {
