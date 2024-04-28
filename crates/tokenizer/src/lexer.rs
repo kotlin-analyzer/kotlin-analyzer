@@ -8,7 +8,6 @@ use std::{
     ops::{Range, RangeInclusive},
 };
 
-use logos::Source;
 use token_maps::{KEYWORDS, OPERATORS};
 use tokens::Token;
 use unicode_categories::UnicodeCategories;
@@ -118,7 +117,7 @@ impl<'a> Step<'a> {
             },
             None => Self {
                 pos: 0,
-                // fine to start with Err here, since we won't return it
+                // fine to start with Err here, since we won't use it
                 res: Token::Err,
                 mode_queue: VecDeque::default(),
                 input,
@@ -127,7 +126,9 @@ impl<'a> Step<'a> {
     }
     fn advance(&self, increment: usize) -> Step<'a> {
         let mut step = self.clone();
-        step.pos += increment;
+        if let Some(pos) = step.pos.checked_add(increment) {
+            step.pos = pos;
+        }
         step
     }
 
@@ -149,24 +150,38 @@ impl<'a> Step<'a> {
         self.mode_queue.push_back(mode)
     }
 
+    fn get_till_end(&self, incr: usize) -> Option<&'a str> {
+        self.pos
+            .checked_add(incr)
+            .and_then(|start| self.input.get(start..))
+    }
+
+    fn get_until(&self, incr: usize) -> Option<&'a str> {
+        self.pos
+            .checked_add(incr)
+            .and_then(|end| self.input.get(self.pos..end))
+    }
+
     fn find(&self, incr: usize, pat: impl Fn(char) -> bool) -> usize {
-        if let Some(pos) = self.input.get(self.pos + incr..).and_then(|s| s.find(pat)) {
-            pos + incr
+        if let Some(pos) = self.get_till_end(incr).and_then(|s| s.find(pat)) {
+            pos.checked_add(incr).unwrap_or_default()
         } else {
-            self.input.len() - self.pos
+            self.input.len().checked_sub(self.pos).unwrap_or_default()
         }
     }
 
     fn next_char(&self) -> Option<char> {
-        self.input
-            .get(self.pos..self.pos + 1)
-            .and_then(|s| s.chars().next())
+        self.pos
+            .checked_add(1)
+            .and_then(|end| self.input.get(self.pos..end).and_then(|s| s.chars().next()))
     }
 
     fn prev_char(&self) -> Option<char> {
-        self.input
-            .get(self.pos - 1..self.pos)
-            .and_then(|s| s.chars().next())
+        self.pos.checked_sub(1).and_then(|start| {
+            self.input
+                .get(start..self.pos)
+                .and_then(|s| s.chars().next())
+        })
     }
 }
 
@@ -366,7 +381,7 @@ fn parse_comment(step: Step<'_>) -> Option<Step<'_>> {
 fn parse_operator(step: Step<'_>) -> Option<Step<'_>> {
     // we prioritize bigger lengths
     for size in OPERATORS_KEY_LENGTH_RANGE.rev() {
-        let slice = step.input.slice(step.pos..step.pos + size as usize);
+        let slice = step.get_until(size.into());
 
         if let Some(key) = slice {
             let matched = OPERATORS.get(key);
@@ -446,7 +461,7 @@ fn parse_keyword(step: Step<'_>) -> Option<Step<'_>> {
 
     // we prioritize bigger lengths
     for size in KEYWORDS_KEY_LENGTH_RANGE.rev() {
-        if let Some(key) = step.input.slice(step.pos..step.pos + size as usize) {
+        if let Some(key) = step.get_until(size.into()) {
             let next_is_ident = step
                 .advance(size.into())
                 .next_char()
@@ -541,16 +556,22 @@ fn not<'a>(p: impl ParseFn<'a>) -> impl ParseFn<'a> {
 }
 
 fn bin_or_hex_lit(step: Step<'_>) -> Option<Step<'_>> {
-    match step.input.slice(step.pos..step.pos + 2) {
+    match step.get_until(2) {
         Some("0b" | "0B") => {
             let index = step.find(2, |ch| ch != '0' && ch != '1' && ch != '_');
-            let entry = &step.input.get(step.pos + 2..step.pos + index)?;
+            let entry = step
+                .pos
+                .checked_add(2)
+                .zip(step.pos.checked_add(index))
+                .and_then(|(start, end)| step.input.get(start..end))?;
 
             if entry.starts_with('_') {
                 return None;
             }
             if entry.ends_with('_') {
-                return Some(step.advance_with(index - 1, Token::BinLiteral));
+                return index
+                    .checked_sub(1)
+                    .map(|incr| step.advance_with(incr, Token::BinLiteral));
             }
             Some(step.advance_with(index, Token::BinLiteral))
         }
@@ -560,13 +581,19 @@ fn bin_or_hex_lit(step: Step<'_>) -> Option<Step<'_>> {
                 |ch| !matches!(ch, '0'..='9' | 'a'..='f' | 'A'..='F' | '_'),
             );
 
-            let entry = &step.input.get(step.pos + 2..step.pos + index)?;
+            let entry = step
+                .pos
+                .checked_add(2)
+                .zip(step.pos.checked_add(index))
+                .and_then(|(start, end)| step.input.get(start..end))?;
 
             if entry.starts_with('_') {
                 return None;
             }
             if entry.ends_with('_') {
-                return Some(step.advance_with(index - 1, Token::HexLiteral));
+                return index
+                    .checked_sub(1)
+                    .map(|incr| step.advance_with(incr, Token::HexLiteral));
             }
             Some(step.advance_with(index, Token::HexLiteral))
         }
@@ -579,10 +606,12 @@ fn int_lit(step: Step<'_>) -> Option<Step<'_>> {
         Some(fc @ '0'..='9') => {
             let index = step.find(0, |ch| !ch.is_ascii_digit() && ch != '_');
 
-            let entry = &step.input.get(step.pos..step.pos + index)?;
+            let entry = &step.get_until(index)?;
 
             if entry.ends_with('_') {
-                return Some(step.advance_with(index - 1, Token::IntegerLiteral));
+                return index
+                    .checked_sub(1)
+                    .map(|incr| step.advance_with(incr, Token::IntegerLiteral));
             }
 
             if entry.contains('_') && !('1'..'9').contains(&fc) {
@@ -599,17 +628,17 @@ fn int_lit(step: Step<'_>) -> Option<Step<'_>> {
     }
 }
 
-// int_lit but without check for 0 as first char
-// TODO: refactor
 fn dec_digits(step: Step<'_>) -> Option<Step<'_>> {
     match step.next_char() {
         Some('0'..='9') => {
             let index = step.find(0, |ch| !ch.is_ascii_digit() && ch != '_');
 
-            let entry = &step.input.get(step.pos..step.pos + index)?;
+            let entry = &step.get_until(index)?;
 
             if entry.ends_with('_') {
-                return Some(step.advance_with(index - 1, Token::IntegerLiteral));
+                return index
+                    .checked_sub(1)
+                    .map(|incr| step.advance_with(incr, Token::IntegerLiteral));
             }
 
             Some(step.advance_with(index, Token::IntegerLiteral))
@@ -622,8 +651,7 @@ fn dec_digits(step: Step<'_>) -> Option<Step<'_>> {
 fn tag<'a>(pattern: &'static str) -> impl ParseFn<'a> {
     move |step| {
         if step
-            .input
-            .slice(step.pos..step.pos + pattern.len())
+            .get_until(pattern.len())
             .map(|t| t == pattern)
             .unwrap_or_default()
         {
@@ -676,8 +704,7 @@ fn many0<'a>(p: impl ParseFn<'a>) -> impl ParseFn<'a> {
 fn char_range<'a>(range: RangeInclusive<char>) -> impl ParseFn<'a> {
     move |step| {
         if step
-            .input
-            .get(step.pos..step.pos + 1)
+            .get_until(1)
             .and_then(|s| Some(range.contains(&s.chars().next()?)))
             .unwrap_or_default()
         {
@@ -828,9 +855,12 @@ fn quote_open(step: Step<'_>) -> Option<Step<'_>> {
 fn multi_line_string_quote(step: Step<'_>) -> Option<Step<'_>> {
     let origin = step.clone();
     if let Some(step) = tag(r#"""""#).and(many(tag("\"")))(step) {
-        let det = step.pos - origin.pos;
+        let (det, incr) = step
+            .pos
+            .checked_sub(origin.pos)
+            .and_then(|det| det.checked_sub(3).map(|incr| (det, incr)))?;
         if det >= 6 {
-            return Some(origin.advance_with(det - 3, Token::MultiLineStringQuote));
+            return Some(origin.advance_with(incr, Token::MultiLineStringQuote));
         }
     }
     None
