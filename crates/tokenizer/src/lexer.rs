@@ -1,4 +1,5 @@
 #![deny(clippy::index_refutable_slice)]
+#![deny(clippy::arithmetic_side_effects)]
 #![deny(clippy::indexing_slicing)]
 
 use std::{

@@ -147,3 +147,20 @@ fn nested_multi_str_test() {
         Token::EOF => 96..96
     ]);
 }
+
+#[test]
+fn keyword_start() {
+    let source = multiline_str!(
+        r#"package dev.ikeze.kotlinsyntax
+
+        import kotlin.streams.toList
+        
+        fun String.length(): Int = this.chars().toList().size
+        
+        fun main() {
+            val len = "simple".length()
+            println(len)
+        }"#
+    );
+    dbg_lexer_src!(&source);
+}
