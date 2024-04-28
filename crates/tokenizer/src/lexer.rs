@@ -31,7 +31,7 @@ trait ParseFn<'a>: Fn(Step<'a>) -> Option<Step<'a>> {
 
 trait CharExt {
     fn is_kotlin_letter(&self) -> bool;
-    fn can_start_ident(&self) -> bool;
+    fn can_be_in_ident(&self) -> bool;
 }
 
 impl CharExt for char {
@@ -42,7 +42,7 @@ impl CharExt for char {
             || self.is_letter_modifier()
     }
 
-    fn can_start_ident(&self) -> bool {
+    fn can_be_in_ident(&self) -> bool {
         self.is_kotlin_letter() || self.is_number_decimal_digit()
     }
 }
@@ -453,7 +453,7 @@ fn handle_operator<'a>(mut step: Step<'a>, token: &Token) -> Option<Step<'a>> {
 fn parse_keyword(step: Step<'_>) -> Option<Step<'_>> {
     if step
         .prev_char()
-        .map(|ch| ch.can_start_ident())
+        .map(|ch| ch.can_be_in_ident())
         .unwrap_or_default()
     {
         return None;
@@ -465,7 +465,7 @@ fn parse_keyword(step: Step<'_>) -> Option<Step<'_>> {
             if step
                 .advance(size.into())
                 .next_char()
-                .map(|ch| ch.can_start_ident())
+                .map(|ch| ch.can_be_in_ident())
                 .unwrap_or_default()
             {
                 continue;
@@ -742,7 +742,7 @@ fn quoted_symbol(step: Step<'_>) -> Option<Step<'_>> {
 
 fn parse_identifier(step: Step<'_>) -> Option<Step<'_>> {
     quoted_symbol
-        .or(letter.and(many0(when(|ch| ch.can_start_ident()))))
+        .or(letter.and(many0(when(|ch| ch.can_be_in_ident()))))
         .with(Token::Identifier)(step)
 }
 
