@@ -10,7 +10,7 @@ macro_rules! assert_success {
     ($parser: expr, $source: literal, $pos: literal, $token: path) => {
         let result = $parser(Step::new($source, None)).unwrap();
         assert_eq!(result.pos, $pos);
-        assert_eq!(result.res.token(), Some(&$token));
+        assert_eq!(result.res, $token);
     };
 }
 

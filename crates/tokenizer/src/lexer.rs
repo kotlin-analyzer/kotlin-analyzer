@@ -13,8 +13,8 @@ use unicode_categories::UnicodeCategories;
 
 trait ParseFn<'a>: Fn(Step<'a>) -> Option<Step<'a>> {
     #[inline]
-    fn with(&self, kind: TokenKind) -> impl ParseFn<'a> {
-        move |step: Step<'a>| self(step).map(|s| s.advance_with(0, kind.clone()))
+    fn with(&self, token: Token) -> impl ParseFn<'a> {
+        move |step: Step<'a>| self(step).map(|s| s.advance_with(0, token))
     }
 
     #[inline]
@@ -28,28 +28,55 @@ trait ParseFn<'a>: Fn(Step<'a>) -> Option<Step<'a>> {
     }
 }
 
+trait CharExt {
+    fn is_kotlin_letter(&self) -> bool;
+    fn can_start_ident(&self) -> bool;
+}
+
+impl CharExt for char {
+    fn is_kotlin_letter(&self) -> bool {
+        self.is_letter_lowercase()
+            || self.is_letter_uppercase()
+            || self.is_letter_titlecase()
+            || self.is_letter_modifier()
+    }
+
+    fn can_start_ident(&self) -> bool {
+        self.is_kotlin_letter() || self.is_number_decimal_digit()
+    }
+}
+
 impl<'a, F> ParseFn<'a> for F where F: Fn(Step<'a>) -> Option<Step<'a>> {}
 
 /// This type represents the span of a token.
 pub type Span = Range<usize>;
 
 /// This type contains information about a token including its kind and span.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TokenInfo {
-    kind: TokenKind,
+    token: Token,
     span: Span,
+}
+
+impl TokenInfo {
+    pub fn new(token: Token, span: Span) -> Self {
+        Self { token, span }
+    }
+    pub fn token(&self) -> &Token {
+        &self.token
+    }
 }
 
 impl Display for TokenInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{}{}",
-            self.kind,
-            if self.kind.is_eof() {
+            "Token::{:?}{}",
+            self.token,
+            if matches!(self.token, Token::EOF) {
                 "".into()
             } else {
-                format!(" @ {:?}", self.span)
+                format!(" => {:?}", self.span)
             }
         )
     }
@@ -73,7 +100,7 @@ pub struct Lexer<'a> {
     pos: usize,
     prev_mode: LexGrammarMode,
     mode: LexGrammarMode,
-    token: TokenKind,
+    token: Token,
 }
 
 /// This is a single step in the lexer that contains the current position,
@@ -81,7 +108,7 @@ pub struct Lexer<'a> {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Step<'a> {
     pos: usize,
-    res: TokenKind,
+    res: Token,
     mode: LexGrammarMode,
     prev_mode: LexGrammarMode,
     input: &'a str,
@@ -89,18 +116,19 @@ pub struct Step<'a> {
 
 impl<'a> Step<'a> {
     #[allow(dead_code)]
-    fn new(input: &'a str, kind: Option<TokenKind>) -> Self {
-        match kind {
-            Some(token_kind) => Self {
+    fn new(input: &'a str, token: Option<Token>) -> Self {
+        match token {
+            Some(token) => Self {
                 pos: 0,
-                res: token_kind,
+                res: token,
                 prev_mode: LexGrammarMode::Normal,
                 mode: LexGrammarMode::Normal,
                 input,
             },
             None => Self {
                 pos: 0,
-                res: TokenKind::Begin,
+                // fine to start with Err here, since we won't return it
+                res: Token::Err,
                 mode: LexGrammarMode::Normal,
                 prev_mode: LexGrammarMode::Normal,
                 input,
@@ -113,7 +141,7 @@ impl<'a> Step<'a> {
         step
     }
 
-    fn advance_with(&self, increment: usize, kind: TokenKind) -> Step<'a> {
+    fn advance_with(&self, increment: usize, kind: Token) -> Step<'a> {
         let mut step = self.advance(increment);
         step.res = kind;
         step
@@ -137,66 +165,24 @@ impl<'a> Step<'a> {
             .get(self.pos..self.pos + 1)
             .and_then(|s| s.chars().next())
     }
-}
 
-/// This is an enum that represents the kind of token that is being processed.
-#[derive(Debug, Clone, PartialEq)]
-pub enum TokenKind {
-    Operator(Token),
-    Keyword(Token),
-    Comment(Token),
-    Identifier(Token),
-    StringMode(Token),
-    Literal(Token),
-    Whitespace(Token),
-    Err,
-    Begin,
-}
-
-impl Display for TokenKind {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let token = self
-            .token()
-            .as_ref()
-            .map(|t| format!("{t:?}"))
-            .unwrap_or("Error".into());
-        write!(f, "{token}")
-    }
-}
-
-impl TokenKind {
-    fn token(&self) -> Option<&Token> {
-        match self {
-            TokenKind::Operator(token) => Some(token),
-            TokenKind::Keyword(token) => Some(token),
-            TokenKind::Identifier(token) => Some(token),
-            TokenKind::Comment(token) => Some(token),
-            TokenKind::Literal(token) => Some(token),
-            TokenKind::StringMode(token) => Some(token),
-            TokenKind::Whitespace(token) => Some(token),
-            TokenKind::Err => None,
-            TokenKind::Begin => None,
-        }
-    }
-
-    fn is_operator(&self) -> bool {
-        matches!(self, Self::Operator(_))
-    }
-
-    fn is_eof(&self) -> bool {
-        matches!(self, Self::Operator(Token::EOF))
+    fn prev_char(&self) -> Option<char> {
+        self.input
+            .get(self.pos - 1..self.pos)
+            .and_then(|s| s.chars().next())
     }
 }
 
 impl<'a> Lexer<'a> {
     #[allow(dead_code)]
-    fn new(input: &'a str) -> Self {
+    pub fn new(input: &'a str) -> Self {
         Self {
             input,
             pos: 0,
             mode: LexGrammarMode::Normal,
             prev_mode: LexGrammarMode::Normal,
-            token: TokenKind::Begin,
+            // fine to start with Err here, it is replaced and never used
+            token: Token::Err,
         }
     }
 
@@ -218,10 +204,11 @@ impl<'a> Lexer<'a> {
     }
 
     /// This method returns an iterator over the tokens in the input string.
+    /// alongside their spans
     pub fn spanned(self) -> impl Iterator<Item = TokenInfo> + 'a {
         self.scan(0, |start, step| {
             let next = TokenInfo {
-                kind: step.res.clone(),
+                token: step.res,
                 span: (*start)..step.pos,
             };
             *start = step.pos;
@@ -262,14 +249,12 @@ impl<'a> Iterator for Lexer<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         // strings
-        if self.input.len() <= self.pos + 1 && self.token.is_eof() {
+        if self.input.len() <= self.pos + 1 && matches!(self.token, Token::EOF) {
             return None;
         };
 
         if self.input.len() <= self.pos + 1 {
-            let eof_step = self
-                .to_step()
-                .advance_with(0, TokenKind::Operator(Token::EOF));
+            let eof_step = self.to_step().advance_with(0, Token::EOF);
             self.apply_step(&eof_step);
             return Some(eof_step);
         };
@@ -315,7 +300,7 @@ fn wrap_with_err<'a>(parser: impl ParseFn<'a>) -> impl ParseFn<'a> {
                 }
                 None => {
                     found = true;
-                    next_step = next_step.advance_with(1, TokenKind::Err);
+                    next_step = next_step.advance_with(1, Token::Err);
                 }
             }
         }
@@ -327,10 +312,8 @@ fn wrap_with_err<'a>(parser: impl ParseFn<'a>) -> impl ParseFn<'a> {
 fn parse_comment(step: Step<'_>) -> Option<Step<'_>> {
     if let Some(step) = shebang.or(line_comment).or(delimited_comment)(step) {
         match step.res {
-            TokenKind::Comment(Token::DelimitedComment | Token::LineComment) => {
-                opt(opt(hidden.or(nl))
-                    .and(tag("@"))
-                    .with(TokenKind::Operator(Token::AtPreWs)))(step)
+            Token::DelimitedComment | Token::LineComment => {
+                opt(opt(hidden.or(nl)).and(tag("@")).with(Token::AtPreWs))(step)
             }
             _ => Some(step),
         }
@@ -347,10 +330,7 @@ fn parse_operator(step: Step<'_>) -> Option<Step<'_>> {
         if let Some(key) = slice {
             let matched = OPERATORS.get(key);
             if let Some(token) = matched {
-                return handle_operator(
-                    step.advance_with(size.into(), TokenKind::Operator(*token)),
-                    token,
-                );
+                return handle_operator(step.advance_with(size.into(), *token), token);
             }
         }
     }
@@ -386,7 +366,7 @@ fn handle_operator<'a>(mut step: Step<'a>, token: &Token) -> Option<Step<'a>> {
                 tag("'").or(tag("\u{000A}").or(tag("\u{000D}")).or(tag("\\")))
             ))
             .and(tag("'"))
-            .with(TokenKind::Literal(Token::CharacterLiteral))(step),
+            .with(Token::CharacterLiteral)(step),
         Token::QuoteOpen => {
             step.set_mode(LexGrammarMode::String);
             Some(step)
@@ -395,35 +375,43 @@ fn handle_operator<'a>(mut step: Step<'a>, token: &Token) -> Option<Step<'a>> {
             step.mode = LexGrammarMode::MultilineString;
             Some(step)
         }
-        Token::ExclNoWs => opt(hidden.with(TokenKind::Operator(Token::ExclWs)))(step),
-        Token::AtNoWs => opt(hidden.or(nl).with(TokenKind::Operator(Token::AtPostWs)))(step),
-        Token::QuestNoWs => opt(hidden.or(nl).with(TokenKind::Operator(Token::QuestWs)))(step),
+        Token::ExclNoWs => opt(hidden.with(Token::ExclWs))(step),
+        Token::AtNoWs => opt(hidden.or(nl).with(Token::AtPostWs))(step),
+        Token::QuestNoWs => opt(hidden.or(nl).with(Token::QuestWs))(step),
         Token::Nl | Token::Ws => {
             // TODO: handle multiple hidden | nl before
             opt(tag("@")
-                .with(TokenKind::Operator(Token::AtPreWs))
-                .and(opt(hidden.with(TokenKind::Operator(Token::AtBothWs)))))(step)
+                .with(Token::AtPreWs)
+                .and(opt(hidden.with(Token::AtBothWs))))(step)
         }
         _ => Some(step),
     }
 }
 
 fn parse_keyword(step: Step<'_>) -> Option<Step<'_>> {
-    if !step.res.is_operator() {
+    if step
+        .prev_char()
+        .map(|ch| ch.can_start_ident())
+        .unwrap_or_default()
+    {
         return None;
     }
 
     // we prioritize bigger lengths
     for size in KEYWORDS_KEY_LENGTH_RANGE.rev() {
         if let Some(key) = step.input.slice(step.pos..step.pos + size as usize) {
-            let matched = KEYWORDS.get(key);
-            let next = matched.zip((parse_operator(step.advance(size.into()))).map(|op| op.res));
+            let next_is_ident = step
+                .advance(size.into())
+                .next_char()
+                .map(|ch| ch.can_start_ident())
+                .unwrap_or_default();
 
-            if let Some((token, TokenKind::Operator(_))) = next {
-                return handle_keyword(
-                    step.advance_with(size.into(), TokenKind::Keyword(*token)),
-                    token,
-                );
+            if next_is_ident {
+                return None;
+            }
+
+            if let Some(token) = KEYWORDS.get(key) {
+                return handle_keyword(step.advance_with(size.into(), *token), token);
             }
         }
     }
@@ -433,21 +421,11 @@ fn parse_keyword(step: Step<'_>) -> Option<Step<'_>> {
 
 fn handle_keyword<'a>(step: Step<'a>, token: &Token) -> Option<Step<'a>> {
     match token {
-        Token::This => opt(tag("@")
-            .and(parse_identifier)
-            .with(TokenKind::Keyword(Token::ThisAt)))(step),
-        Token::Super => opt(tag("@")
-            .and(parse_identifier)
-            .with(TokenKind::Keyword(Token::SuperAt)))(step),
-        Token::Return => opt(tag("@")
-            .and(parse_identifier)
-            .with(TokenKind::Keyword(Token::ReturnAt)))(step),
-        Token::Break => opt(tag("@")
-            .and(parse_identifier)
-            .with(TokenKind::Keyword(Token::BreakAt)))(step),
-        Token::Continue => opt(tag("@")
-            .and(parse_identifier)
-            .with(TokenKind::Keyword(Token::ContinueAt)))(step),
+        Token::This => opt(tag("@").and(parse_identifier).with(Token::ThisAt))(step),
+        Token::Super => opt(tag("@").and(parse_identifier).with(Token::SuperAt))(step),
+        Token::Return => opt(tag("@").and(parse_identifier).with(Token::ReturnAt))(step),
+        Token::Break => opt(tag("@").and(parse_identifier).with(Token::BreakAt))(step),
+        Token::Continue => opt(tag("@").and(parse_identifier).with(Token::ContinueAt))(step),
         Token::NotIn => opt(hidden)(step),
         Token::NotIs => opt(hidden)(step),
         _ => Some(step),
@@ -458,13 +436,13 @@ fn ws(step: Step<'_>) -> Option<Step<'_>> {
     tag("\u{0020}")
         .or(tag("\u{0009}"))
         .or(tag("\u{000C}"))
-        .with(TokenKind::Whitespace(Token::Ws))(step)
+        .with(Token::Ws)(step)
 }
 
 fn nl(step: Step<'_>) -> Option<Step<'_>> {
     tag("\u{000A}")
         .or(tag("\u{000D}").and(opt(tag("\u{000A}"))))
-        .with(TokenKind::Whitespace(Token::Ws))(step)
+        .with(Token::Ws)(step)
 }
 
 fn hidden(step: Step<'_>) -> Option<Step<'_>> {
@@ -474,20 +452,20 @@ fn hidden(step: Step<'_>) -> Option<Step<'_>> {
 fn shebang(step: Step<'_>) -> Option<Step<'_>> {
     tag("#!")
         .and(many0(not(tag("\u{000A}").or(tag("\u{000D}")))))
-        .with(TokenKind::Comment(Token::ShebangLine))(step)
+        .with(Token::ShebangLine)(step)
 }
 
 fn line_comment(step: Step<'_>) -> Option<Step<'_>> {
     tag("//")
         .and(many0(not(tag("\u{000A}").or(tag("\u{000D}")))))
-        .with(TokenKind::Comment(Token::LineComment))(step)
+        .with(Token::LineComment)(step)
 }
 
 fn delimited_comment(step: Step<'_>) -> Option<Step<'_>> {
     tag("/*")
         .and(many0(delimited_comment.or(not(tag("*/")))))
         .and(tag("*/"))
-        .with(TokenKind::Comment(Token::DelimitedComment))(step)
+        .with(Token::DelimitedComment)(step)
 }
 
 #[inline]
@@ -525,9 +503,9 @@ fn bin_or_hex_lit(step: Step<'_>) -> Option<Step<'_>> {
                 return None;
             }
             if entry.ends_with('_') {
-                return Some(step.advance_with(index - 1, TokenKind::Literal(Token::BinLiteral)));
+                return Some(step.advance_with(index - 1, Token::BinLiteral));
             }
-            Some(step.advance_with(index, TokenKind::Literal(Token::BinLiteral)))
+            Some(step.advance_with(index, Token::BinLiteral))
         }
         Some("0x" | "0X") => {
             let index = step.find(
@@ -541,9 +519,9 @@ fn bin_or_hex_lit(step: Step<'_>) -> Option<Step<'_>> {
                 return None;
             }
             if entry.ends_with('_') {
-                return Some(step.advance_with(index - 1, TokenKind::Literal(Token::HexLiteral)));
+                return Some(step.advance_with(index - 1, Token::HexLiteral));
             }
-            Some(step.advance_with(index, TokenKind::Literal(Token::HexLiteral)))
+            Some(step.advance_with(index, Token::HexLiteral))
         }
         _ => None,
     }
@@ -557,9 +535,7 @@ fn int_lit(step: Step<'_>) -> Option<Step<'_>> {
             let entry = &step.input.get(step.pos..step.pos + index)?;
 
             if entry.ends_with('_') {
-                return Some(
-                    step.advance_with(index - 1, TokenKind::Literal(Token::IntegerLiteral)),
-                );
+                return Some(step.advance_with(index - 1, Token::IntegerLiteral));
             }
 
             if entry.contains('_') && !('1'..'9').contains(&fc) {
@@ -570,7 +546,7 @@ fn int_lit(step: Step<'_>) -> Option<Step<'_>> {
                 return None;
             }
 
-            Some(step.advance_with(index, TokenKind::Literal(Token::IntegerLiteral)))
+            Some(step.advance_with(index, Token::IntegerLiteral))
         }
         _ => None,
     }
@@ -586,12 +562,10 @@ fn dec_digits(step: Step<'_>) -> Option<Step<'_>> {
             let entry = &step.input.get(step.pos..step.pos + index)?;
 
             if entry.ends_with('_') {
-                return Some(
-                    step.advance_with(index - 1, TokenKind::Literal(Token::IntegerLiteral)),
-                );
+                return Some(step.advance_with(index - 1, Token::IntegerLiteral));
             }
 
-            Some(step.advance_with(index, TokenKind::Literal(Token::IntegerLiteral)))
+            Some(step.advance_with(index, Token::IntegerLiteral))
         }
         _ => None,
     }
@@ -606,7 +580,7 @@ fn tag<'a>(pattern: &'static str) -> impl ParseFn<'a> {
             .map(|t| t == pattern)
             .unwrap_or_default()
         {
-            Some(step.advance_with(pattern.len(), TokenKind::Identifier(Token::Identifier)))
+            Some(step.advance_with(pattern.len(), Token::Identifier))
         } else {
             None
         }
@@ -673,7 +647,7 @@ fn repeat<'a, const N: usize>(p1: impl ParseFn<'a>) -> impl ParseFn<'a> {
 }
 
 fn long_lit(step: Step<'_>) -> Option<Step<'_>> {
-    and(or(bin_or_hex_lit, int_lit), tag("L")).with(TokenKind::Literal(Token::LongLiteral))(step)
+    and(or(bin_or_hex_lit, int_lit), tag("L")).with(Token::LongLiteral)(step)
 }
 
 fn exponent_lit(step: Step<'_>) -> Option<Step<'_>> {
@@ -700,7 +674,7 @@ fn quoted_symbol<'a>(step: Step<'a>) -> Option<Step<'a>> {
 fn parse_identifier<'a>(step: Step<'a>) -> Option<Step<'a>> {
     quoted_symbol
         .or(letter.and(many0(letter.or(when(|ch| ch.is_number_decimal_digit())))))
-        .with(TokenKind::Literal(Token::Identifier))(step)
+        .with(Token::Identifier)(step)
 }
 
 fn double_lit(step: Step<'_>) -> Option<Step<'_>> {
@@ -718,7 +692,7 @@ fn real_lit(step: Step<'_>) -> Option<Step<'_>> {
         and(or(double_lit, dec_digits), or(tag("f"), tag("F"))),
         double_lit,
     )
-    .with(TokenKind::Literal(Token::RealLiteral))(step)
+    .with(Token::RealLiteral)(step)
 }
 
 fn parse_literals(step: Step<'_>) -> Option<Step<'_>> {
@@ -756,16 +730,16 @@ where
 
 fn str_ref(step: Step<'_>) -> Option<Step<'_>> {
     tag("$").and(parse_identifier).with(match step.mode {
-        LexGrammarMode::String => TokenKind::StringMode(Token::LineStrRef),
-        LexGrammarMode::MultilineString => TokenKind::StringMode(Token::MultiLineStrRef),
+        LexGrammarMode::String => Token::LineStrRef,
+        LexGrammarMode::MultilineString => Token::MultiLineStrRef,
         LexGrammarMode::Normal => unreachable!("only called in string mode"),
     })(step)
 }
 
 fn str_expr_start(step: Step<'_>) -> Option<Step<'_>> {
     tag("${").and(parse_identifier).with(match step.mode {
-        LexGrammarMode::String => TokenKind::StringMode(Token::LineStrExprStart),
-        LexGrammarMode::MultilineString => TokenKind::StringMode(Token::MultiStrExprStart),
+        LexGrammarMode::String => Token::LineStrExprStart,
+        LexGrammarMode::MultilineString => Token::MultiStrExprStart,
         LexGrammarMode::Normal => unreachable!("only called in string mode"),
     })(step)
 }
@@ -773,17 +747,17 @@ fn str_expr_start(step: Step<'_>) -> Option<Step<'_>> {
 fn line_str_text(step: Step<'_>) -> Option<Step<'_>> {
     many(not(tag("\\").or(tag("\"")).or(tag("$"))))
         .or(tag("$"))
-        .with(TokenKind::StringMode(Token::LineStrText))(step)
+        .with(Token::LineStrText)(step)
 }
 
 fn multi_line_str_text(step: Step<'_>) -> Option<Step<'_>> {
     many(not(tag("\"").or(tag("$"))))
         .or(tag("$"))
-        .with(TokenKind::StringMode(Token::MultiLineStrText))(step)
+        .with(Token::MultiLineStrText)(step)
 }
 
 fn quote_close(step: Step<'_>) -> Option<Step<'_>> {
-    if let Some(mut step) = tag("\"").with(TokenKind::StringMode(Token::QuoteClose))(step) {
+    if let Some(mut step) = tag("\"").with(Token::QuoteClose)(step) {
         step.mode = step.prev_mode.clone();
         return Some(step);
     }
@@ -791,7 +765,7 @@ fn quote_close(step: Step<'_>) -> Option<Step<'_>> {
 }
 
 fn quote_open(step: Step<'_>) -> Option<Step<'_>> {
-    if let Some(mut step) = tag("\"").with(TokenKind::StringMode(Token::QuoteOpen))(step) {
+    if let Some(mut step) = tag("\"").with(Token::QuoteOpen)(step) {
         step.set_mode(LexGrammarMode::String);
         return Some(step);
     }
@@ -803,9 +777,7 @@ fn multi_line_string_quote(step: Step<'_>) -> Option<Step<'_>> {
     if let Some(step) = tag(r#"""""#).and(many(tag("\"")))(step) {
         let det = step.pos - origin.pos;
         if det >= 6 {
-            return Some(
-                origin.advance_with(det - 3, TokenKind::StringMode(Token::MultiLineStringQuote)),
-            );
+            return Some(origin.advance_with(det - 3, Token::MultiLineStringQuote));
         }
     }
     None
@@ -814,7 +786,7 @@ fn multi_line_string_quote(step: Step<'_>) -> Option<Step<'_>> {
 fn triple_quote_close(step: Step<'_>) -> Option<Step<'_>> {
     if let Some(mut step) = opt(multi_line_string_quote).and(tag(r#"""""#))(step) {
         step.mode = LexGrammarMode::Normal;
-        step.res = TokenKind::StringMode(Token::TripleQuoteClose);
+        step.res = Token::TripleQuoteClose;
         return Some(step);
     }
     None
@@ -890,23 +862,13 @@ mod playground {
 }
 #[cfg(test)]
 mod test {
-    use macros::{assert_failure, assert_success};
+    use macros::{assert_failure, assert_success, multiline_str};
 
     use super::*;
 
     #[test]
-    #[ignore]
-    fn multi_line_str_test() {
-        let source = r#"
-        """
-        simple
-        """
-        """
-        complex ${ref}
-        "line string inside multi"
-        """"""
-        """""""""" // open with three, 4 quotes inside and 3 closing
-        "#;
+    fn nested_str_test() {
+        let source = r#""hey ${echo("test")} stranger""#;
         let lex = Lexer::new(&source).spanned();
         for lex in lex {
             print!("{} - ", &lex);
