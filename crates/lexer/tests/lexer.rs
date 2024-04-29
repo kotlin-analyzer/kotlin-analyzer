@@ -1,10 +1,10 @@
-use macros::{lexer_matches, multiline_str};
+use macros::{lexer_matches, trim_idents};
 use pretty_assertions::assert_eq;
 use tokens::Token;
 
 #[test]
 fn multi_line_str_test() {
-    let source = multiline_str!(
+    let source = trim_idents!(
         r#""""
     simple
     """
@@ -66,7 +66,7 @@ fn nested_str_test() {
 
 #[test]
 fn nested_multi_str_test() {
-    let source = multiline_str!(
+    let source = trim_idents!(
         r#"
     """
     Can multiline strings
@@ -100,7 +100,7 @@ fn nested_multi_str_test() {
 
 #[test]
 fn keyword_start() {
-    let source = multiline_str!(
+    let source = trim_idents!(
         r#"package dev.ikeze.kotlinsyntax
 
         import kotlin.streams.toList
