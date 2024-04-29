@@ -878,9 +878,7 @@ fn line_str_escaped_char(step: Step<'_>) -> Option<Step<'_>> {
 mod playground {
     use std::error::Error;
 
-    use macros::multiline_str;
-
-    use super::*;
+    use macros::{dbg_lexer_src, multiline_str};
 
     #[test]
     #[ignore]
@@ -930,10 +928,7 @@ mod playground {
             "#
         );
 
-        let lex = Lexer::new(&source).spanned_with_src();
-        for lex in lex {
-            println!("{}", lex);
-        }
+        dbg_lexer_src!(&source);
         Ok(())
     }
 }
