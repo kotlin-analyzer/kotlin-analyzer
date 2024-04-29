@@ -878,12 +878,13 @@ fn line_str_escaped_char(step: Step<'_>) -> Option<Step<'_>> {
 mod playground {
     use std::error::Error;
 
-    use macros::{dbg_lexer_src, multiline_str};
+    use super::Lexer;
+    use macros::{dbg_lexer_src, trim_idents};
 
     #[test]
     #[ignore]
     fn simple() -> Result<(), Box<dyn Error>> {
-        let source = multiline_str!(
+        let source = trim_idents!(
             r#"
             0444.10_99e+4f
             [],--
