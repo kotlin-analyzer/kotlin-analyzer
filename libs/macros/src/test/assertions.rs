@@ -1,14 +1,14 @@
 #[macro_export]
 macro_rules! assert_success {
     ($parser: expr, $source: literal) => {
-        $parser(crate::Step::new($source, None)).unwrap();
+        $parser(crate::lexer::Step::new($source, None)).unwrap();
     };
     ($parser: expr, $source: literal, $pos: literal) => {
-        let result = $parser(crate::Step::new($source, None)).unwrap();
+        let result = $parser(crate::lexer::Step::new($source, None)).unwrap();
         assert_eq!(result.pos, $pos);
     };
     ($parser: expr, $source: literal, $pos: literal, $token: path) => {
-        let result = $parser(crate::Step::new($source, None)).unwrap();
+        let result = $parser(crate::lexer::Step::new($source, None)).unwrap();
         assert_eq!(result.pos, $pos);
         assert_eq!(result.res, $token);
     };
@@ -17,7 +17,7 @@ macro_rules! assert_success {
 #[macro_export]
 macro_rules! assert_failure {
     ($parser: expr, $source: literal) => {
-        let result = $parser(crate::Step::new($source, None));
+        let result = $parser(crate::lexer::Step::new($source, None));
         assert_eq!(result, None);
     };
 }
@@ -52,7 +52,7 @@ macro_rules! lexer_matches {
             .spanned()
             .filter(|info| *info.token() == filter_token);
 
-            $(assert_eq!(lexer.next(), Some(::tokenizer::TokenInfo::new($filter_token, $start..$end)));)+
+            $(assert_eq!(lexer.next(), Some(::lexer::TokenInfo::new($filter_token, $start..$end)));)+
         };
 }
 
@@ -60,7 +60,7 @@ macro_rules! lexer_matches {
 macro_rules! dbg_lexer_src {
     ($source: expr) => {
         let source: &str = $source;
-        let lexer = ::lexer::Lexer::new(&source).spanned_with_src();
+        let lexer = crate::lexer::Lexer::new(&source).spanned_with_src();
         println!("Source of 0..{}", source.len() - 1);
         for entry in lexer {
             println!("{},", entry);
@@ -72,7 +72,7 @@ macro_rules! dbg_lexer_src {
 macro_rules! dbg_lexer {
     ($source: expr) => {
         let source: &str = $source;
-        let lexer = ::lexer::Lexer::new(&source).spanned();
+        let lexer = crate::lexer::Lexer::new(&source).spanned();
         println!("Source of 0..{}", source.len() - 1);
         for entry in lexer {
             println!("{},", entry);
