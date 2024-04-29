@@ -160,6 +160,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 
 [[package]]
+name = "lexer"
+version = "0.0.1"
+dependencies = [
+ "logos",
+ "macros",
+ "pretty_assertions",
+ "rstest",
+ "token_maps",
+ "tokens",
+ "unicode_categories",
+]
+
+[[package]]
 name = "logos"
 version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -416,19 +429,6 @@ version = "0.0.1"
 dependencies = [
  "phf",
  "tokens",
-]
-
-[[package]]
-name = "tokenizer"
-version = "0.0.1"
-dependencies = [
- "logos",
- "macros",
- "pretty_assertions",
- "rstest",
- "token_maps",
- "tokens",
- "unicode_categories",
 ]
 
 [[package]]

@@ -106,7 +106,7 @@ pub struct Step<'a> {
 }
 
 impl<'a> Step<'a> {
-    #[allow(dead_code)]
+    #[cfg(test)]
     fn new(input: &'a str, token: Option<Token>) -> Self {
         match token {
             Some(token) => Self {
