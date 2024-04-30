@@ -1,58 +1,9 @@
-use macros::multiline_str;
-use pretty_assertions::assert_eq;
-use tokenizer::Lexer;
+use macros::{lexer_matches, trim_idents};
 use tokens::Token;
-
-#[macro_export]
-macro_rules! lexer_matches {
-        ($source: expr, [$($token_kind: expr => $start:literal..$end:literal),+]) => {
-            let source: &str = $source;
-            let mut lexer =  Lexer::new(&source).spanned();
-            $(assert_eq!(
-                lexer.next(),
-                Some(::tokenizer::TokenInfo::new($token_kind, $start..$end))
-            );)+
-        };
-
-        ($source: expr, $filter_token:path, [$($start:literal..$end:literal),+]) => {
-            let source: &str = $source;
-            let filter_token: Token = $filter_token;
-
-            let mut lexer =  Lexer::new(&source)
-            .spanned()
-            .filter(|info| *info.token() == filter_token);
-
-            $(assert_eq!(lexer.next(), Some(::tokenizer::TokenInfo::new($filter_token, $start..$end)));)+
-        };
-}
-
-#[allow(unused_macros)]
-macro_rules! dbg_lexer_src {
-    ($source: expr) => {
-        let source: &str = $source;
-        let lexer = Lexer::new(&source).spanned_with_src();
-        println!("Source of 0..{}", source.len() - 1);
-        for entry in lexer {
-            println!("{},", entry);
-        }
-    };
-}
-
-#[allow(unused_macros)]
-macro_rules! dbg_lexer {
-    ($source: expr) => {
-        let source: &str = $source;
-        let lexer = Lexer::new(&source).spanned();
-        println!("Source of 0..{}", source.len() - 1);
-        for entry in lexer {
-            println!("{},", entry);
-        }
-    };
-}
 
 #[test]
 fn multi_line_str_test() {
-    let source = multiline_str!(
+    let source = trim_idents!(
         r#""""
     simple
     """
@@ -63,8 +14,6 @@ fn multi_line_str_test() {
     """""""""" // open with three, 4 quotes inside and 3 closing
     "#
     );
-
-    dbg_lexer_src!(&source);
 
     lexer_matches!(&source, [
         Token::TripleQuoteOpen => 0..3, // "\"\"\"",
@@ -116,7 +65,7 @@ fn nested_str_test() {
 
 #[test]
 fn nested_multi_str_test() {
-    let source = multiline_str!(
+    let source = trim_idents!(
         r#"
     """
     Can multiline strings
@@ -150,7 +99,7 @@ fn nested_multi_str_test() {
 
 #[test]
 fn keyword_start() {
-    let source = multiline_str!(
+    let source = trim_idents!(
         r#"package dev.ikeze.kotlinsyntax
 
         import kotlin.streams.toList

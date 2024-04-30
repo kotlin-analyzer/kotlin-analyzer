@@ -106,7 +106,7 @@ pub struct Step<'a> {
 }
 
 impl<'a> Step<'a> {
-    #[allow(dead_code)]
+    #[cfg(test)]
     fn new(input: &'a str, token: Option<Token>) -> Self {
         match token {
             Some(token) => Self {
@@ -878,14 +878,13 @@ fn line_str_escaped_char(step: Step<'_>) -> Option<Step<'_>> {
 mod playground {
     use std::error::Error;
 
-    use macros::multiline_str;
-
-    use super::*;
+    use super::Lexer;
+    use macros::{dbg_lexer_src, trim_idents};
 
     #[test]
     #[ignore]
     fn simple() -> Result<(), Box<dyn Error>> {
-        let source = multiline_str!(
+        let source = trim_idents!(
             r#"
             0444.10_99e+4f
             [],--
@@ -930,10 +929,7 @@ mod playground {
             "#
         );
 
-        let lex = Lexer::new(&source).spanned_with_src();
-        for lex in lex {
-            println!("{}", lex);
-        }
+        dbg_lexer_src!(&source);
         Ok(())
     }
 }
