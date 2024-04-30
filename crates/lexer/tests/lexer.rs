@@ -1,5 +1,4 @@
 use macros::{lexer_matches, trim_idents};
-use pretty_assertions::assert_eq;
 use tokens::Token;
 
 #[test]
