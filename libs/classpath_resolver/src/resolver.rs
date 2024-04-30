@@ -44,7 +44,7 @@ impl ClasspathResolver {
     }
 }
 
-fn detect_workspace_type(workspace_root: &PathBuf) -> Option<WorkspaceType> {
+fn detect_workspace_type(workspace_root: &Path) -> Option<WorkspaceType> {
     if workspace_root.join("pom.xml").exists() {
         return Some(WorkspaceType::Maven);
     } else if workspace_root.join("settings.gradle").exists()
@@ -71,7 +71,7 @@ fn resolve_maven_classpath(workspace_root: &Path) -> Result<Vec<PathBuf>> {
         let path_str = output_buffer[index + 1];
 
         return Ok(path_str
-            .split(":")
+            .split(':')
             .map(PathBuf::from)
             .filter(|path| path.exists())
             .collect::<Vec<PathBuf>>());

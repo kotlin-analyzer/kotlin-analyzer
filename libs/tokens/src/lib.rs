@@ -1,4 +1,4 @@
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Token {
     ///! White Space and Comments    
     ShebangLine,
@@ -167,4 +167,5 @@ pub enum Token {
     MultiStrExprStart,
 
     EOF,
+    Err,
 }

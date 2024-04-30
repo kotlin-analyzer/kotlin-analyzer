@@ -1,20 +1,21 @@
 #![deny(clippy::index_refutable_slice)]
+#![deny(clippy::arithmetic_side_effects)]
 #![deny(clippy::indexing_slicing)]
 
 use std::{
+    collections::VecDeque,
     fmt::Display,
     ops::{Range, RangeInclusive},
 };
 
-use logos::Source;
 use token_maps::{KEYWORDS, OPERATORS};
 use tokens::Token;
 use unicode_categories::UnicodeCategories;
 
 trait ParseFn<'a>: Fn(Step<'a>) -> Option<Step<'a>> {
     #[inline]
-    fn with(&self, kind: TokenKind) -> impl ParseFn<'a> {
-        move |step: Step<'a>| self(step).map(|s| s.advance_with(0, kind.clone()))
+    fn with(&self, token: Token) -> impl ParseFn<'a> {
+        move |step: Step<'a>| self(step).map(|s| s.advance_with(0, token))
     }
 
     #[inline]
@@ -28,30 +29,48 @@ trait ParseFn<'a>: Fn(Step<'a>) -> Option<Step<'a>> {
     }
 }
 
+trait CharExt {
+    fn is_kotlin_letter(&self) -> bool;
+    fn can_be_in_ident(&self) -> bool;
+}
+
+impl CharExt for char {
+    fn is_kotlin_letter(&self) -> bool {
+        self.is_letter_lowercase()
+            || self.is_letter_uppercase()
+            || self.is_letter_titlecase()
+            || self.is_letter_modifier()
+    }
+
+    fn can_be_in_ident(&self) -> bool {
+        self.is_kotlin_letter() || self.is_number_decimal_digit()
+    }
+}
+
 impl<'a, F> ParseFn<'a> for F where F: Fn(Step<'a>) -> Option<Step<'a>> {}
 
 /// This type represents the span of a token.
 pub type Span = Range<usize>;
 
 /// This type contains information about a token including its kind and span.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TokenInfo {
-    kind: TokenKind,
+    token: Token,
     span: Span,
+}
+
+impl TokenInfo {
+    pub fn new(token: Token, span: Span) -> Self {
+        Self { token, span }
+    }
+    pub fn token(&self) -> &Token {
+        &self.token
+    }
 }
 
 impl Display for TokenInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}{}",
-            self.kind,
-            if self.kind.is_eof() {
-                "".into()
-            } else {
-                format!(" @ {:?}", self.span)
-            }
-        )
+        write!(f, "Token::{:?} => {:?}", self.token, self.span)
     }
 }
 
@@ -59,8 +78,9 @@ impl Display for TokenInfo {
 /// - Normal: The default mode for all non string tokens in the syntax
 /// - String: The mode for single line string literals
 /// - MultilineString: The mode for multiline string literals
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub enum LexGrammarMode {
+    #[default]
     Normal,
     String,
     MultilineString,
@@ -71,9 +91,8 @@ pub enum LexGrammarMode {
 pub struct Lexer<'a> {
     input: &'a str,
     pos: usize,
-    prev_mode: LexGrammarMode,
-    mode: LexGrammarMode,
-    token: TokenKind,
+    token: Token,
+    mode_queue: VecDeque<LexGrammarMode>,
 }
 
 /// This is a single step in the lexer that contains the current position,
@@ -81,147 +100,160 @@ pub struct Lexer<'a> {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Step<'a> {
     pos: usize,
-    res: TokenKind,
-    mode: LexGrammarMode,
-    prev_mode: LexGrammarMode,
+    res: Token,
+    mode_queue: VecDeque<LexGrammarMode>,
     input: &'a str,
 }
 
 impl<'a> Step<'a> {
     #[allow(dead_code)]
-    fn new(input: &'a str, kind: Option<TokenKind>) -> Self {
-        match kind {
-            Some(token_kind) => Self {
+    fn new(input: &'a str, token: Option<Token>) -> Self {
+        match token {
+            Some(token) => Self {
                 pos: 0,
-                res: token_kind,
-                prev_mode: LexGrammarMode::Normal,
-                mode: LexGrammarMode::Normal,
+                res: token,
+                mode_queue: VecDeque::default(),
                 input,
             },
             None => Self {
                 pos: 0,
-                res: TokenKind::Begin,
-                mode: LexGrammarMode::Normal,
-                prev_mode: LexGrammarMode::Normal,
+                // fine to start with Err here, since we won't use it
+                res: Token::Err,
+                mode_queue: VecDeque::default(),
                 input,
             },
         }
     }
     fn advance(&self, increment: usize) -> Step<'a> {
         let mut step = self.clone();
-        step.pos += increment;
+        if let Some(pos) = step.pos.checked_add(increment) {
+            step.pos = pos;
+        }
         step
     }
 
-    fn advance_with(&self, increment: usize, kind: TokenKind) -> Step<'a> {
+    fn advance_with(&self, increment: usize, kind: Token) -> Step<'a> {
         let mut step = self.advance(increment);
         step.res = kind;
         step
     }
 
+    fn mode(&self) -> &LexGrammarMode {
+        self.mode_queue.back().unwrap_or(&LexGrammarMode::Normal)
+    }
+
+    fn pop_mode(&mut self) {
+        self.mode_queue.pop_back();
+    }
+
     fn set_mode(&mut self, mode: LexGrammarMode) {
-        self.prev_mode = self.mode.clone();
-        self.mode = mode;
+        self.mode_queue.push_back(mode)
+    }
+
+    fn get_till_end(&self, incr: usize) -> Option<&'a str> {
+        self.pos
+            .checked_add(incr)
+            .and_then(|start| self.input.get(start..))
+    }
+
+    fn get_until(&self, incr: usize) -> Option<&'a str> {
+        self.pos
+            .checked_add(incr)
+            .and_then(|end| self.input.get(self.pos..end))
     }
 
     fn find(&self, incr: usize, pat: impl Fn(char) -> bool) -> usize {
-        if let Some(pos) = self.input.get(self.pos + incr..).and_then(|s| s.find(pat)) {
-            pos + incr
+        if let Some(pos) = self.get_till_end(incr).and_then(|s| s.find(pat)) {
+            pos.checked_add(incr).unwrap_or_default()
         } else {
-            self.input.len() - self.pos
+            self.input.len().checked_sub(self.pos).unwrap_or_default()
         }
     }
 
     fn next_char(&self) -> Option<char> {
-        self.input
-            .get(self.pos..self.pos + 1)
-            .and_then(|s| s.chars().next())
+        self.pos
+            .checked_add(1)
+            .and_then(|end| self.input.get(self.pos..end).and_then(|s| s.chars().next()))
+    }
+
+    fn prev_char(&self) -> Option<char> {
+        self.pos.checked_sub(1).and_then(|start| {
+            self.input
+                .get(start..self.pos)
+                .and_then(|s| s.chars().next())
+        })
     }
 }
 
-/// This is an enum that represents the kind of token that is being processed.
-#[derive(Debug, Clone, PartialEq)]
-pub enum TokenKind {
-    Operator(Token),
-    Keyword(Token),
-    Comment(Token),
-    Identifier(Token),
-    StringMode(Token),
-    Literal(Token),
-    Whitespace(Token),
-    Err,
-    Begin,
+pub struct SpannedWithSource<'a> {
+    token: Token,
+    span: Span,
+    substring: &'a str,
 }
 
-impl Display for TokenKind {
+impl SpannedWithSource<'_> {
+    pub fn token(&self) -> &Token {
+        &self.token
+    }
+
+    pub fn span(&self) -> &Span {
+        &self.span
+    }
+
+    pub fn substring(&self) -> &str {
+        self.substring
+    }
+}
+
+impl Display for SpannedWithSource<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let token = self
-            .token()
-            .as_ref()
-            .map(|t| format!("{t:?}"))
-            .unwrap_or("Error".into());
-        write!(f, "{token}")
-    }
-}
-
-impl TokenKind {
-    fn token(&self) -> Option<&Token> {
-        match self {
-            TokenKind::Operator(token) => Some(token),
-            TokenKind::Keyword(token) => Some(token),
-            TokenKind::Identifier(token) => Some(token),
-            TokenKind::Comment(token) => Some(token),
-            TokenKind::Literal(token) => Some(token),
-            TokenKind::StringMode(token) => Some(token),
-            TokenKind::Whitespace(token) => Some(token),
-            TokenKind::Err => None,
-            TokenKind::Begin => None,
-        }
-    }
-
-    fn is_operator(&self) -> bool {
-        matches!(self, Self::Operator(_))
-    }
-
-    fn is_eof(&self) -> bool {
-        matches!(self, Self::Operator(Token::EOF))
+        write!(
+            f,
+            r#"Token::{:?} => {:?}, // {:?}"#,
+            self.token(),
+            self.span(),
+            self.substring()
+        )
     }
 }
 
 impl<'a> Lexer<'a> {
     #[allow(dead_code)]
-    fn new(input: &'a str) -> Self {
+    pub fn new(input: &'a str) -> Self {
         Self {
             input,
             pos: 0,
-            mode: LexGrammarMode::Normal,
-            prev_mode: LexGrammarMode::Normal,
-            token: TokenKind::Begin,
+            mode_queue: VecDeque::default(),
+            // fine to start with Err here, it is replaced and never used
+            token: Token::Err,
         }
+    }
+
+    fn mode(&self) -> &LexGrammarMode {
+        self.mode_queue.back().unwrap_or(&LexGrammarMode::Normal)
     }
 
     fn to_step(&self) -> Step<'a> {
         Step {
             pos: self.pos,
-            res: self.token.clone(),
-            prev_mode: self.prev_mode.clone(),
-            mode: self.mode.clone(),
+            res: self.token,
+            mode_queue: self.mode_queue.clone(),
             input: self.input,
         }
     }
 
     fn apply_step(&mut self, step: &Step<'a>) {
         self.pos = step.pos;
-        self.token = step.res.clone();
-        self.prev_mode = step.prev_mode.clone();
-        self.mode = step.mode.clone();
+        self.token = step.res;
+        self.mode_queue = step.mode_queue.clone();
     }
 
     /// This method returns an iterator over the tokens in the input string.
+    /// alongside their spans
     pub fn spanned(self) -> impl Iterator<Item = TokenInfo> + 'a {
         self.scan(0, |start, step| {
             let next = TokenInfo {
-                kind: step.res.clone(),
+                token: step.res,
                 span: (*start)..step.pos,
             };
             *start = step.pos;
@@ -229,9 +261,19 @@ impl<'a> Lexer<'a> {
         })
     }
 
+    pub fn spanned_with_src(self) -> impl Iterator<Item = SpannedWithSource<'a>> + 'a {
+        let input = self.input;
+        self.spanned()
+            .map(|TokenInfo { token, span }| SpannedWithSource {
+                token,
+                span: span.clone(),
+                substring: input.get(span).unwrap_or_default(),
+            })
+    }
+
     fn tokenize_next(&self) -> Option<Step<'a>> {
         let step = self.to_step();
-        match self.mode {
+        match self.mode() {
             LexGrammarMode::Normal => wrap_with_err(
                 parse_comment
                     .or(parse_operator)
@@ -240,10 +282,11 @@ impl<'a> Lexer<'a> {
                     .or(parse_identifier),
             )(step),
             LexGrammarMode::String => wrap_with_err(
-                str_ref.or(str_expr_start
+                str_ref
+                    .or(str_expr_start)
                     .or(line_str_escaped_char)
                     .or(line_str_text)
-                    .or(quote_close)),
+                    .or(quote_close),
             )(step),
             LexGrammarMode::MultilineString => wrap_with_err(
                 str_ref
@@ -262,14 +305,12 @@ impl<'a> Iterator for Lexer<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         // strings
-        if self.input.len() <= self.pos + 1 && self.token.is_eof() {
+        if self.input.len() == self.pos && matches!(self.token, Token::EOF) {
             return None;
         };
 
-        if self.input.len() <= self.pos + 1 {
-            let eof_step = self
-                .to_step()
-                .advance_with(0, TokenKind::Operator(Token::EOF));
+        if self.input.len() == self.pos {
+            let eof_step = self.to_step().advance_with(0, Token::EOF);
             self.apply_step(&eof_step);
             return Some(eof_step);
         };
@@ -303,7 +344,7 @@ fn wrap_with_err<'a>(parser: impl ParseFn<'a>) -> impl ParseFn<'a> {
         let mut found = false;
         let mut next_step = step;
         loop {
-            if !(next_step.pos < next_step.input.len()) {
+            if next_step.pos >= next_step.input.len() {
                 break;
             }
             match parser(next_step.clone()) {
@@ -315,7 +356,7 @@ fn wrap_with_err<'a>(parser: impl ParseFn<'a>) -> impl ParseFn<'a> {
                 }
                 None => {
                     found = true;
-                    next_step = next_step.advance_with(1, TokenKind::Err);
+                    next_step = next_step.advance_with(1, Token::Err);
                 }
             }
         }
@@ -327,10 +368,8 @@ fn wrap_with_err<'a>(parser: impl ParseFn<'a>) -> impl ParseFn<'a> {
 fn parse_comment(step: Step<'_>) -> Option<Step<'_>> {
     if let Some(step) = shebang.or(line_comment).or(delimited_comment)(step) {
         match step.res {
-            TokenKind::Comment(Token::DelimitedComment | Token::LineComment) => {
-                opt(opt(hidden.or(nl))
-                    .and(tag("@"))
-                    .with(TokenKind::Operator(Token::AtPreWs)))(step)
+            Token::DelimitedComment | Token::LineComment => {
+                opt(opt(hidden.or(nl)).and(tag("@")).with(Token::AtPreWs))(step)
             }
             _ => Some(step),
         }
@@ -342,15 +381,12 @@ fn parse_comment(step: Step<'_>) -> Option<Step<'_>> {
 fn parse_operator(step: Step<'_>) -> Option<Step<'_>> {
     // we prioritize bigger lengths
     for size in OPERATORS_KEY_LENGTH_RANGE.rev() {
-        let slice = step.input.slice(step.pos..step.pos + size as usize);
+        let slice = step.get_until(size.into());
 
         if let Some(key) = slice {
             let matched = OPERATORS.get(key);
             if let Some(token) = matched {
-                return handle_operator(
-                    step.advance_with(size.into(), TokenKind::Operator(*token)),
-                    token,
-                );
+                return handle_operator(step.advance_with(size.into(), *token), token);
             }
         }
     }
@@ -386,44 +422,57 @@ fn handle_operator<'a>(mut step: Step<'a>, token: &Token) -> Option<Step<'a>> {
                 tag("'").or(tag("\u{000A}").or(tag("\u{000D}")).or(tag("\\")))
             ))
             .and(tag("'"))
-            .with(TokenKind::Literal(Token::CharacterLiteral))(step),
+            .with(Token::CharacterLiteral)(step),
         Token::QuoteOpen => {
             step.set_mode(LexGrammarMode::String);
             Some(step)
         }
         Token::TripleQuoteOpen => {
-            step.mode = LexGrammarMode::MultilineString;
+            step.set_mode(LexGrammarMode::MultilineString);
             Some(step)
         }
-        Token::ExclNoWs => opt(hidden.with(TokenKind::Operator(Token::ExclWs)))(step),
-        Token::AtNoWs => opt(hidden.or(nl).with(TokenKind::Operator(Token::AtPostWs)))(step),
-        Token::QuestNoWs => opt(hidden.or(nl).with(TokenKind::Operator(Token::QuestWs)))(step),
+        Token::ExclNoWs => opt(hidden.with(Token::ExclWs))(step),
+        Token::AtNoWs => opt(hidden.or(nl).with(Token::AtPostWs))(step),
+        Token::QuestNoWs => opt(hidden.or(nl).with(Token::QuestWs))(step),
         Token::Nl | Token::Ws => {
             // TODO: handle multiple hidden | nl before
             opt(tag("@")
-                .with(TokenKind::Operator(Token::AtPreWs))
-                .and(opt(hidden.with(TokenKind::Operator(Token::AtBothWs)))))(step)
+                .with(Token::AtPreWs)
+                .and(opt(hidden.with(Token::AtBothWs))))(step)
+        }
+        Token::RCurl => {
+            // special case for string interpolation:
+            // whenever we see a }, we pop lexer mode queue
+            step.pop_mode();
+            Some(step)
         }
         _ => Some(step),
     }
 }
 
 fn parse_keyword(step: Step<'_>) -> Option<Step<'_>> {
-    if !step.res.is_operator() {
+    if step
+        .prev_char()
+        .map(|ch| ch.can_be_in_ident())
+        .unwrap_or_default()
+    {
         return None;
     }
 
     // we prioritize bigger lengths
     for size in KEYWORDS_KEY_LENGTH_RANGE.rev() {
-        if let Some(key) = step.input.slice(step.pos..step.pos + size as usize) {
-            let matched = KEYWORDS.get(key);
-            let next = matched.zip((parse_operator(step.advance(size.into()))).map(|op| op.res));
+        if let Some(key) = step.get_until(size.into()) {
+            if step
+                .advance(size.into())
+                .next_char()
+                .map(|ch| ch.can_be_in_ident())
+                .unwrap_or_default()
+            {
+                continue;
+            }
 
-            if let Some((token, TokenKind::Operator(_))) = next {
-                return handle_keyword(
-                    step.advance_with(size.into(), TokenKind::Keyword(*token)),
-                    token,
-                );
+            if let Some(token) = KEYWORDS.get(key) {
+                return handle_keyword(step.advance_with(size.into(), *token), token);
             }
         }
     }
@@ -433,21 +482,11 @@ fn parse_keyword(step: Step<'_>) -> Option<Step<'_>> {
 
 fn handle_keyword<'a>(step: Step<'a>, token: &Token) -> Option<Step<'a>> {
     match token {
-        Token::This => opt(tag("@")
-            .and(parse_identifier)
-            .with(TokenKind::Keyword(Token::ThisAt)))(step),
-        Token::Super => opt(tag("@")
-            .and(parse_identifier)
-            .with(TokenKind::Keyword(Token::SuperAt)))(step),
-        Token::Return => opt(tag("@")
-            .and(parse_identifier)
-            .with(TokenKind::Keyword(Token::ReturnAt)))(step),
-        Token::Break => opt(tag("@")
-            .and(parse_identifier)
-            .with(TokenKind::Keyword(Token::BreakAt)))(step),
-        Token::Continue => opt(tag("@")
-            .and(parse_identifier)
-            .with(TokenKind::Keyword(Token::ContinueAt)))(step),
+        Token::This => opt(tag("@").and(parse_identifier).with(Token::ThisAt))(step),
+        Token::Super => opt(tag("@").and(parse_identifier).with(Token::SuperAt))(step),
+        Token::Return => opt(tag("@").and(parse_identifier).with(Token::ReturnAt))(step),
+        Token::Break => opt(tag("@").and(parse_identifier).with(Token::BreakAt))(step),
+        Token::Continue => opt(tag("@").and(parse_identifier).with(Token::ContinueAt))(step),
         Token::NotIn => opt(hidden)(step),
         Token::NotIs => opt(hidden)(step),
         _ => Some(step),
@@ -458,13 +497,13 @@ fn ws(step: Step<'_>) -> Option<Step<'_>> {
     tag("\u{0020}")
         .or(tag("\u{0009}"))
         .or(tag("\u{000C}"))
-        .with(TokenKind::Whitespace(Token::Ws))(step)
+        .with(Token::Ws)(step)
 }
 
 fn nl(step: Step<'_>) -> Option<Step<'_>> {
     tag("\u{000A}")
         .or(tag("\u{000D}").and(opt(tag("\u{000A}"))))
-        .with(TokenKind::Whitespace(Token::Ws))(step)
+        .with(Token::Ws)(step)
 }
 
 fn hidden(step: Step<'_>) -> Option<Step<'_>> {
@@ -474,20 +513,20 @@ fn hidden(step: Step<'_>) -> Option<Step<'_>> {
 fn shebang(step: Step<'_>) -> Option<Step<'_>> {
     tag("#!")
         .and(many0(not(tag("\u{000A}").or(tag("\u{000D}")))))
-        .with(TokenKind::Comment(Token::ShebangLine))(step)
+        .with(Token::ShebangLine)(step)
 }
 
 fn line_comment(step: Step<'_>) -> Option<Step<'_>> {
     tag("//")
         .and(many0(not(tag("\u{000A}").or(tag("\u{000D}")))))
-        .with(TokenKind::Comment(Token::LineComment))(step)
+        .with(Token::LineComment)(step)
 }
 
 fn delimited_comment(step: Step<'_>) -> Option<Step<'_>> {
     tag("/*")
         .and(many0(delimited_comment.or(not(tag("*/")))))
         .and(tag("*/"))
-        .with(TokenKind::Comment(Token::DelimitedComment))(step)
+        .with(Token::DelimitedComment)(step)
 }
 
 #[inline]
@@ -504,7 +543,7 @@ fn or<'a>(p1: impl ParseFn<'a>, p2: impl ParseFn<'a>) -> impl ParseFn<'a> {
 #[inline]
 fn not<'a>(p: impl ParseFn<'a>) -> impl ParseFn<'a> {
     move |step| {
-        if !(step.pos < step.input.len()) {
+        if step.pos >= step.input.len() {
             return None;
         }
         if p(step.clone()).is_some() {
@@ -516,18 +555,24 @@ fn not<'a>(p: impl ParseFn<'a>) -> impl ParseFn<'a> {
 }
 
 fn bin_or_hex_lit(step: Step<'_>) -> Option<Step<'_>> {
-    match step.input.slice(step.pos..step.pos + 2) {
+    match step.get_until(2) {
         Some("0b" | "0B") => {
             let index = step.find(2, |ch| ch != '0' && ch != '1' && ch != '_');
-            let entry = &step.input.get(step.pos + 2..step.pos + index)?;
+            let entry = step
+                .pos
+                .checked_add(2)
+                .zip(step.pos.checked_add(index))
+                .and_then(|(start, end)| step.input.get(start..end))?;
 
             if entry.starts_with('_') {
                 return None;
             }
             if entry.ends_with('_') {
-                return Some(step.advance_with(index - 1, TokenKind::Literal(Token::BinLiteral)));
+                return index
+                    .checked_sub(1)
+                    .map(|incr| step.advance_with(incr, Token::BinLiteral));
             }
-            Some(step.advance_with(index, TokenKind::Literal(Token::BinLiteral)))
+            Some(step.advance_with(index, Token::BinLiteral))
         }
         Some("0x" | "0X") => {
             let index = step.find(
@@ -535,15 +580,21 @@ fn bin_or_hex_lit(step: Step<'_>) -> Option<Step<'_>> {
                 |ch| !matches!(ch, '0'..='9' | 'a'..='f' | 'A'..='F' | '_'),
             );
 
-            let entry = &step.input.get(step.pos + 2..step.pos + index)?;
+            let entry = step
+                .pos
+                .checked_add(2)
+                .zip(step.pos.checked_add(index))
+                .and_then(|(start, end)| step.input.get(start..end))?;
 
             if entry.starts_with('_') {
                 return None;
             }
             if entry.ends_with('_') {
-                return Some(step.advance_with(index - 1, TokenKind::Literal(Token::HexLiteral)));
+                return index
+                    .checked_sub(1)
+                    .map(|incr| step.advance_with(incr, Token::HexLiteral));
             }
-            Some(step.advance_with(index, TokenKind::Literal(Token::HexLiteral)))
+            Some(step.advance_with(index, Token::HexLiteral))
         }
         _ => None,
     }
@@ -554,12 +605,12 @@ fn int_lit(step: Step<'_>) -> Option<Step<'_>> {
         Some(fc @ '0'..='9') => {
             let index = step.find(0, |ch| !ch.is_ascii_digit() && ch != '_');
 
-            let entry = &step.input.get(step.pos..step.pos + index)?;
+            let entry = &step.get_until(index)?;
 
             if entry.ends_with('_') {
-                return Some(
-                    step.advance_with(index - 1, TokenKind::Literal(Token::IntegerLiteral)),
-                );
+                return index
+                    .checked_sub(1)
+                    .map(|incr| step.advance_with(incr, Token::IntegerLiteral));
             }
 
             if entry.contains('_') && !('1'..'9').contains(&fc) {
@@ -570,28 +621,26 @@ fn int_lit(step: Step<'_>) -> Option<Step<'_>> {
                 return None;
             }
 
-            Some(step.advance_with(index, TokenKind::Literal(Token::IntegerLiteral)))
+            Some(step.advance_with(index, Token::IntegerLiteral))
         }
         _ => None,
     }
 }
 
-// int_lit but without check for 0 as first char
-// TODO: refactor
 fn dec_digits(step: Step<'_>) -> Option<Step<'_>> {
     match step.next_char() {
         Some('0'..='9') => {
             let index = step.find(0, |ch| !ch.is_ascii_digit() && ch != '_');
 
-            let entry = &step.input.get(step.pos..step.pos + index)?;
+            let entry = &step.get_until(index)?;
 
             if entry.ends_with('_') {
-                return Some(
-                    step.advance_with(index - 1, TokenKind::Literal(Token::IntegerLiteral)),
-                );
+                return index
+                    .checked_sub(1)
+                    .map(|incr| step.advance_with(incr, Token::IntegerLiteral));
             }
 
-            Some(step.advance_with(index, TokenKind::Literal(Token::IntegerLiteral)))
+            Some(step.advance_with(index, Token::IntegerLiteral))
         }
         _ => None,
     }
@@ -601,12 +650,11 @@ fn dec_digits(step: Step<'_>) -> Option<Step<'_>> {
 fn tag<'a>(pattern: &'static str) -> impl ParseFn<'a> {
     move |step| {
         if step
-            .input
-            .slice(step.pos..step.pos + pattern.len())
+            .get_until(pattern.len())
             .map(|t| t == pattern)
             .unwrap_or_default()
         {
-            Some(step.advance_with(pattern.len(), TokenKind::Identifier(Token::Identifier)))
+            Some(step.advance_with(pattern.len(), Token::Identifier))
         } else {
             None
         }
@@ -633,7 +681,7 @@ fn many<'a>(p: impl ParseFn<'a>) -> impl ParseFn<'a> {
         let mut next_step = step;
         while let Some(step) = p(next_step.clone()) {
             next_step = step;
-            if !(next_step.pos < next_step.input.len()) {
+            if next_step.pos >= next_step.input.len() {
                 break;
             }
         }
@@ -655,8 +703,7 @@ fn many0<'a>(p: impl ParseFn<'a>) -> impl ParseFn<'a> {
 fn char_range<'a>(range: RangeInclusive<char>) -> impl ParseFn<'a> {
     move |step| {
         if step
-            .input
-            .get(step.pos..step.pos + 1)
+            .get_until(1)
             .and_then(|s| Some(range.contains(&s.chars().next()?)))
             .unwrap_or_default()
         {
@@ -673,7 +720,7 @@ fn repeat<'a, const N: usize>(p1: impl ParseFn<'a>) -> impl ParseFn<'a> {
 }
 
 fn long_lit(step: Step<'_>) -> Option<Step<'_>> {
-    and(or(bin_or_hex_lit, int_lit), tag("L")).with(TokenKind::Literal(Token::LongLiteral))(step)
+    and(or(bin_or_hex_lit, int_lit), tag("L")).with(Token::LongLiteral)(step)
 }
 
 fn exponent_lit(step: Step<'_>) -> Option<Step<'_>> {
@@ -684,23 +731,19 @@ fn exponent_lit(step: Step<'_>) -> Option<Step<'_>> {
 }
 
 fn letter(step: Step<'_>) -> Option<Step<'_>> {
-    tag("_")
-        .or(when(|ch| ch.is_letter_lowercase()))
-        .or(when(|ch| ch.is_letter_uppercase()))
-        .or(when(|ch| ch.is_letter_titlecase()))
-        .or(when(|ch| ch.is_letter_modifier()))(step)
+    tag("_").or(when(|ch| ch.is_kotlin_letter()))(step)
 }
 
-fn quoted_symbol<'a>(step: Step<'a>) -> Option<Step<'a>> {
+fn quoted_symbol(step: Step<'_>) -> Option<Step<'_>> {
     tag("`")
         .and(many0(not(tag("\u{000A}").or(tag("\u{000D}").or(tag("`"))))))
         .and(tag("`"))(step)
 }
 
-fn parse_identifier<'a>(step: Step<'a>) -> Option<Step<'a>> {
+fn parse_identifier(step: Step<'_>) -> Option<Step<'_>> {
     quoted_symbol
-        .or(letter.and(many0(letter.or(when(|ch| ch.is_number_decimal_digit())))))
-        .with(TokenKind::Literal(Token::Identifier))(step)
+        .or(letter.and(many0(when(|ch| ch.can_be_in_ident()))))
+        .with(Token::Identifier)(step)
 }
 
 fn double_lit(step: Step<'_>) -> Option<Step<'_>> {
@@ -718,7 +761,7 @@ fn real_lit(step: Step<'_>) -> Option<Step<'_>> {
         and(or(double_lit, dec_digits), or(tag("f"), tag("F"))),
         double_lit,
     )
-    .with(TokenKind::Literal(Token::RealLiteral))(step)
+    .with(Token::RealLiteral)(step)
 }
 
 fn parse_literals(step: Step<'_>) -> Option<Step<'_>> {
@@ -755,17 +798,23 @@ where
 }
 
 fn str_ref(step: Step<'_>) -> Option<Step<'_>> {
-    tag("$").and(parse_identifier).with(match step.mode {
-        LexGrammarMode::String => TokenKind::StringMode(Token::LineStrRef),
-        LexGrammarMode::MultilineString => TokenKind::StringMode(Token::MultiLineStrRef),
+    tag("$").and(parse_identifier).with(match step.mode() {
+        LexGrammarMode::String => Token::LineStrRef,
+        LexGrammarMode::MultilineString => Token::MultiLineStrRef,
         LexGrammarMode::Normal => unreachable!("only called in string mode"),
     })(step)
 }
 
-fn str_expr_start(step: Step<'_>) -> Option<Step<'_>> {
-    tag("${").and(parse_identifier).with(match step.mode {
-        LexGrammarMode::String => TokenKind::StringMode(Token::LineStrExprStart),
-        LexGrammarMode::MultilineString => TokenKind::StringMode(Token::MultiStrExprStart),
+fn str_expr_start(mut step: Step<'_>) -> Option<Step<'_>> {
+    tag(r"${").with(match step.mode() {
+        LexGrammarMode::String => {
+            step.set_mode(LexGrammarMode::Normal);
+            Token::LineStrExprStart
+        }
+        LexGrammarMode::MultilineString => {
+            step.set_mode(LexGrammarMode::Normal);
+            Token::MultiStrExprStart
+        }
         LexGrammarMode::Normal => unreachable!("only called in string mode"),
     })(step)
 }
@@ -773,25 +822,25 @@ fn str_expr_start(step: Step<'_>) -> Option<Step<'_>> {
 fn line_str_text(step: Step<'_>) -> Option<Step<'_>> {
     many(not(tag("\\").or(tag("\"")).or(tag("$"))))
         .or(tag("$"))
-        .with(TokenKind::StringMode(Token::LineStrText))(step)
+        .with(Token::LineStrText)(step)
 }
 
 fn multi_line_str_text(step: Step<'_>) -> Option<Step<'_>> {
     many(not(tag("\"").or(tag("$"))))
         .or(tag("$"))
-        .with(TokenKind::StringMode(Token::MultiLineStrText))(step)
+        .with(Token::MultiLineStrText)(step)
 }
 
 fn quote_close(step: Step<'_>) -> Option<Step<'_>> {
-    if let Some(mut step) = tag("\"").with(TokenKind::StringMode(Token::QuoteClose))(step) {
-        step.mode = step.prev_mode.clone();
+    if let Some(mut step) = tag("\"").with(Token::QuoteClose)(step) {
+        step.pop_mode();
         return Some(step);
     }
     None
 }
 
 fn quote_open(step: Step<'_>) -> Option<Step<'_>> {
-    if let Some(mut step) = tag("\"").with(TokenKind::StringMode(Token::QuoteOpen))(step) {
+    if let Some(mut step) = tag("\"").with(Token::QuoteOpen)(step) {
         step.set_mode(LexGrammarMode::String);
         return Some(step);
     }
@@ -801,11 +850,12 @@ fn quote_open(step: Step<'_>) -> Option<Step<'_>> {
 fn multi_line_string_quote(step: Step<'_>) -> Option<Step<'_>> {
     let origin = step.clone();
     if let Some(step) = tag(r#"""""#).and(many(tag("\"")))(step) {
-        let det = step.pos - origin.pos;
+        let (det, incr) = step
+            .pos
+            .checked_sub(origin.pos)
+            .and_then(|det| det.checked_sub(3).map(|incr| (det, incr)))?;
         if det >= 6 {
-            return Some(
-                origin.advance_with(det - 3, TokenKind::StringMode(Token::MultiLineStringQuote)),
-            );
+            return Some(origin.advance_with(incr, Token::MultiLineStringQuote));
         }
     }
     None
@@ -813,8 +863,8 @@ fn multi_line_string_quote(step: Step<'_>) -> Option<Step<'_>> {
 
 fn triple_quote_close(step: Step<'_>) -> Option<Step<'_>> {
     if let Some(mut step) = opt(multi_line_string_quote).and(tag(r#"""""#))(step) {
-        step.mode = LexGrammarMode::Normal;
-        step.res = TokenKind::StringMode(Token::TripleQuoteClose);
+        step.set_mode(LexGrammarMode::Normal);
+        step.res = Token::TripleQuoteClose;
         return Some(step);
     }
     None
@@ -880,10 +930,9 @@ mod playground {
             "#
         );
 
-        let lex = Lexer::new(&source).spanned();
+        let lex = Lexer::new(&source).spanned_with_src();
         for lex in lex {
-            print!("{} - ", &lex);
-            println!("{:?}", &source[lex.span]);
+            println!("{}", lex);
         }
         Ok(())
     }
@@ -893,26 +942,6 @@ mod test {
     use macros::{assert_failure, assert_success};
 
     use super::*;
-
-    #[test]
-    #[ignore]
-    fn multi_line_str_test() {
-        let source = r#"
-        """
-        simple
-        """
-        """
-        complex ${ref}
-        "line string inside multi"
-        """"""
-        """""""""" // open with three, 4 quotes inside and 3 closing
-        "#;
-        let lex = Lexer::new(&source).spanned();
-        for lex in lex {
-            print!("{} - ", &lex);
-            println!("{:?}", &source[lex.span]);
-        }
-    }
 
     #[test]
     fn delimited_comment_test() {
