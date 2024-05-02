@@ -100,7 +100,7 @@ fn nested_multi_str_test() {
 #[test]
 fn keyword_start() {
     use lexer::Lexer;
-    
+
     let source = trim_idents!(
         r#"package dev.ikeze.kotlinsyntax
 
