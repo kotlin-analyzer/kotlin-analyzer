@@ -9,7 +9,7 @@ use std::{
 };
 
 use token_maps::{KEYWORDS, OPERATORS};
-use tokens::Token;
+use tokens::Token::{self, *};
 use unicode_categories::UnicodeCategories;
 
 trait ParseFn<'a>: Fn(Step<'a>) -> Option<Step<'a>> {
@@ -70,7 +70,7 @@ impl TokenInfo {
 
 impl Display for TokenInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Token::{:?} => {:?}", self.token, self.span)
+        write!(f, "{:?} => {:?}", self.token, self.span)
     }
 }
 
@@ -118,7 +118,7 @@ impl<'a> Step<'a> {
             None => Self {
                 pos: 0,
                 // fine to start with Err here, since we won't use it
-                res: Token::Err,
+                res: ERR,
                 mode_queue: VecDeque::default(),
                 input,
             },
@@ -209,7 +209,7 @@ impl Display for SpannedWithSource<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            r#"Token::{:?} => {:?}, // {:?}"#,
+            r#"{:?} => {:?}, // {:?}"#,
             self.token(),
             self.span(),
             self.substring()
@@ -225,7 +225,7 @@ impl<'a> Lexer<'a> {
             pos: 0,
             mode_queue: VecDeque::default(),
             // fine to start with Err here, it is replaced and never used
-            token: Token::Err,
+            token: ERR,
         }
     }
 
@@ -305,12 +305,12 @@ impl<'a> Iterator for Lexer<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         // strings
-        if self.input.len() == self.pos && matches!(self.token, Token::EOF) {
+        if self.input.len() == self.pos && matches!(self.token, EOF) {
             return None;
         };
 
         if self.input.len() == self.pos {
-            let eof_step = self.to_step().advance_with(0, Token::EOF);
+            let eof_step = self.to_step().advance_with(0, EOF);
             self.apply_step(&eof_step);
             return Some(eof_step);
         };
@@ -356,7 +356,7 @@ fn wrap_with_err<'a>(parser: impl ParseFn<'a>) -> impl ParseFn<'a> {
                 }
                 None => {
                     found = true;
-                    next_step = next_step.advance_with(1, Token::Err);
+                    next_step = next_step.advance_with(1, ERR);
                 }
             }
         }
@@ -368,8 +368,8 @@ fn wrap_with_err<'a>(parser: impl ParseFn<'a>) -> impl ParseFn<'a> {
 fn parse_comment(step: Step<'_>) -> Option<Step<'_>> {
     if let Some(step) = shebang.or(line_comment).or(delimited_comment)(step) {
         match step.res {
-            Token::DelimitedComment | Token::LineComment => {
-                opt(opt(hidden.or(nl)).and(tag("@")).with(Token::AtPreWs))(step)
+            DELIMITED_COMMENT | LINE_COMMENT => {
+                opt(opt(hidden.or(nl)).and(tag("@")).with(AT_PRE_WS))(step)
             }
             _ => Some(step),
         }
@@ -416,31 +416,29 @@ fn escaped_identifier(step: Step<'_>) -> Option<Step<'_>> {
 
 fn handle_operator<'a>(mut step: Step<'a>, token: &Token) -> Option<Step<'a>> {
     match token {
-        Token::SingleQuote => unicode_char_lit
+        SINGLE_QUOTE => unicode_char_lit
             .or(escaped_identifier)
             .or(not(
                 tag("'").or(tag("\u{000A}").or(tag("\u{000D}")).or(tag("\\")))
             ))
             .and(tag("'"))
-            .with(Token::CharacterLiteral)(step),
-        Token::QuoteOpen => {
+            .with(CHARACTER_LITERAL)(step),
+        QUOTE_OPEN => {
             step.set_mode(LexGrammarMode::String);
             Some(step)
         }
-        Token::TripleQuoteOpen => {
+        TRIPLE_QUOTE_OPEN => {
             step.set_mode(LexGrammarMode::MultilineString);
             Some(step)
         }
-        Token::ExclNoWs => opt(hidden.with(Token::ExclWs))(step),
-        Token::AtNoWs => opt(hidden.or(nl).with(Token::AtPostWs))(step),
-        Token::QuestNoWs => opt(hidden.or(nl).with(Token::QuestWs))(step),
-        Token::Nl | Token::Ws => {
+        EXCL_NO_WS => opt(hidden.with(EXCL_WS))(step),
+        AT_NO_WS => opt(hidden.or(nl).with(AT_POST_WS))(step),
+        QUEST_NO_WS => opt(hidden.or(nl).with(QUEST_WS))(step),
+        NL | WS => {
             // TODO: handle multiple hidden | nl before
-            opt(tag("@")
-                .with(Token::AtPreWs)
-                .and(opt(hidden.with(Token::AtBothWs))))(step)
+            opt(tag("@").with(AT_PRE_WS).and(opt(hidden.with(AT_BOTH_WS))))(step)
         }
-        Token::RCurl => {
+        R_CURL => {
             // special case for string interpolation:
             // whenever we see a }, we pop lexer mode queue
             step.pop_mode();
@@ -482,13 +480,13 @@ fn parse_keyword(step: Step<'_>) -> Option<Step<'_>> {
 
 fn handle_keyword<'a>(step: Step<'a>, token: &Token) -> Option<Step<'a>> {
     match token {
-        Token::This => opt(tag("@").and(parse_identifier).with(Token::ThisAt))(step),
-        Token::Super => opt(tag("@").and(parse_identifier).with(Token::SuperAt))(step),
-        Token::Return => opt(tag("@").and(parse_identifier).with(Token::ReturnAt))(step),
-        Token::Break => opt(tag("@").and(parse_identifier).with(Token::BreakAt))(step),
-        Token::Continue => opt(tag("@").and(parse_identifier).with(Token::ContinueAt))(step),
-        Token::NotIn => opt(hidden)(step),
-        Token::NotIs => opt(hidden)(step),
+        THIS => opt(tag("@").and(parse_identifier).with(THIS_AT))(step),
+        SUPER => opt(tag("@").and(parse_identifier).with(SUPER_AT))(step),
+        RETURN => opt(tag("@").and(parse_identifier).with(RETURN_AT))(step),
+        BREAK => opt(tag("@").and(parse_identifier).with(BREAK_AT))(step),
+        CONTINUE => opt(tag("@").and(parse_identifier).with(CONTINUE_AT))(step),
+        NOT_IN => opt(hidden)(step),
+        NOT_IS => opt(hidden)(step),
         _ => Some(step),
     }
 }
@@ -497,13 +495,13 @@ fn ws(step: Step<'_>) -> Option<Step<'_>> {
     tag("\u{0020}")
         .or(tag("\u{0009}"))
         .or(tag("\u{000C}"))
-        .with(Token::Ws)(step)
+        .with(WS)(step)
 }
 
 fn nl(step: Step<'_>) -> Option<Step<'_>> {
     tag("\u{000A}")
         .or(tag("\u{000D}").and(opt(tag("\u{000A}"))))
-        .with(Token::Ws)(step)
+        .with(WS)(step)
 }
 
 fn hidden(step: Step<'_>) -> Option<Step<'_>> {
@@ -513,20 +511,20 @@ fn hidden(step: Step<'_>) -> Option<Step<'_>> {
 fn shebang(step: Step<'_>) -> Option<Step<'_>> {
     tag("#!")
         .and(many0(not(tag("\u{000A}").or(tag("\u{000D}")))))
-        .with(Token::ShebangLine)(step)
+        .with(SHEBANG_LINE)(step)
 }
 
 fn line_comment(step: Step<'_>) -> Option<Step<'_>> {
     tag("//")
         .and(many0(not(tag("\u{000A}").or(tag("\u{000D}")))))
-        .with(Token::LineComment)(step)
+        .with(LINE_COMMENT)(step)
 }
 
 fn delimited_comment(step: Step<'_>) -> Option<Step<'_>> {
     tag("/*")
         .and(many0(delimited_comment.or(not(tag("*/")))))
         .and(tag("*/"))
-        .with(Token::DelimitedComment)(step)
+        .with(DELIMITED_COMMENT)(step)
 }
 
 #[inline]
@@ -570,9 +568,9 @@ fn bin_or_hex_lit(step: Step<'_>) -> Option<Step<'_>> {
             if entry.ends_with('_') {
                 return index
                     .checked_sub(1)
-                    .map(|incr| step.advance_with(incr, Token::BinLiteral));
+                    .map(|incr| step.advance_with(incr, BIN_LITERAL));
             }
-            Some(step.advance_with(index, Token::BinLiteral))
+            Some(step.advance_with(index, BIN_LITERAL))
         }
         Some("0x" | "0X") => {
             let index = step.find(
@@ -592,9 +590,9 @@ fn bin_or_hex_lit(step: Step<'_>) -> Option<Step<'_>> {
             if entry.ends_with('_') {
                 return index
                     .checked_sub(1)
-                    .map(|incr| step.advance_with(incr, Token::HexLiteral));
+                    .map(|incr| step.advance_with(incr, HEX_LITERAL));
             }
-            Some(step.advance_with(index, Token::HexLiteral))
+            Some(step.advance_with(index, HEX_LITERAL))
         }
         _ => None,
     }
@@ -610,7 +608,7 @@ fn int_lit(step: Step<'_>) -> Option<Step<'_>> {
             if entry.ends_with('_') {
                 return index
                     .checked_sub(1)
-                    .map(|incr| step.advance_with(incr, Token::IntegerLiteral));
+                    .map(|incr| step.advance_with(incr, INTEGER_LITERAL));
             }
 
             if entry.contains('_') && !('1'..'9').contains(&fc) {
@@ -621,7 +619,7 @@ fn int_lit(step: Step<'_>) -> Option<Step<'_>> {
                 return None;
             }
 
-            Some(step.advance_with(index, Token::IntegerLiteral))
+            Some(step.advance_with(index, INTEGER_LITERAL))
         }
         _ => None,
     }
@@ -637,10 +635,10 @@ fn dec_digits(step: Step<'_>) -> Option<Step<'_>> {
             if entry.ends_with('_') {
                 return index
                     .checked_sub(1)
-                    .map(|incr| step.advance_with(incr, Token::IntegerLiteral));
+                    .map(|incr| step.advance_with(incr, INTEGER_LITERAL));
             }
 
-            Some(step.advance_with(index, Token::IntegerLiteral))
+            Some(step.advance_with(index, INTEGER_LITERAL))
         }
         _ => None,
     }
@@ -654,7 +652,7 @@ fn tag<'a>(pattern: &'static str) -> impl ParseFn<'a> {
             .map(|t| t == pattern)
             .unwrap_or_default()
         {
-            Some(step.advance_with(pattern.len(), Token::Identifier))
+            Some(step.advance_with(pattern.len(), IDENTIFIER))
         } else {
             None
         }
@@ -720,7 +718,7 @@ fn repeat<'a, const N: usize>(p1: impl ParseFn<'a>) -> impl ParseFn<'a> {
 }
 
 fn long_lit(step: Step<'_>) -> Option<Step<'_>> {
-    and(or(bin_or_hex_lit, int_lit), tag("L")).with(Token::LongLiteral)(step)
+    and(or(bin_or_hex_lit, int_lit), tag("L")).with(LONG_LITERAL)(step)
 }
 
 fn exponent_lit(step: Step<'_>) -> Option<Step<'_>> {
@@ -743,7 +741,7 @@ fn quoted_symbol(step: Step<'_>) -> Option<Step<'_>> {
 fn parse_identifier(step: Step<'_>) -> Option<Step<'_>> {
     quoted_symbol
         .or(letter.and(many0(when(|ch| ch.can_be_in_ident()))))
-        .with(Token::Identifier)(step)
+        .with(IDENTIFIER)(step)
 }
 
 fn double_lit(step: Step<'_>) -> Option<Step<'_>> {
@@ -761,7 +759,7 @@ fn real_lit(step: Step<'_>) -> Option<Step<'_>> {
         and(or(double_lit, dec_digits), or(tag("f"), tag("F"))),
         double_lit,
     )
-    .with(Token::RealLiteral)(step)
+    .with(REAL_LITERAL)(step)
 }
 
 fn parse_literals(step: Step<'_>) -> Option<Step<'_>> {
@@ -799,8 +797,8 @@ where
 
 fn str_ref(step: Step<'_>) -> Option<Step<'_>> {
     tag("$").and(parse_identifier).with(match step.mode() {
-        LexGrammarMode::String => Token::LineStrRef,
-        LexGrammarMode::MultilineString => Token::MultiLineStrRef,
+        LexGrammarMode::String => LINE_STR_REF,
+        LexGrammarMode::MultilineString => MULTI_LINE_STR_REF,
         LexGrammarMode::Normal => unreachable!("only called in string mode"),
     })(step)
 }
@@ -809,11 +807,11 @@ fn str_expr_start(mut step: Step<'_>) -> Option<Step<'_>> {
     tag(r"${").with(match step.mode() {
         LexGrammarMode::String => {
             step.set_mode(LexGrammarMode::Normal);
-            Token::LineStrExprStart
+            LINE_STR_EXPR_START
         }
         LexGrammarMode::MultilineString => {
             step.set_mode(LexGrammarMode::Normal);
-            Token::MultiStrExprStart
+            MULTI_STR_EXPR_START
         }
         LexGrammarMode::Normal => unreachable!("only called in string mode"),
     })(step)
@@ -822,17 +820,17 @@ fn str_expr_start(mut step: Step<'_>) -> Option<Step<'_>> {
 fn line_str_text(step: Step<'_>) -> Option<Step<'_>> {
     many(not(tag("\\").or(tag("\"")).or(tag("$"))))
         .or(tag("$"))
-        .with(Token::LineStrText)(step)
+        .with(LINE_STR_TEXT)(step)
 }
 
 fn multi_line_str_text(step: Step<'_>) -> Option<Step<'_>> {
     many(not(tag("\"").or(tag("$"))))
         .or(tag("$"))
-        .with(Token::MultiLineStrText)(step)
+        .with(MULTI_LINE_STR_TEXT)(step)
 }
 
 fn quote_close(step: Step<'_>) -> Option<Step<'_>> {
-    if let Some(mut step) = tag("\"").with(Token::QuoteClose)(step) {
+    if let Some(mut step) = tag("\"").with(QUOTE_CLOSE)(step) {
         step.pop_mode();
         return Some(step);
     }
@@ -840,7 +838,7 @@ fn quote_close(step: Step<'_>) -> Option<Step<'_>> {
 }
 
 fn quote_open(step: Step<'_>) -> Option<Step<'_>> {
-    if let Some(mut step) = tag("\"").with(Token::QuoteOpen)(step) {
+    if let Some(mut step) = tag("\"").with(QUOTE_OPEN)(step) {
         step.set_mode(LexGrammarMode::String);
         return Some(step);
     }
@@ -855,7 +853,7 @@ fn multi_line_string_quote(step: Step<'_>) -> Option<Step<'_>> {
             .checked_sub(origin.pos)
             .and_then(|det| det.checked_sub(3).map(|incr| (det, incr)))?;
         if det >= 6 {
-            return Some(origin.advance_with(incr, Token::MultiLineStringQuote));
+            return Some(origin.advance_with(incr, MULTI_LINE_STRING_QUOTE));
         }
     }
     None
@@ -864,7 +862,7 @@ fn multi_line_string_quote(step: Step<'_>) -> Option<Step<'_>> {
 fn triple_quote_close(step: Step<'_>) -> Option<Step<'_>> {
     if let Some(mut step) = opt(multi_line_string_quote).and(tag(r#"""""#))(step) {
         step.set_mode(LexGrammarMode::Normal);
-        step.res = Token::TripleQuoteClose;
+        step.res = TRIPLE_QUOTE_CLOSE;
         return Some(step);
     }
     None
@@ -935,31 +933,25 @@ mod playground {
 }
 #[cfg(test)]
 mod test {
-    use macros::{assert_failure, assert_success};
-
     use super::*;
+    use macros::{assert_failure, assert_success};
 
     #[test]
     fn delimited_comment_test() {
-        assert_success!(delimited_comment, "/**/", 4, Token::DelimitedComment);
-        assert_success!(delimited_comment, "/**\n*/", 6, Token::DelimitedComment);
-        assert_success!(
-            delimited_comment,
-            "/* comment */",
-            13,
-            Token::DelimitedComment
-        );
+        assert_success!(delimited_comment, "/**/", 4, DELIMITED_COMMENT);
+        assert_success!(delimited_comment, "/**\n*/", 6, DELIMITED_COMMENT);
+        assert_success!(delimited_comment, "/* comment */", 13, DELIMITED_COMMENT);
         assert_success!(
             delimited_comment,
             "/* comment /* inner comment */ */",
             33,
-            Token::DelimitedComment
+            DELIMITED_COMMENT
         );
         assert_success!(
             delimited_comment,
             "/* comment /* inner /* deep */ */ */",
             36,
-            Token::DelimitedComment
+            DELIMITED_COMMENT
         );
 
         assert_failure!(delimited_comment, "/* comment /* inner /* deep */ */");
@@ -969,15 +961,15 @@ mod test {
 
     #[test]
     fn shebang_test() {
-        assert_success!(shebang, "#!", 2, Token::ShebangLine);
-        assert_success!(shebang, "#!\n", 2, Token::ShebangLine);
-        assert_success!(shebang, "#! sh echo", 10, Token::ShebangLine);
-        assert_success!(shebang, "#! comment // nested", 20, Token::ShebangLine);
+        assert_success!(shebang, "#!", 2, SHEBANG_LINE);
+        assert_success!(shebang, "#!\n", 2, SHEBANG_LINE);
+        assert_success!(shebang, "#! sh echo", 10, SHEBANG_LINE);
+        assert_success!(shebang, "#! comment // nested", 20, SHEBANG_LINE);
         assert_success!(
             shebang,
             "#! comment // nested #! deep /* more */",
             39,
-            Token::ShebangLine
+            SHEBANG_LINE
         );
 
         assert_failure!(shebang, "// comment");
@@ -986,15 +978,15 @@ mod test {
 
     #[test]
     fn line_comment_test() {
-        assert_success!(line_comment, "//", 2, Token::LineComment);
-        assert_success!(line_comment, "//\n", 2, Token::LineComment);
-        assert_success!(line_comment, "// line comment", 15, Token::LineComment);
-        assert_success!(line_comment, "// comment // nested", 20, Token::LineComment);
+        assert_success!(line_comment, "//", 2, LINE_COMMENT);
+        assert_success!(line_comment, "//\n", 2, LINE_COMMENT);
+        assert_success!(line_comment, "// line comment", 15, LINE_COMMENT);
+        assert_success!(line_comment, "// comment // nested", 20, LINE_COMMENT);
         assert_success!(
             line_comment,
             "// comment // nested /* delimited */",
             36,
-            Token::LineComment
+            LINE_COMMENT
         );
 
         assert_failure!(line_comment, "/* comment");
@@ -1070,9 +1062,9 @@ mod test {
 
     #[test]
     fn int_literals() {
-        assert_success!(int_lit, "23419", 5, Token::IntegerLiteral);
-        assert_success!(int_lit, "2_341_567", 9, Token::IntegerLiteral);
-        assert_success!(int_lit, "2_341_567r", 9, Token::IntegerLiteral);
+        assert_success!(int_lit, "23419", 5, INTEGER_LITERAL);
+        assert_success!(int_lit, "2_341_567", 9, INTEGER_LITERAL);
+        assert_success!(int_lit, "2_341_567r", 9, INTEGER_LITERAL);
         assert_success!(int_lit, "0");
         assert_success!(int_lit, "2_341_567_");
 
@@ -1085,14 +1077,14 @@ mod test {
 
     #[test]
     fn hex_bin_literals() {
-        assert_success!(bin_or_hex_lit, "0b101_010", 9, Token::BinLiteral);
-        assert_success!(bin_or_hex_lit, "0xff_ff_bb", 10, Token::HexLiteral);
+        assert_success!(bin_or_hex_lit, "0b101_010", 9, BIN_LITERAL);
+        assert_success!(bin_or_hex_lit, "0xff_ff_bb", 10, HEX_LITERAL);
 
-        assert_success!(bin_or_hex_lit, "0b101_010r", 9, Token::BinLiteral);
-        assert_success!(bin_or_hex_lit, "0xff_ff_bbr", 10, Token::HexLiteral);
+        assert_success!(bin_or_hex_lit, "0b101_010r", 9, BIN_LITERAL);
+        assert_success!(bin_or_hex_lit, "0xff_ff_bbr", 10, HEX_LITERAL);
 
-        assert_success!(bin_or_hex_lit, "0b101_010\n", 9, Token::BinLiteral);
-        assert_success!(bin_or_hex_lit, "0xff_ff_bbL\n", 10, Token::HexLiteral);
+        assert_success!(bin_or_hex_lit, "0b101_010\n", 9, BIN_LITERAL);
+        assert_success!(bin_or_hex_lit, "0xff_ff_bbL\n", 10, HEX_LITERAL);
 
         assert_success!(bin_or_hex_lit, "0b101_010_");
         assert_success!(bin_or_hex_lit, "0xff_ff_bb_");
@@ -1102,14 +1094,14 @@ mod test {
 
     #[test]
     fn long_literals() {
-        assert_success!(long_lit, "23419L", 6, Token::LongLiteral);
-        assert_success!(long_lit, "2_341_567L", 10, Token::LongLiteral);
+        assert_success!(long_lit, "23419L", 6, LONG_LITERAL);
+        assert_success!(long_lit, "2_341_567L", 10, LONG_LITERAL);
 
         assert_failure!(long_lit, "23419");
         assert_failure!(long_lit, "2_341_567");
 
-        assert_success!(long_lit, "0b101_010L", 10, Token::LongLiteral);
-        assert_success!(long_lit, "0xff_ff_bbL", 11, Token::LongLiteral);
+        assert_success!(long_lit, "0b101_010L", 10, LONG_LITERAL);
+        assert_success!(long_lit, "0xff_ff_bbL", 11, LONG_LITERAL);
 
         assert_failure!(long_lit, "0b101_010\n");
         assert_failure!(long_lit, "0xff_ff_bb\n");
@@ -1155,23 +1147,23 @@ mod test {
 
     #[test]
     fn literals() {
-        assert_success!(parse_literals, "23419L", 6, Token::LongLiteral);
-        assert_success!(parse_literals, "2_341_567L", 10, Token::LongLiteral);
+        assert_success!(parse_literals, "23419L", 6, LONG_LITERAL);
+        assert_success!(parse_literals, "2_341_567L", 10, LONG_LITERAL);
 
-        assert_success!(parse_literals, "23419", 5, Token::IntegerLiteral);
-        assert_success!(parse_literals, "2_341_567", 9, Token::IntegerLiteral);
+        assert_success!(parse_literals, "23419", 5, INTEGER_LITERAL);
+        assert_success!(parse_literals, "2_341_567", 9, INTEGER_LITERAL);
 
-        assert_success!(parse_literals, "0b101_010L", 10, Token::LongLiteral);
-        assert_success!(parse_literals, "0xff_ff_bbL", 11, Token::LongLiteral);
+        assert_success!(parse_literals, "0b101_010L", 10, LONG_LITERAL);
+        assert_success!(parse_literals, "0xff_ff_bbL", 11, LONG_LITERAL);
 
-        assert_success!(parse_literals, "0b101_010\n", 9, Token::BinLiteral);
-        assert_success!(parse_literals, "0xff_ff_bb\n", 10, Token::HexLiteral);
+        assert_success!(parse_literals, "0b101_010\n", 9, BIN_LITERAL);
+        assert_success!(parse_literals, "0xff_ff_bb\n", 10, HEX_LITERAL);
 
-        assert_success!(parse_literals, "0b101_010", 9, Token::BinLiteral);
-        assert_success!(parse_literals, "0xff_ff_bb", 10, Token::HexLiteral);
+        assert_success!(parse_literals, "0b101_010", 9, BIN_LITERAL);
+        assert_success!(parse_literals, "0xff_ff_bb", 10, HEX_LITERAL);
 
-        assert_success!(parse_literals, "38.38_390f", 10, Token::RealLiteral);
-        assert_success!(parse_literals, ".445_444f", 9, Token::RealLiteral);
-        assert_success!(parse_literals, "45.44e-940", 10, Token::RealLiteral);
+        assert_success!(parse_literals, "38.38_390f", 10, REAL_LITERAL);
+        assert_success!(parse_literals, ".445_444f", 9, REAL_LITERAL);
+        assert_success!(parse_literals, "45.44e-940", 10, REAL_LITERAL);
     }
 }

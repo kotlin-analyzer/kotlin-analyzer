@@ -5,258 +5,258 @@ use tokens::Token;
 
 pub static KEYWORDS: phf::Map<&'static str, Token> = phf_map! {
 
-   "file" => Token::File,
+   "file" => Token::FILE,
 
-   "field" => Token::Field,
+   "field" => Token::FIELD,
 
-   "property" => Token::Property,
+   "property" => Token::PROPERTY,
 
-   "get" => Token::Get,
+   "get" => Token::GET,
 
-   "set" => Token::Set,
+   "set" => Token::SET,
 
-   "receiver" => Token::Receiver,
+   "receiver" => Token::RECEIVER,
 
-   "param" => Token::Param,
+   "param" => Token::PARAM,
 
-   "setparam" => Token::SetParam,
+   "setparam" => Token::SET_PARAM,
 
-   "delegate" => Token::Delegate,
+   "delegate" => Token::DELEGATE,
 
-   "package" => Token::Package,
+   "package" => Token::PACKAGE,
 
-   "import" => Token::Import,
+   "import" => Token::IMPORT,
 
-   "class" => Token::Class,
+   "class" => Token::CLASS,
 
-   "interface" => Token::Interface,
+   "interface" => Token::INTERFACE,
 
-   "fun" => Token::Fun,
+   "fun" => Token::FUN,
 
-   "object" => Token::Object,
+   "object" => Token::OBJECT,
 
-   "val" => Token::Val,
+   "val" => Token::VAL,
 
-   "var" => Token::Var,
+   "var" => Token::VAR,
 
-   "typealias" => Token::TypeAlias,
+   "typealias" => Token::TYPE_ALIAS,
 
-   "constructor" => Token::Constructor,
+   "constructor" => Token::CONSTRUCTOR,
 
-   "by" => Token::By,
+   "by" => Token::BY,
 
-   "companion" => Token::Companion,
+   "companion" => Token::COMPANION,
 
-   "init" => Token::Init,
+   "init" => Token::INIT,
 
-   "this" => Token::This,
+   "this" => Token::THIS,
 
-   "super" => Token::Super,
+   "super" => Token::SUPER,
 
-   "typeof" => Token::Typeof,
+   "typeof" => Token::TYPEOF,
 
-   "where" => Token::Where,
+   "where" => Token::WHERE,
 
-   "if" => Token::If,
+   "if" => Token::IF,
 
-   "else" => Token::Else,
+   "else" => Token::ELSE,
 
-   "when" => Token::When,
+   "when" => Token::WHEN,
 
-   "try" => Token::Try,
+   "try" => Token::TRY,
 
-   "catch" => Token::Catch,
+   "catch" => Token::CATCH,
 
-   "finally" => Token::Finally,
+   "finally" => Token::FINALLY,
 
-   "for" => Token::For,
+   "for" => Token::FOR,
 
-   "do" => Token::Do,
+   "do" => Token::DO,
 
-   "while" => Token::While,
+   "while" => Token::WHILE,
 
-   "throw" => Token::Throw,
+   "throw" => Token::THROW,
 
-   "return" => Token::Return,
+   "return" => Token::RETURN,
 
-   "continue" => Token::Continue,
+   "continue" => Token::CONTINUE,
 
-   "break" => Token::Break,
+   "break" => Token::BREAK,
 
-   "as" => Token::As,
+   "as" => Token::AS,
 
-   "as?" => Token::AsSafe,
+   "as?" => Token::AS_SAFE,
 
-   "is" => Token::Is,
+   "is" => Token::IS,
 
-   "in" => Token::In,
+   "in" => Token::IN,
 
-   "!is" => Token::NotIs,
+   "!is" => Token::NOT_IS,
 
-   "!in" => Token::NotIn,
+   "!in" => Token::NOT_IN,
 
-   "out" => Token::Out,
+   "out" => Token::OUT,
 
-   "dynamic" => Token::Dynamic,
+   "dynamic" => Token::DYNAMIC,
 
-   "public" => Token::Public,
+   "public" => Token::PUBLIC,
 
-   "private" => Token::Private,
+   "private" => Token::PRIVATE,
 
-   "protected" => Token::Protected,
+   "protected" => Token::PROTECTED,
 
-   "internal" => Token::Internal,
+   "internal" => Token::INTERNAL,
 
-   "enum" => Token::Enum,
+   "enum" => Token::ENUM,
 
-   "sealed" => Token::Sealed,
+   "sealed" => Token::SEALED,
 
-   "annotation" => Token::Annotation,
+   "annotation" => Token::ANNOTATION,
 
-   "data" => Token::Data,
+   "data" => Token::DATA,
 
-   "inner" => Token::Inner,
+   "inner" => Token::INNER,
 
-   "tailrec" => Token::Tailrec,
+   "tailrec" => Token::TAILREC,
 
-   "operator" => Token::Operator,
+   "operator" => Token::OPERATOR,
 
-   "inline" => Token::Inline,
+   "inline" => Token::INLINE,
 
-   "infix" => Token::Infix,
+   "infix" => Token::INFIX,
 
-   "external" => Token::External,
+   "external" => Token::EXTERNAL,
 
-   "suspend" => Token::Suspend,
+   "suspend" => Token::SUSPEND,
 
-   "override" => Token::Override,
+   "override" => Token::OVERRIDE,
 
-   "abstract" => Token::Abstract,
+   "abstract" => Token::ABSTRACT,
 
-   "final" => Token::Final,
+   "final" => Token::FINAL,
 
-   "open" => Token::Open,
+   "open" => Token::OPEN,
 
-   "const" => Token::Const,
+   "const" => Token::CONST,
 
-   "lateinit" => Token::Lateinit,
+   "lateinit" => Token::LATEINIT,
 
-   "vararg" => Token::VarArg,
+   "vararg" => Token::VAR_ARG,
 
-   "noinline" => Token::NoInline,
+   "noinline" => Token::NO_INLINE,
 
-   "crossinline" => Token::CrossInline,
+   "crossinline" => Token::CROSS_INLINE,
 
-   "reified" => Token::Reified,
+   "reified" => Token::REIFIED,
 
-   "expect" => Token::Expect,
+   "expect" => Token::EXPECT,
 
-   "actual" => Token::Actual,
+   "actual" => Token::ACTUAL,
 
    // literals
-   "null" => Token::NullLiteral,
-   "true" => Token::BooleanLiteral,
-   "false" => Token::BooleanLiteral,
+   "null" => Token::NULL_LITERAL,
+   "true" => Token::BOOLEAN_LITERAL,
+   "false" => Token::BOOLEAN_LITERAL,
 };
 
 pub static OPERATORS: phf::Map<&'static str, Token> = phf_map! {
-   "..." => Token::Reserved,
+   "..." => Token::RESERVED,
 
-   "." => Token::Dot,
+   "." => Token::DOT,
 
-   "," => Token::Comma,
+   "," => Token::COMMA,
 
-   "(" => Token::LParen,
+   "(" => Token::L_PAREN,
 
-   ")" => Token::RParen,
+   ")" => Token::R_PAREN,
 
-   "[" => Token::LSquare,
+   "[" => Token::L_SQUARE,
 
-   "]" => Token::RSquare,
+   "]" => Token::R_SQUARE,
 
-   "{" => Token::LCurl,
+   "{" => Token::L_CURL,
 
-   "}" => Token::RCurl,
+   "}" => Token::R_CURL,
 
-   "*" => Token::Mult,
+   "*" => Token::MULT,
 
-   "%" => Token::Mod,
+   "%" => Token::MOD,
 
-   "/" => Token::Div,
+   "/" => Token::DIV,
 
-   "+" => Token::Add,
+   "+" => Token::ADD,
 
-   "-" => Token::Sub,
+   "-" => Token::SUB,
 
-   "++" => Token::Incr,
+   "++" => Token::INCR,
 
-   "--" => Token::Decr,
+   "--" => Token::DECR,
 
-   "||" => Token::Disj,
+   "||" => Token::DISJ,
 
-   "!" => Token::ExclNoWs,
+   "!" => Token::EXCL_NO_WS,
 
-   ":" => Token::Colon,
+   ":" => Token::COLON,
 
-   ";" => Token::Semicolon,
+   ";" => Token::SEMICOLON,
 
-   "=" => Token::Assignment,
+   "=" => Token::ASSIGNMENT,
 
-   "+=" => Token::AddAssignment,
+   "+=" => Token::ADD_ASSIGNMENT,
 
-   "*=" => Token::MultAssignment,
+   "*=" => Token::MULT_ASSIGNMENT,
 
-   "/=" => Token::DivAssignment,
+   "/=" => Token::DIV_ASSIGNMENT,
 
-   "%=" => Token::ModAssignment,
+   "%=" => Token::MOD_ASSIGNMENT,
 
-   "->" => Token::Arrow,
+   "->" => Token::ARROW,
 
-   "=>" => Token::DoubleArrow,
+   "=>" => Token::DOUBLE_ARROW,
 
-   ".." => Token::Range,
+   ".." => Token::RANGE,
 
-   "::" => Token::ColonColon,
+   "::" => Token::COLON_COLON,
 
-   ";;" => Token::DoubleSemicolon,
+   ";;" => Token::DOUBLE_SEMICOLON,
 
-   "#" => Token::Hash,
+   "#" => Token::HASH,
 
-   "@" => Token::AtNoWs,
+   "@" => Token::AT_NO_WS,
 
-   "?" => Token::QuestNoWs,
+   "?" => Token::QUEST_NO_WS,
 
-   "<" => Token::LAngle,
+   "<" => Token::L_ANGLE,
 
-   ">" => Token::RAngle,
+   ">" => Token::R_ANGLE,
 
    "<=" => Token::LE,
 
    ">=" => Token::GE,
 
-   "!=" => Token::ExclEq,
+   "!=" => Token::EXCL_EQ,
 
-   "!==" => Token::ExclEqEq,
+   "!==" => Token::EXCL_EQ_EQ,
 
-   "==" => Token::EqEq,
+   "==" => Token::EQ_EQ,
 
-   "===" => Token::EqEqEq,
+   "===" => Token::EQ_EQ_EQ,
 
-   "'" => Token::SingleQuote,
+   "'" => Token::SINGLE_QUOTE,
 
    // activates string mode
-   "\"" => Token::QuoteOpen,
+   "\"" => Token::QUOTE_OPEN,
 
     // activates multiline string mode
-   r#"""""# => Token::TripleQuoteOpen,
+   r#"""""# => Token::TRIPLE_QUOTE_OPEN,
 
    // whitespaces
-   "\u{0020}" => Token::Ws,
-   "\u{0009}" => Token::Ws,
-   "\u{000C}" => Token::Ws,
+   "\u{0020}" => Token::WS,
+   "\u{0009}" => Token::WS,
+   "\u{000C}" => Token::WS,
 
    // new lines
-   "\u{000A}" => Token::Nl,
-   "\u{000D}" => Token::Nl,
-   "\u{000A}\u{000D}" => Token::Nl,
+   "\u{000A}" => Token::NL,
+   "\u{000D}" => Token::NL,
+   "\u{000A}\u{000D}" => Token::NL,
 };
