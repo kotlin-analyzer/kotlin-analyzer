@@ -1,0 +1,35 @@
+{
+    "name": "kotlin-analyzer",
+    "displayName": "Kotlin-analyzer",
+    "description": "kotlin language support for Visual Studio Code",
+    "version": "0.0.1",
+    "engines": {
+        "vscode": "^1.88.0"
+    },
+    "categories": [
+        "Programming Languages"
+    ],
+    "contributes": {
+        "languages": [
+            {
+                "id": "kotlin",
+                "aliases": [
+                    "Kotlin",
+                    "kotlin"
+                ],
+                "extensions": [
+                    ".kt",
+                    ".kts"
+                ],
+                "configuration": "./language-configuration.json"
+            }
+        ],
+        "grammars": [
+            {
+                "language": "kotlin",
+                "scopeName": "source.kotlin",
+                "path": "./syntaxes/kotlin.tmLanguage.json"
+            }
+        ]
+    }
+}
