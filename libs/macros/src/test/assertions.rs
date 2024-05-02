@@ -1,7 +1,7 @@
 /// asserts that a tokenizer successfully to tokenize the next characters
 /// NB: can only be used within lexer crate
 /// ```ignore
-/// assert_success!(bin_or_hex_lit, "0b101_010", 9, Token::BinLiteral);
+/// assert_success!(bin_or_hex_lit, "0b101_010", 9, BIN_LITERAL);
 /// assert_success!(real_lit, "45.44e+940_", 10);
 /// assert_success!(int_lit, "0");
 /// ```
@@ -52,9 +52,9 @@ macro_rules! trim_idents {
 ///
 ///    let source = r#""hey ${echo("test")} stranger""#;
 ///    lexer_matches!(source, [
-///        Token::QuoteOpen => 0..1,
-///        Token::LineStrText => 1..5,
-///        Token::LineStrExprStart => 5..7
+///        QUOTE_OPEN => 0..1,
+///        LINE_STR_TEXT => 1..5,
+///        LINE_STR_EXPR_START => 5..7
 ///    ]);
 ///
 /// ```
