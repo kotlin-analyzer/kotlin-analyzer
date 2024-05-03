@@ -89,16 +89,13 @@ pub enum LexGrammarMode {
 /// This is the main lexer that contains the input string and the current position.
 #[derive(Debug, Clone)]
 pub struct Lexer<'a> {
-    input: &'a str,
-    pos: usize,
-    token: Token,
-    mode_queue: VecDeque<LexGrammarMode>,
+    step: Step<'a>,
 }
 
 /// This is a single step in the lexer that contains the current position,
 /// the result of the tokenization, the current mode and the previous mode.
 #[derive(Debug, Clone, PartialEq)]
-pub struct Step<'a> {
+struct Step<'a> {
     pos: usize,
     res: Token,
     mode_queue: VecDeque<LexGrammarMode>,
@@ -221,31 +218,18 @@ impl<'a> Lexer<'a> {
     #[allow(dead_code)]
     pub fn new(input: &'a str) -> Self {
         Self {
-            input,
-            pos: 0,
-            mode_queue: VecDeque::default(),
-            // fine to start with Err here, it is replaced and never used
-            token: ERR,
+            step: Step {
+                input,
+                pos: 0,
+                mode_queue: VecDeque::default(),
+                // fine to start with Err here, it is replaced and never used
+                res: ERR,
+            },
         }
     }
 
-    fn mode(&self) -> &LexGrammarMode {
-        self.mode_queue.back().unwrap_or(&LexGrammarMode::Normal)
-    }
-
-    fn to_step(&self) -> Step<'a> {
-        Step {
-            pos: self.pos,
-            res: self.token,
-            mode_queue: self.mode_queue.clone(),
-            input: self.input,
-        }
-    }
-
-    fn apply_step(&mut self, step: &Step<'a>) {
-        self.pos = step.pos;
-        self.token = step.res;
-        self.mode_queue = step.mode_queue.clone();
+    fn apply_step(&mut self, step: Step<'a>) {
+        self.step = step;
     }
 
     /// This method returns an iterator over the tokens in the input string.
@@ -253,16 +237,16 @@ impl<'a> Lexer<'a> {
     pub fn spanned(self) -> impl Iterator<Item = TokenInfo> + 'a {
         self.scan(0, |start, step| {
             let next = TokenInfo {
-                token: step.res,
-                span: (*start)..step.pos,
+                token: step.0,
+                span: (*start)..step.1,
             };
-            *start = step.pos;
+            *start = step.1;
             Some(next)
         })
     }
 
     pub fn spanned_with_src(self) -> impl Iterator<Item = SpannedWithSource<'a>> + 'a {
-        let input = self.input;
+        let input = self.step.input;
         self.spanned()
             .map(|TokenInfo { token, span }| SpannedWithSource {
                 token,
@@ -272,8 +256,8 @@ impl<'a> Lexer<'a> {
     }
 
     fn tokenize_next(&self) -> Option<Step<'a>> {
-        let step = self.to_step();
-        match self.mode() {
+        let step = self.step.clone();
+        match self.step.mode() {
             LexGrammarMode::Normal => wrap_with_err(
                 parse_comment
                     .or(parse_operator)
@@ -301,23 +285,22 @@ impl<'a> Lexer<'a> {
 }
 
 impl<'a> Iterator for Lexer<'a> {
-    type Item = Step<'a>;
+    type Item = (Token, usize);
 
     fn next(&mut self) -> Option<Self::Item> {
-        // strings
-        if self.input.len() == self.pos && matches!(self.token, EOF) {
+        if self.step.input.len() == self.step.pos && matches!(self.step.res, EOF) {
             return None;
         };
 
-        if self.input.len() == self.pos {
-            let eof_step = self.to_step().advance_with(0, EOF);
-            self.apply_step(&eof_step);
-            return Some(eof_step);
+        if self.step.input.len() == self.step.pos {
+            let eof_step = self.step.advance_with(0, EOF);
+            self.apply_step(eof_step);
+            return Some((self.step.res, self.step.pos));
         };
 
         if let Some(step) = self.tokenize_next() {
-            self.apply_step(&step);
-            Some(step)
+            self.apply_step(step);
+            Some((self.step.res, self.step.pos))
         } else {
             None
         }
