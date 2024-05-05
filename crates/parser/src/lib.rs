@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use lexer::SpannedWithSource;
 use syntax::Syntax::{self, *};
 use tokens::Token;
@@ -21,7 +23,7 @@ pub trait TreeSink {
 
 pub type ParseError = String;
 
-pub fn parse<'a, 'b>(token_source: &'a mut dyn TokenSource<'b>, tree_sink: &'a mut dyn TreeSink) {
+pub fn parse<'a>(token_source: &'a mut dyn TokenSource<'_>, tree_sink: &'a mut dyn TreeSink) {
     struct Parser<'a, 'b> {
         source: &'a mut dyn TokenSource<'b>,
         sink: &'a mut dyn TreeSink,
@@ -49,7 +51,7 @@ pub fn parse<'a, 'b>(token_source: &'a mut dyn TokenSource<'b>, tree_sink: &'a m
 
     impl Parser<'_, '_> {
         fn parse(mut self) {
-            self.sink.start_node(ROOT.into());
+            self.sink.start_node(ROOT);
             loop {
                 match self.kotlin_file() {
                     ParseRes::Eof => break,
@@ -83,7 +85,7 @@ pub fn parse<'a, 'b>(token_source: &'a mut dyn TokenSource<'b>, tree_sink: &'a m
         fn shebang_line(&mut self) {
             assert_eq!(self.current_token(), Some(&Token::SHEBANG_LINE));
 
-            self.sink.start_node(SHEBANG_LINE.into());
+            self.sink.start_node(SHEBANG_LINE);
             self.bump();
             self.take(Token::NL);
             self.skip_newlines();
@@ -93,7 +95,7 @@ pub fn parse<'a, 'b>(token_source: &'a mut dyn TokenSource<'b>, tree_sink: &'a m
         fn file_annotation(&mut self) {
             match self.next_two_tokens() {
                 Some((Token::AT_NO_WS | Token::AT_PRE_WS, Token::FILE)) => {
-                    self.sink.start_node(FILE_ANNOTATION.into());
+                    self.sink.start_node(FILE_ANNOTATION);
                     self.bump_n(2);
                     self.skip_newlines();
                     self.take(Token::COLON).expect("expected a colon (:)");
@@ -135,7 +137,7 @@ pub fn parse<'a, 'b>(token_source: &'a mut dyn TokenSource<'b>, tree_sink: &'a m
         fn simple_identifier(&mut self) {
             match self.current().map(|sp| (sp.is_soft_keyword(), sp.token())) {
                 Some((true, _) | (_, Token::IDENTIFIER)) => {
-                    self.sink.start_node(SIMPLE_IDENTIFIER.into());
+                    self.sink.start_node(SIMPLE_IDENTIFIER);
                     self.bump();
                     self.sink.finish_node();
                 }

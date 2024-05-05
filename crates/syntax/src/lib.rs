@@ -1,7 +1,6 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[allow(non_camel_case_types)]
 #[repr(u16)]
-#[allow(dead_code)]
 /// This represents only composite nodes and
 /// tokens are wrapped inside [SyntaxKind::TOKEN]
 /// Adapted from https://kotlinlang.org/spec/syntax-and-grammar.html#syntax-grammar
@@ -236,10 +235,7 @@ impl rowan::Language for Lang {
 }
 
 // use lexer::Lexer;
-use itertools::peek_nth;
-use lexer::SpannedWithSource;
-use rowan::GreenNode;
-use rowan::GreenNodeBuilder;
+
 use tokens::Token;
 
 #[cfg(test)]

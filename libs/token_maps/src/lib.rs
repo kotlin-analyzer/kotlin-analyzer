@@ -330,22 +330,22 @@ mod token_id_test {
 
     #[test]
     fn is_operator_test() {
-        assert_eq!(is_operator(":"), true);
-        assert_eq!(is_operator("final"), false);
-        assert_eq!(is_operator("fun"), false);
+        assert!(is_operator(":"));
+        assert!(!is_operator("final"));
+        assert!(!is_operator("fun"));
     }
 
     #[test]
     fn is_keyword_test() {
-        assert_eq!(is_keyword(":"), false);
-        assert_eq!(is_keyword("final"), true);
-        assert_eq!(is_keyword("fun"), true);
+        assert!(!is_keyword(":"));
+        assert!(is_keyword("final"));
+        assert!(is_keyword("fun"));
     }
 
     #[test]
     fn is_soft_keyword_test() {
-        assert_eq!(is_soft_keyword(":"), false);
-        assert_eq!(is_soft_keyword("final"), true);
-        assert_eq!(is_soft_keyword("fun"), false);
+        assert!(!is_soft_keyword(":"));
+        assert!(is_soft_keyword("final"));
+        assert!(!is_soft_keyword("fun"));
     }
 }
