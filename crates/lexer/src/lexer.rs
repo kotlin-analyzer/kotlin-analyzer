@@ -79,7 +79,7 @@ impl Display for TokenInfo {
 /// - String: The mode for single line string literals
 /// - MultilineString: The mode for multiline string literals
 #[derive(Debug, Clone, PartialEq, Default)]
-pub enum LexGrammarMode {
+enum LexGrammarMode {
     #[default]
     Normal,
     String,
@@ -187,6 +187,7 @@ impl<'a> Step<'a> {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SpannedWithSource<'a> {
     token: Token,
     span: Span,
@@ -204,6 +205,18 @@ impl SpannedWithSource<'_> {
 
     pub fn substring(&self) -> &str {
         self.substring
+    }
+
+    pub fn is_keyword(&self) -> bool {
+        token_maps::is_keyword(self.substring())
+    }
+
+    pub fn is_soft_keyword(&self) -> bool {
+        token_maps::is_soft_keyword(self.substring())
+    }
+
+    pub fn is_operator(&self) -> bool {
+        token_maps::is_operator(self.substring())
     }
 }
 

@@ -1,4 +1,4 @@
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[allow(non_camel_case_types)]
 #[repr(u16)]
 pub enum Token {
@@ -136,6 +136,7 @@ pub enum Token {
     REIFIED,
     EXPECT,
     ACTUAL,
+    VALUE,
 
     //# ENDREGION
     ///! LITERALS
