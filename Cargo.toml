@@ -11,10 +11,10 @@ rust-version = "1.82.0"
 
 
 [workspace.dependencies]
-nonempty = "0.10.0"
 lexer = { path = "./crates/lexer" }
 syntax = { path = "./crates/syntax" }
 parser = { path = "./crates/parser" }
+ast = { path = "./crates/ast" }
 tokens = { path = "./libs/tokens" }
 token_maps = { path = "./libs/token_maps" }
 macros = { path = "./libs/macros" }

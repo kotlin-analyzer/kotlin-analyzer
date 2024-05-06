@@ -1,33 +1,49 @@
 //! source: https://kotlinlang.org/spec/syntax-and-grammar.html#syntax-grammar
-
 mod nodes;
+use nodes::*;
+use syntax::SyntaxNode;
 
-use nodes::{
-    FileAnnotation, ImportList, Nl, PackageHeader, ShebangLine, Statement, TopLevelObject,
-};
-use std::ops::Range;
+#[macro_export]
+macro_rules! ast_node {
+    ($ast:ident, $kind:ident) => {
+        #[derive(PartialEq, Eq, Hash, Clone)]
+        #[repr(transparent)]
+        pub struct $ast(::syntax::SyntaxNode);
+        impl $ast {
+            #[allow(unused)]
+            pub fn cast(node: ::syntax::SyntaxNode) -> Option<Self> {
+                if node.kind() == ::syntax::SyntaxKind::Syntax($kind) {
+                    Some(Self(node))
+                } else {
+                    None
+                }
+            }
+        }
+    };
+}
 
-pub type Span = Range<usize>;
+#[derive(PartialEq, Eq, Hash, Clone)]
+#[repr(transparent)]
+pub struct Root(SyntaxNode);
 
-pub enum Ast {
+pub enum RootKind {
     File(KotlinFile),
     Script(KotlinScript),
 }
 
-pub struct KotlinFile {
-    pub shebang_line: Option<ShebangLine>,
-    pub lines_after_shebang: Vec<Nl>,
-    pub file_annotations: Vec<FileAnnotation>,
-    pub package_header: PackageHeader,
-    pub import_list: ImportList,
-    pub top_level_objects: Vec<TopLevelObject>,
-}
+impl Root {
+    pub fn cast(node: SyntaxNode) -> Option<Self> {
+        if KotlinFile::cast(node.clone()).is_some() || KotlinScript::cast(node.clone()).is_some() {
+            Some(Root(node))
+        } else {
+            None
+        }
+    }
 
-pub struct KotlinScript {
-    pub shebang_line: Option<ShebangLine>,
-    pub lines_after_shebang: Vec<Nl>,
-    pub file_annotations: Vec<FileAnnotation>,
-    pub package_header: PackageHeader,
-    pub import_list: ImportList,
-    pub statements: Vec<Statement>,
+    pub fn kind(&self) -> RootKind {
+        KotlinFile::cast(self.0.clone())
+            .map(RootKind::File)
+            .or_else(|| KotlinScript::cast(self.0.clone()).map(RootKind::Script))
+            .unwrap()
+    }
 }

@@ -1,3 +1,4 @@
+use ast::Root;
 use itertools::{peek_nth, PeekNth};
 use lexer::{Lexer, SpannedWithSource};
 use parser::{ParseError, TokenSource, TreeSink};
@@ -84,5 +85,9 @@ pub fn parse(text: &str) -> Parse {
 impl Parse {
     pub fn syntax(&self) -> SyntaxNode {
         SyntaxNode::new_root(self.green_node.clone())
+    }
+
+    pub fn root(&self) -> Root {
+        Root::cast(self.syntax()).unwrap()
     }
 }
