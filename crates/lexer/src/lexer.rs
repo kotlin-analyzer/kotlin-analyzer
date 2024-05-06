@@ -8,7 +8,7 @@ use std::{
     ops::{Range, RangeInclusive},
 };
 
-use token_maps::{KEYWORDS, OPERATORS};
+use token_maps::{get_keyword, OPERATORS};
 use tokens::Token::{self, *};
 use unicode_categories::UnicodeCategories;
 
@@ -79,7 +79,7 @@ impl Display for TokenInfo {
 /// - String: The mode for single line string literals
 /// - MultilineString: The mode for multiline string literals
 #[derive(Debug, Clone, PartialEq, Default)]
-pub enum LexGrammarMode {
+enum LexGrammarMode {
     #[default]
     Normal,
     String,
@@ -89,19 +89,33 @@ pub enum LexGrammarMode {
 /// This is the main lexer that contains the input string and the current position.
 #[derive(Debug, Clone)]
 pub struct Lexer<'a> {
-    input: &'a str,
-    pos: usize,
-    token: Token,
-    mode_queue: VecDeque<LexGrammarMode>,
+    step: Step<'a>,
+}
+
+#[derive(Debug, Clone, PartialEq, Default)]
+struct Mode(VecDeque<LexGrammarMode>);
+
+impl Mode {
+    fn peek(&self) -> &LexGrammarMode {
+        self.0.back().unwrap_or(&LexGrammarMode::Normal)
+    }
+
+    fn pop(&mut self) {
+        self.0.pop_back();
+    }
+
+    fn set(&mut self, mode: LexGrammarMode) {
+        self.0.push_back(mode)
+    }
 }
 
 /// This is a single step in the lexer that contains the current position,
 /// the result of the tokenization, the current mode and the previous mode.
 #[derive(Debug, Clone, PartialEq)]
-pub struct Step<'a> {
+struct Step<'a> {
     pos: usize,
     res: Token,
-    mode_queue: VecDeque<LexGrammarMode>,
+    mode: Mode,
     input: &'a str,
 }
 
@@ -112,14 +126,14 @@ impl<'a> Step<'a> {
             Some(token) => Self {
                 pos: 0,
                 res: token,
-                mode_queue: VecDeque::default(),
+                mode: Mode::default(),
                 input,
             },
             None => Self {
                 pos: 0,
                 // fine to start with Err here, since we won't use it
                 res: ERR,
-                mode_queue: VecDeque::default(),
+                mode: Mode::default(),
                 input,
             },
         }
@@ -136,18 +150,6 @@ impl<'a> Step<'a> {
         let mut step = self.advance(increment);
         step.res = kind;
         step
-    }
-
-    fn mode(&self) -> &LexGrammarMode {
-        self.mode_queue.back().unwrap_or(&LexGrammarMode::Normal)
-    }
-
-    fn pop_mode(&mut self) {
-        self.mode_queue.pop_back();
-    }
-
-    fn set_mode(&mut self, mode: LexGrammarMode) {
-        self.mode_queue.push_back(mode)
     }
 
     fn get_till_end(&self, incr: usize) -> Option<&'a str> {
@@ -185,6 +187,7 @@ impl<'a> Step<'a> {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SpannedWithSource<'a> {
     token: Token,
     span: Span,
@@ -203,6 +206,18 @@ impl SpannedWithSource<'_> {
     pub fn substring(&self) -> &str {
         self.substring
     }
+
+    pub fn is_keyword(&self) -> bool {
+        token_maps::is_keyword(self.substring())
+    }
+
+    pub fn is_soft_keyword(&self) -> bool {
+        token_maps::is_soft_keyword(self.substring())
+    }
+
+    pub fn is_operator(&self) -> bool {
+        token_maps::is_operator(self.substring())
+    }
 }
 
 impl Display for SpannedWithSource<'_> {
@@ -218,34 +233,20 @@ impl Display for SpannedWithSource<'_> {
 }
 
 impl<'a> Lexer<'a> {
-    #[allow(dead_code)]
     pub fn new(input: &'a str) -> Self {
         Self {
-            input,
-            pos: 0,
-            mode_queue: VecDeque::default(),
-            // fine to start with Err here, it is replaced and never used
-            token: ERR,
+            step: Step {
+                input,
+                pos: 0,
+                mode: Mode::default(),
+                // fine to start with Err here, it is replaced and never used
+                res: ERR,
+            },
         }
     }
 
-    fn mode(&self) -> &LexGrammarMode {
-        self.mode_queue.back().unwrap_or(&LexGrammarMode::Normal)
-    }
-
-    fn to_step(&self) -> Step<'a> {
-        Step {
-            pos: self.pos,
-            res: self.token,
-            mode_queue: self.mode_queue.clone(),
-            input: self.input,
-        }
-    }
-
-    fn apply_step(&mut self, step: &Step<'a>) {
-        self.pos = step.pos;
-        self.token = step.res;
-        self.mode_queue = step.mode_queue.clone();
+    fn apply_step(&mut self, step: Step<'a>) {
+        self.step = step;
     }
 
     /// This method returns an iterator over the tokens in the input string.
@@ -253,16 +254,16 @@ impl<'a> Lexer<'a> {
     pub fn spanned(self) -> impl Iterator<Item = TokenInfo> + 'a {
         self.scan(0, |start, step| {
             let next = TokenInfo {
-                token: step.res,
-                span: (*start)..step.pos,
+                token: step.0,
+                span: (*start)..step.1,
             };
-            *start = step.pos;
+            *start = step.1;
             Some(next)
         })
     }
 
     pub fn spanned_with_src(self) -> impl Iterator<Item = SpannedWithSource<'a>> + 'a {
-        let input = self.input;
+        let input = self.step.input;
         self.spanned()
             .map(|TokenInfo { token, span }| SpannedWithSource {
                 token,
@@ -272,8 +273,8 @@ impl<'a> Lexer<'a> {
     }
 
     fn tokenize_next(&self) -> Option<Step<'a>> {
-        let step = self.to_step();
-        match self.mode() {
+        let step = self.step.clone();
+        match self.step.mode.peek() {
             LexGrammarMode::Normal => wrap_with_err(
                 parse_comment
                     .or(parse_operator)
@@ -301,23 +302,22 @@ impl<'a> Lexer<'a> {
 }
 
 impl<'a> Iterator for Lexer<'a> {
-    type Item = Step<'a>;
+    type Item = (Token, usize);
 
     fn next(&mut self) -> Option<Self::Item> {
-        // strings
-        if self.input.len() == self.pos && matches!(self.token, EOF) {
+        if self.step.input.len() == self.step.pos && matches!(self.step.res, EOF) {
             return None;
         };
 
-        if self.input.len() == self.pos {
-            let eof_step = self.to_step().advance_with(0, EOF);
-            self.apply_step(&eof_step);
-            return Some(eof_step);
+        if self.step.input.len() == self.step.pos {
+            let eof_step = self.step.advance_with(0, EOF);
+            self.apply_step(eof_step);
+            return Some((self.step.res, self.step.pos));
         };
 
         if let Some(step) = self.tokenize_next() {
-            self.apply_step(&step);
-            Some(step)
+            self.apply_step(step);
+            Some((self.step.res, self.step.pos))
         } else {
             None
         }
@@ -424,11 +424,11 @@ fn handle_operator<'a>(mut step: Step<'a>, token: &Token) -> Option<Step<'a>> {
             .and(tag("'"))
             .with(CHARACTER_LITERAL)(step),
         QUOTE_OPEN => {
-            step.set_mode(LexGrammarMode::String);
+            step.mode.set(LexGrammarMode::String);
             Some(step)
         }
         TRIPLE_QUOTE_OPEN => {
-            step.set_mode(LexGrammarMode::MultilineString);
+            step.mode.set(LexGrammarMode::MultilineString);
             Some(step)
         }
         EXCL_NO_WS => opt(hidden.with(EXCL_WS))(step),
@@ -441,7 +441,7 @@ fn handle_operator<'a>(mut step: Step<'a>, token: &Token) -> Option<Step<'a>> {
         R_CURL => {
             // special case for string interpolation:
             // whenever we see a }, we pop lexer mode queue
-            step.pop_mode();
+            step.mode.pop();
             Some(step)
         }
         _ => Some(step),
@@ -469,7 +469,7 @@ fn parse_keyword(step: Step<'_>) -> Option<Step<'_>> {
                 continue;
             }
 
-            if let Some(token) = KEYWORDS.get(key) {
+            if let Some(token) = get_keyword(key) {
                 return handle_keyword(step.advance_with(size.into(), *token), token);
             }
         }
@@ -796,7 +796,7 @@ where
 }
 
 fn str_ref(step: Step<'_>) -> Option<Step<'_>> {
-    tag("$").and(parse_identifier).with(match step.mode() {
+    tag("$").and(parse_identifier).with(match step.mode.peek() {
         LexGrammarMode::String => LINE_STR_REF,
         LexGrammarMode::MultilineString => MULTI_LINE_STR_REF,
         LexGrammarMode::Normal => unreachable!("only called in string mode"),
@@ -804,13 +804,13 @@ fn str_ref(step: Step<'_>) -> Option<Step<'_>> {
 }
 
 fn str_expr_start(mut step: Step<'_>) -> Option<Step<'_>> {
-    tag(r"${").with(match step.mode() {
+    tag(r"${").with(match step.mode.peek() {
         LexGrammarMode::String => {
-            step.set_mode(LexGrammarMode::Normal);
+            step.mode.set(LexGrammarMode::Normal);
             LINE_STR_EXPR_START
         }
         LexGrammarMode::MultilineString => {
-            step.set_mode(LexGrammarMode::Normal);
+            step.mode.set(LexGrammarMode::Normal);
             MULTI_STR_EXPR_START
         }
         LexGrammarMode::Normal => unreachable!("only called in string mode"),
@@ -831,7 +831,7 @@ fn multi_line_str_text(step: Step<'_>) -> Option<Step<'_>> {
 
 fn quote_close(step: Step<'_>) -> Option<Step<'_>> {
     if let Some(mut step) = tag("\"").with(QUOTE_CLOSE)(step) {
-        step.pop_mode();
+        step.mode.pop();
         return Some(step);
     }
     None
@@ -839,7 +839,7 @@ fn quote_close(step: Step<'_>) -> Option<Step<'_>> {
 
 fn quote_open(step: Step<'_>) -> Option<Step<'_>> {
     if let Some(mut step) = tag("\"").with(QUOTE_OPEN)(step) {
-        step.set_mode(LexGrammarMode::String);
+        step.mode.set(LexGrammarMode::String);
         return Some(step);
     }
     None
@@ -861,7 +861,7 @@ fn multi_line_string_quote(step: Step<'_>) -> Option<Step<'_>> {
 
 fn triple_quote_close(step: Step<'_>) -> Option<Step<'_>> {
     if let Some(mut step) = opt(multi_line_string_quote).and(tag(r#"""""#))(step) {
-        step.set_mode(LexGrammarMode::Normal);
+        step.mode.set(LexGrammarMode::Normal);
         step.res = TRIPLE_QUOTE_CLOSE;
         return Some(step);
     }

@@ -13,8 +13,11 @@ rust-version = "1.77.1"
 [workspace.dependencies]
 nonempty = "0.10.0"
 lexer = { path = "./crates/lexer" }
+syntax = { path = "./crates/syntax" }
+parser = { path = "./crates/parser" }
 tokens = { path = "./libs/tokens" }
 token_maps = { path = "./libs/token_maps" }
 macros = { path = "./libs/macros" }
 classpath_resolver = { path = "./libs/classpath_resolver" }
 pretty_assertions = "1.4.0"
+itertools = "0.12.1"

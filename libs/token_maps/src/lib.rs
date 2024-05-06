@@ -1,262 +1,233 @@
 use phf::phf_map;
-use tokens::Token;
-
-// Attempt 1 - do it manually
-
-pub static KEYWORDS: phf::Map<&'static str, Token> = phf_map! {
-
-   "file" => Token::FILE,
-
-   "field" => Token::FIELD,
-
-   "property" => Token::PROPERTY,
-
-   "get" => Token::GET,
-
-   "set" => Token::SET,
-
-   "receiver" => Token::RECEIVER,
-
-   "param" => Token::PARAM,
-
-   "setparam" => Token::SET_PARAM,
-
-   "delegate" => Token::DELEGATE,
-
-   "package" => Token::PACKAGE,
-
-   "import" => Token::IMPORT,
-
-   "class" => Token::CLASS,
-
-   "interface" => Token::INTERFACE,
-
-   "fun" => Token::FUN,
-
-   "object" => Token::OBJECT,
-
-   "val" => Token::VAL,
-
-   "var" => Token::VAR,
-
-   "typealias" => Token::TYPE_ALIAS,
-
-   "constructor" => Token::CONSTRUCTOR,
-
-   "by" => Token::BY,
-
-   "companion" => Token::COMPANION,
-
-   "init" => Token::INIT,
-
-   "this" => Token::THIS,
-
-   "super" => Token::SUPER,
-
-   "typeof" => Token::TYPEOF,
-
-   "where" => Token::WHERE,
-
-   "if" => Token::IF,
-
-   "else" => Token::ELSE,
-
-   "when" => Token::WHEN,
-
-   "try" => Token::TRY,
-
-   "catch" => Token::CATCH,
-
-   "finally" => Token::FINALLY,
-
-   "for" => Token::FOR,
-
-   "do" => Token::DO,
-
-   "while" => Token::WHILE,
-
-   "throw" => Token::THROW,
-
-   "return" => Token::RETURN,
-
-   "continue" => Token::CONTINUE,
-
-   "break" => Token::BREAK,
-
-   "as" => Token::AS,
-
-   "as?" => Token::AS_SAFE,
-
-   "is" => Token::IS,
-
-   "in" => Token::IN,
-
-   "!is" => Token::NOT_IS,
-
-   "!in" => Token::NOT_IN,
-
-   "out" => Token::OUT,
-
-   "dynamic" => Token::DYNAMIC,
-
-   "public" => Token::PUBLIC,
-
-   "private" => Token::PRIVATE,
-
-   "protected" => Token::PROTECTED,
-
-   "internal" => Token::INTERNAL,
-
-   "enum" => Token::ENUM,
-
-   "sealed" => Token::SEALED,
-
-   "annotation" => Token::ANNOTATION,
-
-   "data" => Token::DATA,
-
-   "inner" => Token::INNER,
-
-   "tailrec" => Token::TAILREC,
-
-   "operator" => Token::OPERATOR,
-
-   "inline" => Token::INLINE,
-
-   "infix" => Token::INFIX,
-
-   "external" => Token::EXTERNAL,
-
-   "suspend" => Token::SUSPEND,
-
-   "override" => Token::OVERRIDE,
-
-   "abstract" => Token::ABSTRACT,
-
-   "final" => Token::FINAL,
-
-   "open" => Token::OPEN,
-
-   "const" => Token::CONST,
-
-   "lateinit" => Token::LATEINIT,
-
-   "vararg" => Token::VAR_ARG,
-
-   "noinline" => Token::NO_INLINE,
-
-   "crossinline" => Token::CROSS_INLINE,
-
-   "reified" => Token::REIFIED,
-
-   "expect" => Token::EXPECT,
-
-   "actual" => Token::ACTUAL,
-
-   // literals
-   "null" => Token::NULL_LITERAL,
-   "true" => Token::BOOLEAN_LITERAL,
-   "false" => Token::BOOLEAN_LITERAL,
+use tokens::Token::{self, *};
+
+pub fn is_keyword(slice: &str) -> bool {
+    get_keyword(&slice.to_lowercase()).is_some()
+}
+
+pub fn is_soft_keyword(slice: &str) -> bool {
+    SOFT_KEYWORDS.get(&slice.to_lowercase()).is_some()
+}
+
+pub fn is_operator(slice: &str) -> bool {
+    OPERATORS.get(&slice.to_lowercase()).is_some()
+}
+
+pub fn get_keyword(key: &str) -> Option<&Token> {
+    HARD_KEYWORDS.get(key).or(SOFT_KEYWORDS.get(key))
+}
+
+// keep this sorted
+pub static HARD_KEYWORDS: phf::Map<&'static str, Token> = phf_map! {
+    "!in" => NOT_IN,
+    "!is" => NOT_IS,
+    "annotation" => ANNOTATION,
+    "as" => AS,
+    "as?" => AS_SAFE,
+    "break" => BREAK,
+    "class" => CLASS,
+    "do" => DO,
+    "else" => ELSE,
+    "false" => BOOLEAN_LITERAL,
+    "for" => FOR,
+    "fun" => FUN,
+    "if" => IF,
+    "in" => IN,
+    "interface" => INTERFACE,
+    "is" => IS,
+    "null" => NULL_LITERAL,
+    "object" => OBJECT,
+    "package" => PACKAGE,
+    "param" => PARAM,
+    "return" => RETURN,
+    "super" => SUPER,
+    "this" => THIS,
+    "throw" => THROW,
+    "true" => BOOLEAN_LITERAL,
+    "try" => TRY,
+    "typealias" => TYPE_ALIAS,
+    "typeof" => TYPEOF,
+    "val" => VAL,
+    "var" => VAR,
+    "when" => WHEN,
+    "while" => WHILE,
 };
 
 pub static OPERATORS: phf::Map<&'static str, Token> = phf_map! {
-   "..." => Token::RESERVED,
+   "..." => RESERVED,
 
-   "." => Token::DOT,
+   "." => DOT,
 
-   "," => Token::COMMA,
+   "," => COMMA,
 
-   "(" => Token::L_PAREN,
+   "(" => L_PAREN,
 
-   ")" => Token::R_PAREN,
+   ")" => R_PAREN,
 
-   "[" => Token::L_SQUARE,
+   "[" => L_SQUARE,
 
-   "]" => Token::R_SQUARE,
+   "]" => R_SQUARE,
 
-   "{" => Token::L_CURL,
+   "{" => L_CURL,
 
-   "}" => Token::R_CURL,
+   "}" => R_CURL,
 
-   "*" => Token::MULT,
+   "*" => MULT,
 
-   "%" => Token::MOD,
+   "%" => MOD,
 
-   "/" => Token::DIV,
+   "/" => DIV,
 
-   "+" => Token::ADD,
+   "+" => ADD,
 
-   "-" => Token::SUB,
+   "-" => SUB,
 
-   "++" => Token::INCR,
+   "++" => INCR,
 
-   "--" => Token::DECR,
+   "--" => DECR,
 
-   "||" => Token::DISJ,
+   "||" => DISJ,
 
-   "!" => Token::EXCL_NO_WS,
+   "!" => EXCL_NO_WS,
 
-   ":" => Token::COLON,
+   ":" => COLON,
 
-   ";" => Token::SEMICOLON,
+   ";" => SEMICOLON,
 
-   "=" => Token::ASSIGNMENT,
+   "=" => ASSIGNMENT,
 
-   "+=" => Token::ADD_ASSIGNMENT,
+   "+=" => ADD_ASSIGNMENT,
 
-   "*=" => Token::MULT_ASSIGNMENT,
+   "*=" => MULT_ASSIGNMENT,
 
-   "/=" => Token::DIV_ASSIGNMENT,
+   "/=" => DIV_ASSIGNMENT,
 
-   "%=" => Token::MOD_ASSIGNMENT,
+   "%=" => MOD_ASSIGNMENT,
 
-   "->" => Token::ARROW,
+   "->" => ARROW,
 
-   "=>" => Token::DOUBLE_ARROW,
+   "=>" => DOUBLE_ARROW,
 
-   ".." => Token::RANGE,
+   ".." => RANGE,
 
-   "::" => Token::COLON_COLON,
+   "::" => COLON_COLON,
 
-   ";;" => Token::DOUBLE_SEMICOLON,
+   ";;" => DOUBLE_SEMICOLON,
 
-   "#" => Token::HASH,
+   "#" => HASH,
 
-   "@" => Token::AT_NO_WS,
+   "@" => AT_NO_WS,
 
-   "?" => Token::QUEST_NO_WS,
+   "?" => QUEST_NO_WS,
 
-   "<" => Token::L_ANGLE,
+   "<" => L_ANGLE,
 
-   ">" => Token::R_ANGLE,
+   ">" => R_ANGLE,
 
-   "<=" => Token::LE,
+   "<=" => LE,
 
-   ">=" => Token::GE,
+   ">=" => GE,
 
-   "!=" => Token::EXCL_EQ,
+   "!=" => EXCL_EQ,
 
-   "!==" => Token::EXCL_EQ_EQ,
+   "!==" => EXCL_EQ_EQ,
 
-   "==" => Token::EQ_EQ,
+   "==" => EQ_EQ,
 
-   "===" => Token::EQ_EQ_EQ,
+   "===" => EQ_EQ_EQ,
 
-   "'" => Token::SINGLE_QUOTE,
+   "'" => SINGLE_QUOTE,
 
    // activates string mode
-   "\"" => Token::QUOTE_OPEN,
+   "\"" => QUOTE_OPEN,
 
     // activates multiline string mode
-   r#"""""# => Token::TRIPLE_QUOTE_OPEN,
+   r#"""""# => TRIPLE_QUOTE_OPEN,
 
    // whitespaces
-   "\u{0020}" => Token::WS,
-   "\u{0009}" => Token::WS,
-   "\u{000C}" => Token::WS,
+   "\u{0020}" => WS,
+   "\u{0009}" => WS,
+   "\u{000C}" => WS,
 
    // new lines
-   "\u{000A}" => Token::NL,
-   "\u{000D}" => Token::NL,
-   "\u{000A}\u{000D}" => Token::NL,
+   "\u{000A}" => NL,
+   "\u{000D}" => NL,
+   "\u{000A}\u{000D}" => NL,
 };
+
+pub static SOFT_KEYWORDS: phf::Map<&'static str, Token> = phf_map! {
+    "abstract" => ABSTRACT,
+    "actual" => ACTUAL,
+    "annotation" => ANNOTATION,
+    "by" => BY,
+    "catch" => CATCH,
+    "companion" => COMPANION,
+    "const" => CONST,
+    "constructor" => CONSTRUCTOR,
+    "crossinline" => CROSS_INLINE,
+    "data" => DATA,
+    "delegate" => DELEGATE,
+    "dynamic" => DYNAMIC,
+    "enum" => ENUM,
+    "expect" => EXPECT,
+    "external" => EXTERNAL,
+    "field" => FIELD,
+    "file" => FILE,
+    "final" => FINAL,
+    "finally" => FINALLY,
+    "get" => GET,
+    "import" => IMPORT,
+    "infix" => INFIX,
+    "init" => INIT,
+    "inline" => INLINE,
+    "inner" => INNER,
+    "internal" => INTERNAL,
+    "lateinit" => LATEINIT,
+    "noinline" => NO_INLINE,
+    "open" => OPEN,
+    "operator" => OPERATOR,
+    "out" => OUT,
+    "override" => OVERRIDE,
+    "param" => PARAM,
+    "private" => PRIVATE,
+    "property" => PROPERTY,
+    "protected" => PROTECTED,
+    "public" => PUBLIC,
+    "receiver" => RECEIVER,
+    "reified" => REIFIED,
+    "sealed" => SEALED,
+    "set" => SET,
+    "setparam" => SET_PARAM,
+    "suspend" => SUSPEND,
+    "tailrec" => TAILREC,
+    "value" => VALUE,
+    "vararg" => VAR_ARG,
+    "where" => WHERE,
+};
+
+#[cfg(test)]
+mod token_id_test {
+
+    use super::*;
+
+    #[test]
+    fn is_operator_test() {
+        assert!(is_operator(":"));
+        assert!(!is_operator("final"));
+        assert!(!is_operator("fun"));
+    }
+
+    #[test]
+    fn is_keyword_test() {
+        assert!(!is_keyword(":"));
+        assert!(is_keyword("final"));
+        assert!(is_keyword("fun"));
+    }
+
+    #[test]
+    fn is_soft_keyword_test() {
+        assert!(!is_soft_keyword(":"));
+        assert!(is_soft_keyword("final"));
+        assert!(!is_soft_keyword("fun"));
+    }
+}

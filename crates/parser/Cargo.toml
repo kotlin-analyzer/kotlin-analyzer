@@ -1,5 +1,5 @@
 [package]
-name = "lexer"
+name = "parser"
 version = "0.0.1"
 description = "TBD"
 
@@ -10,10 +10,12 @@ rust-version.workspace = true
 
 [dependencies]
 tokens = { workspace = true }
-token_maps = { workspace = true }
-unicode_categories = "0.1.1"
+syntax.workspace = true
+# todo: remove dependency on lexer: move to dev dependencies
+lexer.workspace = true
 
 [dev-dependencies]
-macros = { workspace = true }
+itertools.workspace = true
+rowan = "0.15.15"
 rstest = "0.19.0"
 pretty_assertions.workspace = true

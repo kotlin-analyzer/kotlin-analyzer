@@ -1,5 +1,5 @@
 [package]
-name = "lexer"
+name = "syntax"
 version = "0.0.1"
 description = "TBD"
 
@@ -10,10 +10,10 @@ rust-version.workspace = true
 
 [dependencies]
 tokens = { workspace = true }
-token_maps = { workspace = true }
-unicode_categories = "0.1.1"
+rowan = "0.15.15"
+lexer.workspace = true
+itertools.workspace = true
 
 [dev-dependencies]
-macros = { workspace = true }
 rstest = "0.19.0"
 pretty_assertions.workspace = true

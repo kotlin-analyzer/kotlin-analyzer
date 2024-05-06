@@ -1,8 +1,9 @@
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[allow(non_camel_case_types)]
+#[repr(u16)]
 pub enum Token {
     ///! White Space and Comments    
-    SHEBANG_LINE,
+    SHEBANG_LINE = 0,
     DELIMITED_COMMENT,
     LINE_COMMENT,
     WS,
@@ -135,6 +136,7 @@ pub enum Token {
     REIFIED,
     EXPECT,
     ACTUAL,
+    VALUE,
 
     //# ENDREGION
     ///! LITERALS
