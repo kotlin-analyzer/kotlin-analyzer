@@ -12,6 +12,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "assert-panic"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "763b2b82aee23fe46c14c792470080c26538396e9ea589f548298f26b22d7f41"
+
+[[package]]
 name = "ast"
 version = "0.0.1"
 dependencies = [
@@ -192,7 +198,6 @@ dependencies = [
  "macros",
  "pretty_assertions",
  "rstest",
- "token_maps",
  "tokens",
  "unicode_categories",
 ]
@@ -502,16 +507,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f18aa187839b2bdb1ad2fa35ead8c4c2976b64e4363c386d45ac0f7ee85c9233"
 
 [[package]]
-name = "token_maps"
-version = "0.0.1"
-dependencies = [
- "phf",
- "tokens",
-]
-
-[[package]]
 name = "tokens"
 version = "0.0.1"
+dependencies = [
+ "assert-panic",
+ "phf",
+]
 
 [[package]]
 name = "unicode-ident"
