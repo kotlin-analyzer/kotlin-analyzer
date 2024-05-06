@@ -1,3 +1,5 @@
+use tokens::Token;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[allow(non_camel_case_types)]
 #[repr(u16)]
@@ -233,10 +235,6 @@ impl rowan::Language for Lang {
         kind.into()
     }
 }
-
-// use lexer::Lexer;
-
-use tokens::Token;
 
 #[cfg(test)]
 mod test {

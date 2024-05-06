@@ -16,6 +16,7 @@ lexer.workspace = true
 
 [dev-dependencies]
 itertools.workspace = true
+ast.workspace = true
 rowan = "0.15.15"
 rstest = "0.19.0"
 pretty_assertions.workspace = true
