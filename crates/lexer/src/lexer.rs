@@ -8,8 +8,8 @@ use std::{
     ops::{Range, RangeInclusive},
 };
 
-use token_maps::{get_keyword, OPERATORS};
 use tokens::Token::{self, *};
+use tokens::{get_keyword, OPERATORS};
 use unicode_categories::UnicodeCategories;
 
 trait ParseFn<'a>: Fn(Step<'a>) -> Option<Step<'a>> {
@@ -208,15 +208,15 @@ impl SpannedWithSource<'_> {
     }
 
     pub fn is_keyword(&self) -> bool {
-        token_maps::is_keyword(self.substring())
+        tokens::is_keyword(self.substring())
     }
 
     pub fn is_soft_keyword(&self) -> bool {
-        token_maps::is_soft_keyword(self.substring())
+        tokens::is_soft_keyword(self.substring())
     }
 
     pub fn is_operator(&self) -> bool {
-        token_maps::is_operator(self.substring())
+        tokens::is_operator(self.substring())
     }
 }
 
