@@ -8,7 +8,7 @@ use std::{
     ops::{Range, RangeInclusive},
 };
 
-use token_maps::{KEYWORDS, OPERATORS};
+use token_maps::{get_keyword, OPERATORS};
 use tokens::Token::{self, *};
 use unicode_categories::UnicodeCategories;
 
@@ -469,7 +469,7 @@ fn parse_keyword(step: Step<'_>) -> Option<Step<'_>> {
                 continue;
             }
 
-            if let Some(token) = KEYWORDS.get(key) {
+            if let Some(token) = get_keyword(key) {
                 return handle_keyword(step.advance_with(size.into(), *token), token);
             }
         }

@@ -1,174 +1,56 @@
-use phf::{phf_map, phf_set};
+use phf::phf_map;
 use tokens::Token::{self, *};
 
 pub fn is_keyword(slice: &str) -> bool {
-    KEYWORDS.get(&slice.to_lowercase()).is_some()
+    get_keyword(&slice.to_lowercase()).is_some()
 }
 
 pub fn is_soft_keyword(slice: &str) -> bool {
-    SOFT_KEYWORDS.contains(&slice.to_lowercase())
+    SOFT_KEYWORDS.get(&slice.to_lowercase()).is_some()
 }
 
 pub fn is_operator(slice: &str) -> bool {
     OPERATORS.get(&slice.to_lowercase()).is_some()
 }
 
-pub static KEYWORDS: phf::Map<&'static str, Token> = phf_map! {
-
-   "file" => FILE,
-
-   "field" => FIELD,
-
-   "property" => PROPERTY,
-
-   "get" => GET,
-
-   "set" => SET,
-
-   "receiver" => RECEIVER,
-
-   "param" => PARAM,
-
-   "setparam" => SET_PARAM,
-
-   "delegate" => DELEGATE,
-
-   "package" => PACKAGE,
-
-   "import" => IMPORT,
-
-   "class" => CLASS,
-
-   "interface" => INTERFACE,
-
-   "fun" => FUN,
-
-   "object" => OBJECT,
-
-   "val" => VAL,
-
-   "var" => VAR,
-
-   "typealias" => TYPE_ALIAS,
-
-   "constructor" => CONSTRUCTOR,
-
-   "by" => BY,
-
-   "companion" => COMPANION,
-
-   "init" => INIT,
-
-   "this" => THIS,
-
-   "super" => SUPER,
-
-   "typeof" => TYPEOF,
-
-   "where" => WHERE,
-
-   "if" => IF,
-
-   "else" => ELSE,
-
-   "when" => WHEN,
-
-   "try" => TRY,
-
-   "catch" => CATCH,
-
-   "finally" => FINALLY,
-
-   "for" => FOR,
-
-   "do" => DO,
-
-   "while" => WHILE,
-
-   "throw" => THROW,
-
-   "return" => RETURN,
-
-   "continue" => CONTINUE,
-
-   "break" => BREAK,
-
-   "as" => AS,
-
-   "as?" => AS_SAFE,
-
-   "is" => IS,
-
-   "in" => IN,
-
-   "!is" => NOT_IS,
-
-   "!in" => NOT_IN,
-
-   "out" => OUT,
-
-   "dynamic" => DYNAMIC,
-
-   "public" => PUBLIC,
-
-   "private" => PRIVATE,
-
-   "protected" => PROTECTED,
-
-   "internal" => INTERNAL,
-
-   "enum" => ENUM,
-
-   "sealed" => SEALED,
-
-   "annotation" => ANNOTATION,
-
-   "data" => DATA,
-
-   "inner" => INNER,
-
-   "tailrec" => TAILREC,
-
-   "operator" => OPERATOR,
-
-   "inline" => INLINE,
-
-   "infix" => INFIX,
-
-   "external" => EXTERNAL,
-
-   "suspend" => SUSPEND,
-
-   "override" => OVERRIDE,
-
-   "abstract" => ABSTRACT,
-
-   "final" => FINAL,
-
-   "open" => OPEN,
-
-   "const" => CONST,
-
-   "lateinit" => LATEINIT,
-
-   "vararg" => VAR_ARG,
-
-   "noinline" => NO_INLINE,
-
-   "crossinline" => CROSS_INLINE,
-
-   "reified" => REIFIED,
-
-   "expect" => EXPECT,
-
-   "actual" => ACTUAL,
-
-   "value" => VALUE,
-
-   // literals
-   "null" => NULL_LITERAL,
-   "true" => BOOLEAN_LITERAL,
-   "false" => BOOLEAN_LITERAL,
+pub fn get_keyword(key: &str) -> Option<&Token> {
+    HARD_KEYWORDS.get(key).or(SOFT_KEYWORDS.get(key))
+}
+
+// keep this sorted
+pub static HARD_KEYWORDS: phf::Map<&'static str, Token> = phf_map! {
+    "!in" => NOT_IN,
+    "!is" => NOT_IS,
+    "annotation" => ANNOTATION,
+    "as" => AS,
+    "as?" => AS_SAFE,
+    "break" => BREAK,
+    "class" => CLASS,
+    "do" => DO,
+    "else" => ELSE,
+    "false" => BOOLEAN_LITERAL,
+    "for" => FOR,
+    "fun" => FUN,
+    "if" => IF,
+    "in" => IN,
+    "interface" => INTERFACE,
+    "is" => IS,
+    "null" => NULL_LITERAL,
+    "object" => OBJECT,
+    "package" => PACKAGE,
+    "param" => PARAM,
+    "return" => RETURN,
+    "super" => SUPER,
+    "this" => THIS,
+    "throw" => THROW,
+    "true" => BOOLEAN_LITERAL,
+    "try" => TRY,
+    "typealias" => TYPE_ALIAS,
+    "typeof" => TYPEOF,
+    "val" => VAL,
+    "var" => VAR,
+    "when" => WHEN,
+    "while" => WHILE,
 };
 
 pub static OPERATORS: phf::Map<&'static str, Token> = phf_map! {
@@ -273,54 +155,54 @@ pub static OPERATORS: phf::Map<&'static str, Token> = phf_map! {
    "\u{000A}\u{000D}" => NL,
 };
 
-pub static SOFT_KEYWORDS: phf::Set<&'static str> = phf_set! {
-   "abstract",
-   "annotation",
-   "by",
-   "catch",
-   "companion",
-   "constructor",
-   "crossinline",
-   "data",
-   "dynamic",
-   "enum",
-   "external",
-   "final",
-   "finally",
-   "import",
-   "infix",
-   "init",
-   "inline",
-   "inner",
-   "internal",
-   "lateinit",
-   "noinline",
-   "open",
-   "operator",
-   "out",
-   "override",
-   "private",
-   "protected",
-   "public",
-   "reified",
-   "sealed",
-   "tailrec",
-   "vararg",
-   "where",
-   "get",
-   "set",
-   "field",
-   "property",
-   "receiver",
-   "param",
-   "setparam",
-   "delegate",
-   "file",
-   "expect",
-   "actual",
-   "const",
-   "suspend",
-   "value"
+pub static SOFT_KEYWORDS: phf::Map<&'static str, Token> = phf_map! {
+    "abstract" => ABSTRACT,
+    "actual" => ACTUAL,
+    "annotation" => ANNOTATION,
+    "by" => BY,
+    "catch" => CATCH,
+    "companion" => COMPANION,
+    "const" => CONST,
+    "constructor" => CONSTRUCTOR,
+    "crossinline" => CROSS_INLINE,
+    "data" => DATA,
+    "delegate" => DELEGATE,
+    "dynamic" => DYNAMIC,
+    "enum" => ENUM,
+    "expect" => EXPECT,
+    "external" => EXTERNAL,
+    "field" => FIELD,
+    "file" => FILE,
+    "final" => FINAL,
+    "finally" => FINALLY,
+    "get" => GET,
+    "import" => IMPORT,
+    "infix" => INFIX,
+    "init" => INIT,
+    "inline" => INLINE,
+    "inner" => INNER,
+    "internal" => INTERNAL,
+    "lateinit" => LATEINIT,
+    "noinline" => NO_INLINE,
+    "open" => OPEN,
+    "operator" => OPERATOR,
+    "out" => OUT,
+    "override" => OVERRIDE,
+    "param" => PARAM,
+    "private" => PRIVATE,
+    "property" => PROPERTY,
+    "protected" => PROTECTED,
+    "public" => PUBLIC,
+    "receiver" => RECEIVER,
+    "reified" => REIFIED,
+    "sealed" => SEALED,
+    "set" => SET,
+    "setparam" => SET_PARAM,
+    "suspend" => SUSPEND,
+    "tailrec" => TAILREC,
+    "value" => VALUE,
+    "vararg" => VAR_ARG,
+    "where" => WHERE,
 };
 
 #[cfg(test)]
