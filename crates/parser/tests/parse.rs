@@ -12,14 +12,7 @@ fn integrate() {
     println!("{:?}", next);
     let children = next
         .children_with_tokens()
-        .map(|child| {
-            format!(
-                "{:?}@{:?} - {}",
-                child.kind(),
-                child.text_range(),
-                child
-            )
-        })
+        .map(|child| format!("{:?}@{:?} - {}", child.kind(), child.text_range(), child))
         .collect::<Vec<_>>();
     print!("{:?}", children);
 }
