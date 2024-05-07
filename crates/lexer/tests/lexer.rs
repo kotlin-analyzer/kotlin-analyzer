@@ -1,4 +1,6 @@
-use macros::{dbg_lexer, lexer_matches, trim_idents};
+#[macro_use]
+mod utils;
+
 use tokens::Token::*;
 
 #[test]
@@ -99,8 +101,6 @@ fn nested_multi_str_test() {
 
 #[test]
 fn keyword_start() {
-    use lexer::Lexer;
-
     let source = trim_idents!(
         r#"package dev.ikeze.kotlinsyntax
 
@@ -191,4 +191,55 @@ fn keyword_start() {
         R_CURL => 171..172, // "}",
         EOF => 172..172
     ]);
+}
+
+#[test]
+#[ignore]
+fn simple() {
+    let source = trim_idents!(
+        r#"
+        0444.10_99e+4f
+        [],--
+        /* comments */
+        //line comment
+        #! sh echo "hey"
+        hey
+        0b101_010
+        0xff_ff
+        true
+        false
+        null
+        'A'
+        '\uffac'
+        '\n'
+        this
+        this@me
+        super
+        !in//comment
+        /* pre */@man
+        name@ // post
+          @  // both
+        !is/* comment */
+        var name: String?/*ddjjd*/ = null;
+        var name2: String? /*ddjjd*/ // = null;
+        super@me
+        continue
+        continue@where
+        return
+        return@here
+        break
+        break@now
+        `backticks baby`
+        fun hello() = "Hello"
+        var funvar = 3
+        """
+        simple multi line
+        """
+        """
+        complex "multi line"
+        """"""
+        "#
+    );
+
+    dbg_lexer_src!(&source);
 }
