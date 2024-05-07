@@ -1,6 +1,7 @@
 //! source: https://kotlinlang.org/spec/syntax-and-grammar.html#syntax-grammar
 mod nodes;
 use nodes::*;
+use serde::Serialize;
 use syntax::SyntaxNode;
 
 #[macro_export]
@@ -22,6 +23,12 @@ macro_rules! ast_node {
     };
 }
 
+macro_rules! gen_ast {
+    ($rules: tt) => {
+        impl Root {}
+    };
+}
+
 #[derive(PartialEq, Eq, Hash, Clone)]
 #[repr(transparent)]
 pub struct Root(SyntaxNode);
@@ -30,6 +37,43 @@ pub enum RootKind {
     File(KotlinFile),
     Script(KotlinScript),
 }
+
+// todo: generate for all asts
+impl Serialize for Root {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match self.kind() {
+            RootKind::File(_) => serializer.serialize_newtype_variant("Root", 0, "File", "<todo>"),
+            RootKind::Script(_) => {
+                serializer.serialize_newtype_variant("Root", 0, "Script", "<todo>")
+            }
+        }
+    }
+}
+
+gen_ast!(
+    {
+        kotlinFile:
+            [shebangLine]
+            {NL}
+            {fileAnnotation}
+            packageHeader
+            importList
+            {topLevelObject}
+            EOF
+
+        script:
+            [shebangLine]
+            {NL}
+            {fileAnnotation}
+            packageHeader
+            importList
+            {statement semi}
+            EOF
+    }
+);
 
 impl Root {
     pub fn cast(node: SyntaxNode) -> Option<Self> {

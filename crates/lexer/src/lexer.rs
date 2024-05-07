@@ -873,68 +873,9 @@ fn line_str_escaped_char(step: Step<'_>) -> Option<Step<'_>> {
 }
 
 #[cfg(test)]
-mod playground {
-    use std::error::Error;
-
-    use super::Lexer;
-    use macros::{dbg_lexer_src, trim_idents};
-
-    #[test]
-    #[ignore]
-    fn simple() -> Result<(), Box<dyn Error>> {
-        let source = trim_idents!(
-            r#"
-            0444.10_99e+4f
-            [],--
-            /* comments */
-            //line comment
-            #! sh echo "hey"
-            hey
-            0b101_010
-            0xff_ff
-            true
-            false
-            null
-            'A'
-            '\uffac'
-            '\n'
-            this
-            this@me
-            super
-            !in//comment
-            /* pre */@man
-            name@ // post
-              @  // both
-            !is/* comment */
-            var name: String?/*ddjjd*/ = null;
-            var name2: String? /*ddjjd*/ // = null;
-            super@me
-            continue
-            continue@where
-            return
-            return@here
-            break
-            break@now
-            `backticks baby`
-            fun hello() = "Hello"
-            var funvar = 3
-            """
-            simple multi line
-            """
-            """
-            complex "multi line"
-            """"""
-            "#
-        );
-
-        dbg_lexer_src!(&source);
-        Ok(())
-    }
-}
-#[cfg(test)]
 mod test {
     use super::*;
-    use macros::{assert_failure, assert_success};
+    use crate::{assert_failure, assert_success};
 
     #[test]
     fn delimited_comment_test() {
