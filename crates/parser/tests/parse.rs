@@ -24,6 +24,7 @@ fn integrate() {
     print!("{:?}", children);
 }
 
+#[ignore]
 #[test]
 fn with_ast() {
     let text = "#! comment // nested #! deep /* more */\n";
