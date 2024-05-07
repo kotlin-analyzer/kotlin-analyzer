@@ -1,0 +1,5660 @@
+GenAst(
+    entries: [
+        TopLevelParseEntry(
+            field: Field(name: kotlinFile),
+            asts: [
+                Optional(
+                    rules: [
+                        Ident(
+                            name: shebangLine,
+                        ),
+                    ],
+                ),
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Repeated(
+                    rules: [
+                        Ident(
+                            name: fileAnnotation,
+                        ),
+                    ],
+                ),
+                Ident(
+                    name: packageHeader,
+                ),
+                Ident(name: importList),
+                Repeated(
+                    rules: [
+                        Ident(
+                            name: topLevelObject,
+                        ),
+                    ],
+                ),
+                Ident(name: EOF),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: script),
+            asts: [
+                Optional(
+                    rules: [
+                        Ident(
+                            name: shebangLine,
+                        ),
+                    ],
+                ),
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Repeated(
+                    rules: [
+                        Ident(
+                            name: fileAnnotation,
+                        ),
+                    ],
+                ),
+                Ident(
+                    name: packageHeader,
+                ),
+                Ident(name: importList),
+                Repeated(
+                    rules: [
+                        Ident(
+                            name: statement,
+                        ),
+                        Ident(
+                            name: semi,
+                        ),
+                    ],
+                ),
+                Ident(name: EOF),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: shebangLine),
+            asts: [
+                Ident(name: ShebangLine),
+                Group(
+                    rules: [
+                        Ident(name: NL),
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: fileAnnotation),
+            asts: [
+                Group(
+                    rules: [
+                        Choice(
+                            rules: [
+                                Ident(
+                                    name: AT_NO_WS,
+                                ),
+                                Ident(
+                                    name: AT_PRE_WS,
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+                "file",
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                ':',
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Group(
+                    rules: [
+                        Choice(
+                            rules: [
+                                Group(
+                                    rules: [
+                                        '[',
+                                        Group(
+                                            rules: [
+                                                Ident(
+                                                    name: unescapedAnnotation,
+                                                ),
+                                                Repeated(
+                                                    rules: [
+                                                        Ident(
+                                                            name: unescapedAnnotation,
+                                                        ),
+                                                    ],
+                                                ),
+                                            ],
+                                        ),
+                                        ']',
+                                    ],
+                                ),
+                                Ident(
+                                    name: unescapedAnnotation,
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: packageHeader),
+            asts: [
+                Optional(
+                    rules: [
+                        "package",
+                        Ident(
+                            name: identifier,
+                        ),
+                        Optional(
+                            rules: [
+                                Ident(
+                                    name: semi,
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: importList),
+            asts: [
+                Repeated(
+                    rules: [
+                        Ident(
+                            name: importHeader,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: importHeader),
+            asts: [
+                "import",
+                Ident(name: identifier),
+                Optional(
+                    rules: [
+                        Choice(
+                            rules: [
+                                Group(
+                                    rules: [
+                                        '.',
+                                        '*',
+                                    ],
+                                ),
+                                Ident(
+                                    name: importAlias,
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+                Optional(
+                    rules: [Ident(name: semi)],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: importAlias),
+            asts: [
+                "as",
+                Ident(
+                    name: simpleIdentifier,
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: topLevelObject),
+            asts: [
+                Ident(name: declaration),
+                Optional(
+                    rules: [Ident(name: semis)],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: typeAlias),
+            asts: [
+                Optional(
+                    rules: [
+                        Ident(
+                            name: modifiers,
+                        ),
+                    ],
+                ),
+                "typealias",
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Ident(
+                    name: simpleIdentifier,
+                ),
+                Optional(
+                    rules: [
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        Ident(
+                            name: typeParameters,
+                        ),
+                    ],
+                ),
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                '=',
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Ident(name: TYPE),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: declaration),
+            asts: [
+                Choice(
+                    rules: [
+                        Ident(
+                            name: classDeclaration,
+                        ),
+                        Ident(
+                            name: objectDeclaration,
+                        ),
+                        Ident(
+                            name: functionDeclaration,
+                        ),
+                        Ident(
+                            name: propertyDeclaration,
+                        ),
+                        Ident(
+                            name: typeAlias,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: classDeclaration,
+            ),
+            asts: [
+                Optional(
+                    rules: [
+                        Ident(
+                            name: modifiers,
+                        ),
+                    ],
+                ),
+                Group(
+                    rules: [
+                        Choice(
+                            rules: [
+                                "class",
+                                Group(
+                                    rules: [
+                                        Optional(
+                                            rules: [
+                                                "fun",
+                                                Repeated(
+                                                    rules: [
+                                                        Ident(
+                                                            name: NL,
+                                                        ),
+                                                    ],
+                                                ),
+                                            ],
+                                        ),
+                                        "interface",
+                                    ],
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Ident(
+                    name: simpleIdentifier,
+                ),
+                Optional(
+                    rules: [
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        Ident(
+                            name: typeParameters,
+                        ),
+                    ],
+                ),
+                Optional(
+                    rules: [
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        Ident(
+                            name: primaryConstructor,
+                        ),
+                    ],
+                ),
+                Optional(
+                    rules: [
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        ':',
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        Ident(
+                            name: delegationSpecifiers,
+                        ),
+                    ],
+                ),
+                Optional(
+                    rules: [
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        Ident(
+                            name: typeConstraints,
+                        ),
+                    ],
+                ),
+                Optional(
+                    rules: [
+                        Choice(
+                            rules: [
+                                Group(
+                                    rules: [
+                                        Repeated(
+                                            rules: [
+                                                Ident(
+                                                    name: NL,
+                                                ),
+                                            ],
+                                        ),
+                                        Ident(
+                                            name: classBody,
+                                        ),
+                                    ],
+                                ),
+                                Group(
+                                    rules: [
+                                        Repeated(
+                                            rules: [
+                                                Ident(
+                                                    name: NL,
+                                                ),
+                                            ],
+                                        ),
+                                        Ident(
+                                            name: enumClassBody,
+                                        ),
+                                    ],
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: primaryConstructor,
+            ),
+            asts: [
+                Optional(
+                    rules: [
+                        Optional(
+                            rules: [
+                                Ident(
+                                    name: modifiers,
+                                ),
+                            ],
+                        ),
+                        "constructor",
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+                Ident(
+                    name: classParameters,
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: classBody),
+            asts: [
+                '{',
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Ident(
+                    name: classMemberDeclarations,
+                ),
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                '}',
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: classParameters),
+            asts: [
+                '(',
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Optional(
+                    rules: [
+                        Ident(
+                            name: classParameter,
+                        ),
+                        Repeated(
+                            rules: [
+                                Repeated(
+                                    rules: [
+                                        Ident(
+                                            name: NL,
+                                        ),
+                                    ],
+                                ),
+                                ',',
+                                Repeated(
+                                    rules: [
+                                        Ident(
+                                            name: NL,
+                                        ),
+                                    ],
+                                ),
+                                Ident(
+                                    name: classParameter,
+                                ),
+                            ],
+                        ),
+                        Optional(
+                            rules: [
+                                Repeated(
+                                    rules: [
+                                        Ident(
+                                            name: NL,
+                                        ),
+                                    ],
+                                ),
+                                ',',
+                            ],
+                        ),
+                    ],
+                ),
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                ')',
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: classParameter),
+            asts: [
+                Optional(
+                    rules: [
+                        Ident(
+                            name: modifiers,
+                        ),
+                    ],
+                ),
+                Optional(
+                    rules: [
+                        Choice(
+                            rules: [
+                                "val",
+                                "var",
+                            ],
+                        ),
+                    ],
+                ),
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Ident(
+                    name: simpleIdentifier,
+                ),
+                ':',
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Ident(name: TYPE),
+                Optional(
+                    rules: [
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        '=',
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        Ident(
+                            name: expression,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: delegationSpecifiers,
+            ),
+            asts: [
+                Ident(
+                    name: annotatedDelegationSpecifier,
+                ),
+                Repeated(
+                    rules: [
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        ',',
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        Ident(
+                            name: annotatedDelegationSpecifier,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: delegationSpecifier,
+            ),
+            asts: [
+                Choice(
+                    rules: [
+                        Ident(
+                            name: constructorInvocation,
+                        ),
+                        Ident(
+                            name: explicitDelegation,
+                        ),
+                        Ident(
+                            name: userType,
+                        ),
+                        Ident(
+                            name: functionType,
+                        ),
+                        Group(
+                            rules: [
+                                "suspend",
+                                Repeated(
+                                    rules: [
+                                        Ident(
+                                            name: NL,
+                                        ),
+                                    ],
+                                ),
+                                Ident(
+                                    name: functionType,
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: constructorInvocation,
+            ),
+            asts: [
+                Ident(name: userType),
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Ident(
+                    name: valueArguments,
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: annotatedDelegationSpecifier,
+            ),
+            asts: [
+                Repeated(
+                    rules: [
+                        Ident(
+                            name: annotation,
+                        ),
+                    ],
+                ),
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Ident(
+                    name: delegationSpecifier,
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: explicitDelegation,
+            ),
+            asts: [
+                Group(
+                    rules: [
+                        Choice(
+                            rules: [
+                                Ident(
+                                    name: userType,
+                                ),
+                                Ident(
+                                    name: functionType,
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                "by",
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Ident(name: expression),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: typeParameters),
+            asts: [
+                '<',
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Ident(
+                    name: typeParameter,
+                ),
+                Repeated(
+                    rules: [
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        ',',
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        Ident(
+                            name: typeParameter,
+                        ),
+                    ],
+                ),
+                Optional(
+                    rules: [
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        ',',
+                    ],
+                ),
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                '>',
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: typeParameter),
+            asts: [
+                Optional(
+                    rules: [
+                        Ident(
+                            name: typeParameterModifiers,
+                        ),
+                    ],
+                ),
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Ident(
+                    name: simpleIdentifier,
+                ),
+                Optional(
+                    rules: [
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        ':',
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        Ident(
+                            name: TYPE,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: typeConstraints),
+            asts: [
+                "where",
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Ident(
+                    name: typeConstraint,
+                ),
+                Repeated(
+                    rules: [
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        ',',
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        Ident(
+                            name: typeConstraint,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: typeConstraint),
+            asts: [
+                Repeated(
+                    rules: [
+                        Ident(
+                            name: annotation,
+                        ),
+                    ],
+                ),
+                Ident(
+                    name: simpleIdentifier,
+                ),
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                ':',
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Ident(name: TYPE),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: classMemberDeclarations,
+            ),
+            asts: [
+                Repeated(
+                    rules: [
+                        Ident(
+                            name: classMemberDeclaration,
+                        ),
+                        Optional(
+                            rules: [
+                                Ident(
+                                    name: semis,
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: classMemberDeclaration,
+            ),
+            asts: [
+                Choice(
+                    rules: [
+                        Ident(
+                            name: declaration,
+                        ),
+                        Ident(
+                            name: companionObject,
+                        ),
+                        Ident(
+                            name: anonymousInitializer,
+                        ),
+                        Ident(
+                            name: secondaryConstructor,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: anonymousInitializer,
+            ),
+            asts: [
+                "init",
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Ident(name: block),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: companionObject),
+            asts: [
+                Optional(
+                    rules: [
+                        Ident(
+                            name: modifiers,
+                        ),
+                    ],
+                ),
+                "companion",
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Optional(
+                    rules: ["data"],
+                ),
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                "object",
+                Optional(
+                    rules: [
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        Ident(
+                            name: simpleIdentifier,
+                        ),
+                    ],
+                ),
+                Optional(
+                    rules: [
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        ':',
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        Ident(
+                            name: delegationSpecifiers,
+                        ),
+                    ],
+                ),
+                Optional(
+                    rules: [
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        Ident(
+                            name: classBody,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: functionValueParameters,
+            ),
+            asts: [
+                '(',
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Optional(
+                    rules: [
+                        Ident(
+                            name: functionValueParameter,
+                        ),
+                        Repeated(
+                            rules: [
+                                Repeated(
+                                    rules: [
+                                        Ident(
+                                            name: NL,
+                                        ),
+                                    ],
+                                ),
+                                ',',
+                                Repeated(
+                                    rules: [
+                                        Ident(
+                                            name: NL,
+                                        ),
+                                    ],
+                                ),
+                                Ident(
+                                    name: functionValueParameter,
+                                ),
+                            ],
+                        ),
+                        Optional(
+                            rules: [
+                                Repeated(
+                                    rules: [
+                                        Ident(
+                                            name: NL,
+                                        ),
+                                    ],
+                                ),
+                                ',',
+                            ],
+                        ),
+                    ],
+                ),
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                ')',
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: functionValueParameter,
+            ),
+            asts: [
+                Optional(
+                    rules: [
+                        Ident(
+                            name: parameterModifiers,
+                        ),
+                    ],
+                ),
+                Ident(name: parameter),
+                Optional(
+                    rules: [
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        '=',
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        Ident(
+                            name: expression,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: functionDeclaration,
+            ),
+            asts: [
+                Optional(
+                    rules: [
+                        Ident(
+                            name: modifiers,
+                        ),
+                    ],
+                ),
+                "fun",
+                Optional(
+                    rules: [
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        Ident(
+                            name: typeParameters,
+                        ),
+                    ],
+                ),
+                Optional(
+                    rules: [
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        Ident(
+                            name: receiverType,
+                        ),
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        '.',
+                    ],
+                ),
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Ident(
+                    name: simpleIdentifier,
+                ),
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Ident(
+                    name: functionValueParameters,
+                ),
+                Optional(
+                    rules: [
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        ':',
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        Ident(
+                            name: TYPE,
+                        ),
+                    ],
+                ),
+                Optional(
+                    rules: [
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        Ident(
+                            name: typeConstraints,
+                        ),
+                    ],
+                ),
+                Optional(
+                    rules: [
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        Ident(
+                            name: functionBody,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: functionBody),
+            asts: [
+                Choice(
+                    rules: [
+                        Ident(
+                            name: block,
+                        ),
+                        Group(
+                            rules: [
+                                '=',
+                                Repeated(
+                                    rules: [
+                                        Ident(
+                                            name: NL,
+                                        ),
+                                    ],
+                                ),
+                                Ident(
+                                    name: expression,
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: variableDeclaration,
+            ),
+            asts: [
+                Repeated(
+                    rules: [
+                        Ident(
+                            name: annotation,
+                        ),
+                    ],
+                ),
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Ident(
+                    name: simpleIdentifier,
+                ),
+                Optional(
+                    rules: [
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        ':',
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        Ident(
+                            name: TYPE,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: multiVariableDeclaration,
+            ),
+            asts: [
+                '(',
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Ident(
+                    name: variableDeclaration,
+                ),
+                Repeated(
+                    rules: [
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        ',',
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        Ident(
+                            name: variableDeclaration,
+                        ),
+                    ],
+                ),
+                Optional(
+                    rules: [
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        ',',
+                    ],
+                ),
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                ')',
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: propertyDeclaration,
+            ),
+            asts: [
+                Optional(
+                    rules: [
+                        Ident(
+                            name: modifiers,
+                        ),
+                    ],
+                ),
+                Group(
+                    rules: [
+                        Choice(
+                            rules: [
+                                "val",
+                                "var",
+                            ],
+                        ),
+                    ],
+                ),
+                Optional(
+                    rules: [
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        Ident(
+                            name: typeParameters,
+                        ),
+                    ],
+                ),
+                Optional(
+                    rules: [
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        Ident(
+                            name: receiverType,
+                        ),
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        '.',
+                    ],
+                ),
+                Group(
+                    rules: [
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        Group(
+                            rules: [
+                                Choice(
+                                    rules: [
+                                        Ident(
+                                            name: multiVariableDeclaration,
+                                        ),
+                                        Ident(
+                                            name: variableDeclaration,
+                                        ),
+                                    ],
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+                Optional(
+                    rules: [
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        Ident(
+                            name: typeConstraints,
+                        ),
+                    ],
+                ),
+                Optional(
+                    rules: [
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        Group(
+                            rules: [
+                                Choice(
+                                    rules: [
+                                        Group(
+                                            rules: [
+                                                '=',
+                                                Repeated(
+                                                    rules: [
+                                                        Ident(
+                                                            name: NL,
+                                                        ),
+                                                    ],
+                                                ),
+                                                Ident(
+                                                    name: expression,
+                                                ),
+                                            ],
+                                        ),
+                                        Ident(
+                                            name: propertyDelegate,
+                                        ),
+                                    ],
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+                Optional(
+                    rules: [
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        ';',
+                    ],
+                ),
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Group(
+                    rules: [
+                        Choice(
+                            rules: [
+                                Group(
+                                    rules: [
+                                        Optional(
+                                            rules: [
+                                                Ident(
+                                                    name: getter,
+                                                ),
+                                            ],
+                                        ),
+                                        Optional(
+                                            rules: [
+                                                Repeated(
+                                                    rules: [
+                                                        Ident(
+                                                            name: NL,
+                                                        ),
+                                                    ],
+                                                ),
+                                                Optional(
+                                                    rules: [
+                                                        Ident(
+                                                            name: semi,
+                                                        ),
+                                                    ],
+                                                ),
+                                                Ident(
+                                                    name: setter,
+                                                ),
+                                            ],
+                                        ),
+                                    ],
+                                ),
+                                Group(
+                                    rules: [
+                                        Optional(
+                                            rules: [
+                                                Ident(
+                                                    name: setter,
+                                                ),
+                                            ],
+                                        ),
+                                        Optional(
+                                            rules: [
+                                                Repeated(
+                                                    rules: [
+                                                        Ident(
+                                                            name: NL,
+                                                        ),
+                                                    ],
+                                                ),
+                                                Optional(
+                                                    rules: [
+                                                        Ident(
+                                                            name: semi,
+                                                        ),
+                                                    ],
+                                                ),
+                                                Ident(
+                                                    name: getter,
+                                                ),
+                                            ],
+                                        ),
+                                    ],
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: propertyDelegate,
+            ),
+            asts: [
+                "by",
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Ident(name: expression),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: getter),
+            asts: [
+                Optional(
+                    rules: [
+                        Ident(
+                            name: modifiers,
+                        ),
+                    ],
+                ),
+                "get",
+                Optional(
+                    rules: [
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        '(',
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        ')',
+                        Optional(
+                            rules: [
+                                Repeated(
+                                    rules: [
+                                        Ident(
+                                            name: NL,
+                                        ),
+                                    ],
+                                ),
+                                ':',
+                                Repeated(
+                                    rules: [
+                                        Ident(
+                                            name: NL,
+                                        ),
+                                    ],
+                                ),
+                                Ident(
+                                    name: TYPE,
+                                ),
+                            ],
+                        ),
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        Ident(
+                            name: functionBody,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: setter),
+            asts: [
+                Optional(
+                    rules: [
+                        Ident(
+                            name: modifiers,
+                        ),
+                    ],
+                ),
+                "set",
+                Optional(
+                    rules: [
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        '(',
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        Ident(
+                            name: functionValueParameterWithOptionalType,
+                        ),
+                        Optional(
+                            rules: [
+                                Repeated(
+                                    rules: [
+                                        Ident(
+                                            name: NL,
+                                        ),
+                                    ],
+                                ),
+                                ',',
+                            ],
+                        ),
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        ')',
+                        Optional(
+                            rules: [
+                                Repeated(
+                                    rules: [
+                                        Ident(
+                                            name: NL,
+                                        ),
+                                    ],
+                                ),
+                                ':',
+                                Repeated(
+                                    rules: [
+                                        Ident(
+                                            name: NL,
+                                        ),
+                                    ],
+                                ),
+                                Ident(
+                                    name: TYPE,
+                                ),
+                            ],
+                        ),
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        Ident(
+                            name: functionBody,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: parametersWithOptionalType,
+            ),
+            asts: [
+                '(',
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Optional(
+                    rules: [
+                        Ident(
+                            name: functionValueParameterWithOptionalType,
+                        ),
+                        Repeated(
+                            rules: [
+                                Repeated(
+                                    rules: [
+                                        Ident(
+                                            name: NL,
+                                        ),
+                                    ],
+                                ),
+                                ',',
+                                Repeated(
+                                    rules: [
+                                        Ident(
+                                            name: NL,
+                                        ),
+                                    ],
+                                ),
+                                Ident(
+                                    name: functionValueParameterWithOptionalType,
+                                ),
+                            ],
+                        ),
+                        Optional(
+                            rules: [
+                                Repeated(
+                                    rules: [
+                                        Ident(
+                                            name: NL,
+                                        ),
+                                    ],
+                                ),
+                                ',',
+                            ],
+                        ),
+                    ],
+                ),
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                ')',
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: functionValueParameterWithOptionalType,
+            ),
+            asts: [
+                Optional(
+                    rules: [
+                        Ident(
+                            name: parameterModifiers,
+                        ),
+                    ],
+                ),
+                Ident(
+                    name: parameterWithOptionalType,
+                ),
+                Optional(
+                    rules: [
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        '=',
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        Ident(
+                            name: expression,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: parameterWithOptionalType,
+            ),
+            asts: [
+                Ident(
+                    name: simpleIdentifier,
+                ),
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Optional(
+                    rules: [
+                        ':',
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        Ident(
+                            name: TYPE,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: parameter),
+            asts: [
+                Ident(
+                    name: simpleIdentifier,
+                ),
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                ':',
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Ident(name: TYPE),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: objectDeclaration,
+            ),
+            asts: [
+                Optional(
+                    rules: [
+                        Ident(
+                            name: modifiers,
+                        ),
+                    ],
+                ),
+                "object",
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Ident(
+                    name: simpleIdentifier,
+                ),
+                Optional(
+                    rules: [
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        ':',
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        Ident(
+                            name: delegationSpecifiers,
+                        ),
+                    ],
+                ),
+                Optional(
+                    rules: [
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        Ident(
+                            name: classBody,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: secondaryConstructor,
+            ),
+            asts: [
+                Optional(
+                    rules: [
+                        Ident(
+                            name: modifiers,
+                        ),
+                    ],
+                ),
+                "constructor",
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Ident(
+                    name: functionValueParameters,
+                ),
+                Optional(
+                    rules: [
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        ':',
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        Ident(
+                            name: constructorDelegationCall,
+                        ),
+                    ],
+                ),
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Optional(
+                    rules: [Ident(name: block)],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: constructorDelegationCall,
+            ),
+            asts: [
+                Group(
+                    rules: [
+                        Choice(
+                            rules: [
+                                "this",
+                                "super",
+                            ],
+                        ),
+                    ],
+                ),
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Ident(
+                    name: valueArguments,
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: enumClassBody),
+            asts: [
+                '{',
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Optional(
+                    rules: [
+                        Ident(
+                            name: enumEntries,
+                        ),
+                    ],
+                ),
+                Optional(
+                    rules: [
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        ';',
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        Ident(
+                            name: classMemberDeclarations,
+                        ),
+                    ],
+                ),
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                '}',
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: enumEntries),
+            asts: [
+                Ident(name: enumEntry),
+                Repeated(
+                    rules: [
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        ',',
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        Ident(
+                            name: enumEntry,
+                        ),
+                    ],
+                ),
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Optional(rules: [',']),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: enumEntry),
+            asts: [
+                Optional(
+                    rules: [
+                        Ident(
+                            name: modifiers,
+                        ),
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+                Ident(
+                    name: simpleIdentifier,
+                ),
+                Optional(
+                    rules: [
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        Ident(
+                            name: valueArguments,
+                        ),
+                    ],
+                ),
+                Optional(
+                    rules: [
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        Ident(
+                            name: classBody,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: TYPE),
+            asts: [
+                Optional(
+                    rules: [
+                        Ident(
+                            name: typeModifiers,
+                        ),
+                    ],
+                ),
+                Group(
+                    rules: [
+                        Choice(
+                            rules: [
+                                Ident(
+                                    name: functionType,
+                                ),
+                                Ident(
+                                    name: parenthesizedType,
+                                ),
+                                Ident(
+                                    name: nullableType,
+                                ),
+                                Ident(
+                                    name: typeReference,
+                                ),
+                                Ident(
+                                    name: definitelyNonNullableType,
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: typeReference),
+            asts: [
+                Choice(
+                    rules: [
+                        Ident(
+                            name: userType,
+                        ),
+                        "dynamic",
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: nullableType),
+            asts: [
+                Group(
+                    rules: [
+                        Choice(
+                            rules: [
+                                Ident(
+                                    name: typeReference,
+                                ),
+                                Ident(
+                                    name: parenthesizedType,
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Group(
+                    rules: [
+                        Ident(
+                            name: quest,
+                        ),
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: quest,
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: quest),
+            asts: [
+                Choice(
+                    rules: [
+                        Ident(
+                            name: QUEST_NO_WS,
+                        ),
+                        Ident(
+                            name: QUEST_WS,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: userType),
+            asts: [
+                Ident(
+                    name: simpleUserType,
+                ),
+                Repeated(
+                    rules: [
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        '.',
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        Ident(
+                            name: simpleUserType,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: simpleUserType),
+            asts: [
+                Ident(
+                    name: simpleIdentifier,
+                ),
+                Optional(
+                    rules: [
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        Ident(
+                            name: typeArguments,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: typeProjection),
+            asts: [
+                Choice(
+                    rules: [
+                        Group(
+                            rules: [
+                                Optional(
+                                    rules: [
+                                        Ident(
+                                            name: typeProjectionModifiers,
+                                        ),
+                                    ],
+                                ),
+                                Ident(
+                                    name: TYPE,
+                                ),
+                            ],
+                        ),
+                        '*',
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: typeProjectionModifiers,
+            ),
+            asts: [
+                Ident(
+                    name: typeProjectionModifier,
+                ),
+                Repeated(
+                    rules: [
+                        Ident(
+                            name: typeProjectionModifier,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: typeProjectionModifier,
+            ),
+            asts: [
+                Choice(
+                    rules: [
+                        Group(
+                            rules: [
+                                Ident(
+                                    name: varianceModifier,
+                                ),
+                                Repeated(
+                                    rules: [
+                                        Ident(
+                                            name: NL,
+                                        ),
+                                    ],
+                                ),
+                            ],
+                        ),
+                        Ident(
+                            name: annotation,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: functionType),
+            asts: [
+                Optional(
+                    rules: [
+                        Ident(
+                            name: receiverType,
+                        ),
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        '.',
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+                Ident(
+                    name: functionTypeParameters,
+                ),
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                "->",
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Ident(name: TYPE),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: functionTypeParameters,
+            ),
+            asts: [
+                '(',
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Optional(
+                    rules: [
+                        Choice(
+                            rules: [
+                                Ident(
+                                    name: parameter,
+                                ),
+                                Ident(
+                                    name: TYPE,
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+                Repeated(
+                    rules: [
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        ',',
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        Group(
+                            rules: [
+                                Choice(
+                                    rules: [
+                                        Ident(
+                                            name: parameter,
+                                        ),
+                                        Ident(
+                                            name: TYPE,
+                                        ),
+                                    ],
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+                Optional(
+                    rules: [
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        ',',
+                    ],
+                ),
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                ')',
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: parenthesizedType,
+            ),
+            asts: [
+                '(',
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Ident(name: TYPE),
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                ')',
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: receiverType),
+            asts: [
+                Optional(
+                    rules: [
+                        Ident(
+                            name: typeModifiers,
+                        ),
+                    ],
+                ),
+                Group(
+                    rules: [
+                        Choice(
+                            rules: [
+                                Ident(
+                                    name: parenthesizedType,
+                                ),
+                                Ident(
+                                    name: nullableType,
+                                ),
+                                Ident(
+                                    name: typeReference,
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: parenthesizedUserType,
+            ),
+            asts: [
+                '(',
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Group(
+                    rules: [
+                        Choice(
+                            rules: [
+                                Ident(
+                                    name: userType,
+                                ),
+                                Ident(
+                                    name: parenthesizedUserType,
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                ')',
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: definitelyNonNullableType,
+            ),
+            asts: [
+                Optional(
+                    rules: [
+                        Ident(
+                            name: typeModifiers,
+                        ),
+                    ],
+                ),
+                Group(
+                    rules: [
+                        Choice(
+                            rules: [
+                                Ident(
+                                    name: userType,
+                                ),
+                                Ident(
+                                    name: parenthesizedUserType,
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                '&',
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Optional(
+                    rules: [
+                        Ident(
+                            name: typeModifiers,
+                        ),
+                    ],
+                ),
+                Group(
+                    rules: [
+                        Choice(
+                            rules: [
+                                Ident(
+                                    name: userType,
+                                ),
+                                Ident(
+                                    name: parenthesizedUserType,
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: statements),
+            asts: [
+                Optional(
+                    rules: [
+                        Ident(
+                            name: statement,
+                        ),
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: semis,
+                                ),
+                                Ident(
+                                    name: statement,
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+                Optional(
+                    rules: [Ident(name: semis)],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: statement),
+            asts: [
+                Repeated(
+                    rules: [
+                        Choice(
+                            rules: [
+                                Ident(
+                                    name: label,
+                                ),
+                                Ident(
+                                    name: annotation,
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+                Group(
+                    rules: [
+                        Choice(
+                            rules: [
+                                Ident(
+                                    name: declaration,
+                                ),
+                                Ident(
+                                    name: assignment,
+                                ),
+                                Ident(
+                                    name: loopStatement,
+                                ),
+                                Ident(
+                                    name: expression,
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: label),
+            asts: [
+                Ident(
+                    name: simpleIdentifier,
+                ),
+                Group(
+                    rules: [
+                        Choice(
+                            rules: [
+                                Ident(
+                                    name: AT_NO_WS,
+                                ),
+                                Ident(
+                                    name: AT_POST_WS,
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: controlStructureBody,
+            ),
+            asts: [
+                Choice(
+                    rules: [
+                        Ident(
+                            name: block,
+                        ),
+                        Ident(
+                            name: statement,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: block),
+            asts: [
+                '{',
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Ident(name: statements),
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                '}',
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: loopStatement),
+            asts: [
+                Choice(
+                    rules: [
+                        Ident(
+                            name: forStatement,
+                        ),
+                        Ident(
+                            name: whileStatement,
+                        ),
+                        Ident(
+                            name: doWhileStatement,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: forStatement),
+            asts: [
+                "for",
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                '(',
+                Repeated(
+                    rules: [
+                        Ident(
+                            name: annotation,
+                        ),
+                    ],
+                ),
+                Group(
+                    rules: [
+                        Choice(
+                            rules: [
+                                Ident(
+                                    name: variableDeclaration,
+                                ),
+                                Ident(
+                                    name: multiVariableDeclaration,
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+                "in",
+                Ident(name: expression),
+                ')',
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Optional(
+                    rules: [
+                        Ident(
+                            name: controlStructureBody,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: whileStatement),
+            asts: [
+                "while",
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                '(',
+                Ident(name: expression),
+                ')',
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Group(
+                    rules: [
+                        Choice(
+                            rules: [
+                                Ident(
+                                    name: controlStructureBody,
+                                ),
+                                ';',
+                            ],
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: doWhileStatement,
+            ),
+            asts: [
+                "do",
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Optional(
+                    rules: [
+                        Ident(
+                            name: controlStructureBody,
+                        ),
+                    ],
+                ),
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                "while",
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                '(',
+                Ident(name: expression),
+                ')',
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: assignment),
+            asts: [
+                Group(
+                    rules: [
+                        Choice(
+                            rules: [
+                                Group(
+                                    rules: [
+                                        Ident(
+                                            name: directlyAssignableExpression,
+                                        ),
+                                        '=',
+                                    ],
+                                ),
+                                Group(
+                                    rules: [
+                                        Ident(
+                                            name: assignableExpression,
+                                        ),
+                                        Ident(
+                                            name: assignmentAndOperator,
+                                        ),
+                                    ],
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Ident(name: expression),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: semi),
+            asts: [
+                Group(
+                    rules: [
+                        Choice(
+                            rules: [
+                                ';',
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: semis),
+            asts: [
+                Choice(
+                    rules: [
+                        ';',
+                        Ident(name: NL),
+                    ],
+                ),
+                Repeated(
+                    rules: [
+                        Choice(
+                            rules: [
+                                ';',
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: expression),
+            asts: [Ident(name: disjunction)],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: disjunction),
+            asts: [
+                Ident(name: conjunction),
+                Repeated(
+                    rules: [
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        "||",
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        Ident(
+                            name: conjunction,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: conjunction),
+            asts: [
+                Ident(name: equality),
+                Repeated(
+                    rules: [
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        "&&",
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        Ident(
+                            name: equality,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: equality),
+            asts: [
+                Ident(name: comparison),
+                Repeated(
+                    rules: [
+                        Ident(
+                            name: equalityOperator,
+                        ),
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        Ident(
+                            name: comparison,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: comparison),
+            asts: [
+                Ident(
+                    name: genericCallLikeComparison,
+                ),
+                Repeated(
+                    rules: [
+                        Ident(
+                            name: comparisonOperator,
+                        ),
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        Ident(
+                            name: genericCallLikeComparison,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: genericCallLikeComparison,
+            ),
+            asts: [
+                Ident(
+                    name: infixOperation,
+                ),
+                Repeated(
+                    rules: [
+                        Ident(
+                            name: callSuffix,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: infixOperation),
+            asts: [
+                Ident(
+                    name: elvisExpression,
+                ),
+                Repeated(
+                    rules: [
+                        Choice(
+                            rules: [
+                                Group(
+                                    rules: [
+                                        Ident(
+                                            name: inOperator,
+                                        ),
+                                        Repeated(
+                                            rules: [
+                                                Ident(
+                                                    name: NL,
+                                                ),
+                                            ],
+                                        ),
+                                        Ident(
+                                            name: elvisExpression,
+                                        ),
+                                    ],
+                                ),
+                                Group(
+                                    rules: [
+                                        Ident(
+                                            name: isOperator,
+                                        ),
+                                        Repeated(
+                                            rules: [
+                                                Ident(
+                                                    name: NL,
+                                                ),
+                                            ],
+                                        ),
+                                        Ident(
+                                            name: TYPE,
+                                        ),
+                                    ],
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: elvisExpression),
+            asts: [
+                Ident(
+                    name: infixFunctionCall,
+                ),
+                Repeated(
+                    rules: [
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        Ident(
+                            name: elvis,
+                        ),
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        Ident(
+                            name: infixFunctionCall,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: elvis),
+            asts: [
+                Ident(name: QUEST_NO_WS),
+                ':',
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: infixFunctionCall,
+            ),
+            asts: [
+                Ident(
+                    name: rangeExpression,
+                ),
+                Repeated(
+                    rules: [
+                        Ident(
+                            name: simpleIdentifier,
+                        ),
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        Ident(
+                            name: rangeExpression,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: rangeExpression),
+            asts: [
+                Ident(
+                    name: additiveExpression,
+                ),
+                Repeated(
+                    rules: [
+                        Group(
+                            rules: [
+                                Choice(
+                                    rules: [
+                                        "..",
+                                        "..<",
+                                    ],
+                                ),
+                            ],
+                        ),
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        Ident(
+                            name: additiveExpression,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: additiveExpression,
+            ),
+            asts: [
+                Ident(
+                    name: multiplicativeExpression,
+                ),
+                Repeated(
+                    rules: [
+                        Ident(
+                            name: additiveOperator,
+                        ),
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        Ident(
+                            name: multiplicativeExpression,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: multiplicativeExpression,
+            ),
+            asts: [
+                Ident(
+                    name: asExpression,
+                ),
+                Repeated(
+                    rules: [
+                        Ident(
+                            name: multiplicativeOperator,
+                        ),
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        Ident(
+                            name: asExpression,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: asExpression),
+            asts: [
+                Ident(
+                    name: prefixUnaryExpression,
+                ),
+                Repeated(
+                    rules: [
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        Ident(
+                            name: asOperator,
+                        ),
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        Ident(
+                            name: TYPE,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: prefixUnaryExpression,
+            ),
+            asts: [
+                Repeated(
+                    rules: [
+                        Ident(
+                            name: unaryPrefix,
+                        ),
+                    ],
+                ),
+                Ident(
+                    name: postfixUnaryExpression,
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: unaryPrefix),
+            asts: [
+                Choice(
+                    rules: [
+                        Ident(
+                            name: annotation,
+                        ),
+                        Ident(
+                            name: label,
+                        ),
+                        Group(
+                            rules: [
+                                Ident(
+                                    name: prefixUnaryOperator,
+                                ),
+                                Repeated(
+                                    rules: [
+                                        Ident(
+                                            name: NL,
+                                        ),
+                                    ],
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: postfixUnaryExpression,
+            ),
+            asts: [
+                Ident(
+                    name: primaryExpression,
+                ),
+                Repeated(
+                    rules: [
+                        Ident(
+                            name: postfixUnarySuffix,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: postfixUnarySuffix,
+            ),
+            asts: [
+                Choice(
+                    rules: [
+                        Ident(
+                            name: postfixUnaryOperator,
+                        ),
+                        Ident(
+                            name: typeArguments,
+                        ),
+                        Ident(
+                            name: callSuffix,
+                        ),
+                        Ident(
+                            name: indexingSuffix,
+                        ),
+                        Ident(
+                            name: navigationSuffix,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: directlyAssignableExpression,
+            ),
+            asts: [
+                Choice(
+                    rules: [
+                        Group(
+                            rules: [
+                                Ident(
+                                    name: postfixUnaryExpression,
+                                ),
+                                Ident(
+                                    name: assignableSuffix,
+                                ),
+                            ],
+                        ),
+                        Ident(
+                            name: simpleIdentifier,
+                        ),
+                        Ident(
+                            name: parenthesizedDirectlyAssignableExpression,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: parenthesizedDirectlyAssignableExpression,
+            ),
+            asts: [
+                '(',
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Ident(
+                    name: directlyAssignableExpression,
+                ),
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                ')',
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: assignableExpression,
+            ),
+            asts: [
+                Choice(
+                    rules: [
+                        Ident(
+                            name: prefixUnaryExpression,
+                        ),
+                        Ident(
+                            name: parenthesizedAssignableExpression,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: parenthesizedAssignableExpression,
+            ),
+            asts: [
+                '(',
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Ident(
+                    name: assignableExpression,
+                ),
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                ')',
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: assignableSuffix,
+            ),
+            asts: [
+                Choice(
+                    rules: [
+                        Ident(
+                            name: typeArguments,
+                        ),
+                        Ident(
+                            name: indexingSuffix,
+                        ),
+                        Ident(
+                            name: navigationSuffix,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: indexingSuffix),
+            asts: [
+                '[',
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Ident(name: expression),
+                Repeated(
+                    rules: [
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        ',',
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        Ident(
+                            name: expression,
+                        ),
+                    ],
+                ),
+                Optional(
+                    rules: [
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        ',',
+                    ],
+                ),
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                ']',
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: navigationSuffix,
+            ),
+            asts: [
+                Ident(
+                    name: memberAccessOperator,
+                ),
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Group(
+                    rules: [
+                        Choice(
+                            rules: [
+                                Ident(
+                                    name: simpleIdentifier,
+                                ),
+                                Ident(
+                                    name: parenthesizedExpression,
+                                ),
+                                "class",
+                            ],
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: callSuffix),
+            asts: [
+                Optional(
+                    rules: [
+                        Ident(
+                            name: typeArguments,
+                        ),
+                    ],
+                ),
+                Group(
+                    rules: [
+                        Choice(
+                            rules: [
+                                Group(
+                                    rules: [
+                                        Optional(
+                                            rules: [
+                                                Ident(
+                                                    name: valueArguments,
+                                                ),
+                                            ],
+                                        ),
+                                        Ident(
+                                            name: annotatedLambda,
+                                        ),
+                                    ],
+                                ),
+                                Ident(
+                                    name: valueArguments,
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: annotatedLambda),
+            asts: [
+                Repeated(
+                    rules: [
+                        Ident(
+                            name: annotation,
+                        ),
+                    ],
+                ),
+                Optional(
+                    rules: [Ident(name: label)],
+                ),
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Ident(
+                    name: lambdaLiteral,
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: typeArguments),
+            asts: [
+                '<',
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Ident(
+                    name: typeProjection,
+                ),
+                Repeated(
+                    rules: [
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        ',',
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        Ident(
+                            name: typeProjection,
+                        ),
+                    ],
+                ),
+                Optional(
+                    rules: [
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        ',',
+                    ],
+                ),
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                '>',
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: valueArguments),
+            asts: [
+                '(',
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Optional(
+                    rules: [
+                        Ident(
+                            name: valueArgument,
+                        ),
+                        Repeated(
+                            rules: [
+                                Repeated(
+                                    rules: [
+                                        Ident(
+                                            name: NL,
+                                        ),
+                                    ],
+                                ),
+                                ',',
+                                Repeated(
+                                    rules: [
+                                        Ident(
+                                            name: NL,
+                                        ),
+                                    ],
+                                ),
+                                Ident(
+                                    name: valueArgument,
+                                ),
+                            ],
+                        ),
+                        Optional(
+                            rules: [
+                                Repeated(
+                                    rules: [
+                                        Ident(
+                                            name: NL,
+                                        ),
+                                    ],
+                                ),
+                                ',',
+                            ],
+                        ),
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+                ')',
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: valueArgument),
+            asts: [
+                Optional(
+                    rules: [
+                        Ident(
+                            name: annotation,
+                        ),
+                    ],
+                ),
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Optional(
+                    rules: [
+                        Ident(
+                            name: simpleIdentifier,
+                        ),
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        '=',
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+                Optional(rules: ['*']),
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Ident(name: expression),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: primaryExpression,
+            ),
+            asts: [
+                Choice(
+                    rules: [
+                        Ident(
+                            name: parenthesizedExpression,
+                        ),
+                        Ident(
+                            name: simpleIdentifier,
+                        ),
+                        Ident(
+                            name: literalConstant,
+                        ),
+                        Ident(
+                            name: stringLiteral,
+                        ),
+                        Ident(
+                            name: callableReference,
+                        ),
+                        Ident(
+                            name: functionLiteral,
+                        ),
+                        Ident(
+                            name: objectLiteral,
+                        ),
+                        Ident(
+                            name: collectionLiteral,
+                        ),
+                        Ident(
+                            name: thisExpression,
+                        ),
+                        Ident(
+                            name: superExpression,
+                        ),
+                        Ident(
+                            name: ifExpression,
+                        ),
+                        Ident(
+                            name: whenExpression,
+                        ),
+                        Ident(
+                            name: tryExpression,
+                        ),
+                        Ident(
+                            name: jumpExpression,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: parenthesizedExpression,
+            ),
+            asts: [
+                '(',
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Ident(name: expression),
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                ')',
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: collectionLiteral,
+            ),
+            asts: [
+                '[',
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Optional(
+                    rules: [
+                        Ident(
+                            name: expression,
+                        ),
+                        Repeated(
+                            rules: [
+                                Repeated(
+                                    rules: [
+                                        Ident(
+                                            name: NL,
+                                        ),
+                                    ],
+                                ),
+                                ',',
+                                Repeated(
+                                    rules: [
+                                        Ident(
+                                            name: NL,
+                                        ),
+                                    ],
+                                ),
+                                Ident(
+                                    name: expression,
+                                ),
+                            ],
+                        ),
+                        Optional(
+                            rules: [
+                                Repeated(
+                                    rules: [
+                                        Ident(
+                                            name: NL,
+                                        ),
+                                    ],
+                                ),
+                                ',',
+                            ],
+                        ),
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+                ']',
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: literalConstant),
+            asts: [
+                Choice(
+                    rules: [
+                        Ident(
+                            name: BooleanLiteral,
+                        ),
+                        Ident(
+                            name: IntegerLiteral,
+                        ),
+                        Ident(
+                            name: HexLiteral,
+                        ),
+                        Ident(
+                            name: BinLiteral,
+                        ),
+                        Ident(
+                            name: CharacterLiteral,
+                        ),
+                        Ident(
+                            name: RealLiteral,
+                        ),
+                        "null",
+                        Ident(
+                            name: LongLiteral,
+                        ),
+                        Ident(
+                            name: UnsignedLiteral,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: stringLiteral),
+            asts: [
+                Choice(
+                    rules: [
+                        Ident(
+                            name: lineStringLiteral,
+                        ),
+                        Ident(
+                            name: multiLineStringLiteral,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: lineStringLiteral,
+            ),
+            asts: [
+                '"',
+                Repeated(
+                    rules: [
+                        Choice(
+                            rules: [
+                                Ident(
+                                    name: lineStringContent,
+                                ),
+                                Ident(
+                                    name: lineStringExpression,
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+                '"',
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: multiLineStringLiteral,
+            ),
+            asts: [
+                Ident(
+                    name: TRIPLE_QUOTE_OPEN,
+                ),
+                Repeated(
+                    rules: [
+                        Choice(
+                            rules: [
+                                Ident(
+                                    name: multiLineStringContent,
+                                ),
+                                Ident(
+                                    name: multiLineStringExpression,
+                                ),
+                                '"',
+                            ],
+                        ),
+                    ],
+                ),
+                Ident(
+                    name: TRIPLE_QUOTE_CLOSE,
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: lineStringContent,
+            ),
+            asts: [
+                Choice(
+                    rules: [
+                        Ident(
+                            name: LineStrText,
+                        ),
+                        Ident(
+                            name: LineStrEscapedChar,
+                        ),
+                        Ident(
+                            name: LineStrRef,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: lineStringExpression,
+            ),
+            asts: [
+                "${",
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Ident(name: expression),
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                '}',
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: multiLineStringContent,
+            ),
+            asts: [
+                Choice(
+                    rules: [
+                        Ident(
+                            name: MultiLineStrText,
+                        ),
+                        '"',
+                        Ident(
+                            name: MultiLineStrRef,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: multiLineStringExpression,
+            ),
+            asts: [
+                "${",
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Ident(name: expression),
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                '}',
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: lambdaLiteral),
+            asts: [
+                '{',
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Optional(
+                    rules: [
+                        Optional(
+                            rules: [
+                                Ident(
+                                    name: lambdaParameters,
+                                ),
+                            ],
+                        ),
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        "->",
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+                Ident(name: statements),
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                '}',
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: lambdaParameters,
+            ),
+            asts: [
+                Ident(
+                    name: lambdaParameter,
+                ),
+                Repeated(
+                    rules: [
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        ',',
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        Ident(
+                            name: lambdaParameter,
+                        ),
+                    ],
+                ),
+                Optional(
+                    rules: [
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        ',',
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: lambdaParameter),
+            asts: [
+                Choice(
+                    rules: [
+                        Ident(
+                            name: variableDeclaration,
+                        ),
+                        Group(
+                            rules: [
+                                Ident(
+                                    name: multiVariableDeclaration,
+                                ),
+                                Optional(
+                                    rules: [
+                                        Repeated(
+                                            rules: [
+                                                Ident(
+                                                    name: NL,
+                                                ),
+                                            ],
+                                        ),
+                                        ':',
+                                        Repeated(
+                                            rules: [
+                                                Ident(
+                                                    name: NL,
+                                                ),
+                                            ],
+                                        ),
+                                        Ident(
+                                            name: TYPE,
+                                        ),
+                                    ],
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: anonymousFunction,
+            ),
+            asts: [
+                Optional(
+                    rules: ["suspend"],
+                ),
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                "fun",
+                Optional(
+                    rules: [
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        Ident(
+                            name: TYPE,
+                        ),
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        '.',
+                    ],
+                ),
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Ident(
+                    name: parametersWithOptionalType,
+                ),
+                Optional(
+                    rules: [
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        ':',
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        Ident(
+                            name: TYPE,
+                        ),
+                    ],
+                ),
+                Optional(
+                    rules: [
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        Ident(
+                            name: typeConstraints,
+                        ),
+                    ],
+                ),
+                Optional(
+                    rules: [
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        Ident(
+                            name: functionBody,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: functionLiteral),
+            asts: [
+                Choice(
+                    rules: [
+                        Ident(
+                            name: lambdaLiteral,
+                        ),
+                        Ident(
+                            name: anonymousFunction,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: objectLiteral),
+            asts: [
+                Optional(
+                    rules: ["data"],
+                ),
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                "object",
+                Optional(
+                    rules: [
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        ':',
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        Ident(
+                            name: delegationSpecifiers,
+                        ),
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+                Optional(
+                    rules: [
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        Ident(
+                            name: classBody,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: thisExpression),
+            asts: [
+                Choice(
+                    rules: [
+                        "this",
+                        Ident(
+                            name: THIS_AT,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: superExpression),
+            asts: [
+                Choice(
+                    rules: [
+                        Group(
+                            rules: [
+                                "super",
+                                Optional(
+                                    rules: [
+                                        '<',
+                                        Repeated(
+                                            rules: [
+                                                Ident(
+                                                    name: NL,
+                                                ),
+                                            ],
+                                        ),
+                                        Ident(
+                                            name: TYPE,
+                                        ),
+                                        Repeated(
+                                            rules: [
+                                                Ident(
+                                                    name: NL,
+                                                ),
+                                            ],
+                                        ),
+                                        '>',
+                                    ],
+                                ),
+                                Optional(
+                                    rules: [
+                                        Ident(
+                                            name: AT_NO_WS,
+                                        ),
+                                        Ident(
+                                            name: simpleIdentifier,
+                                        ),
+                                    ],
+                                ),
+                            ],
+                        ),
+                        Ident(
+                            name: SUPER_AT,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: ifExpression),
+            asts: [
+                "if",
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                '(',
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Ident(name: expression),
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                ')',
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Group(
+                    rules: [
+                        Choice(
+                            rules: [
+                                Ident(
+                                    name: controlStructureBody,
+                                ),
+                                Group(
+                                    rules: [
+                                        Optional(
+                                            rules: [
+                                                Ident(
+                                                    name: controlStructureBody,
+                                                ),
+                                            ],
+                                        ),
+                                        Repeated(
+                                            rules: [
+                                                Ident(
+                                                    name: NL,
+                                                ),
+                                            ],
+                                        ),
+                                        Optional(
+                                            rules: [
+                                                ';',
+                                            ],
+                                        ),
+                                        Repeated(
+                                            rules: [
+                                                Ident(
+                                                    name: NL,
+                                                ),
+                                            ],
+                                        ),
+                                        "else",
+                                        Repeated(
+                                            rules: [
+                                                Ident(
+                                                    name: NL,
+                                                ),
+                                            ],
+                                        ),
+                                        Group(
+                                            rules: [
+                                                Choice(
+                                                    rules: [
+                                                        Ident(
+                                                            name: controlStructureBody,
+                                                        ),
+                                                        ';',
+                                                    ],
+                                                ),
+                                            ],
+                                        ),
+                                    ],
+                                ),
+                                ';',
+                            ],
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: whenSubject),
+            asts: [
+                '(',
+                Optional(
+                    rules: [
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: annotation,
+                                ),
+                            ],
+                        ),
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        "val",
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        Ident(
+                            name: variableDeclaration,
+                        ),
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        '=',
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+                Ident(name: expression),
+                ')',
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: whenExpression),
+            asts: [
+                "when",
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Optional(
+                    rules: [
+                        Ident(
+                            name: whenSubject,
+                        ),
+                    ],
+                ),
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                '{',
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Repeated(
+                    rules: [
+                        Ident(
+                            name: whenEntry,
+                        ),
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                '}',
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: whenEntry),
+            asts: [
+                Choice(
+                    rules: [
+                        Group(
+                            rules: [
+                                Ident(
+                                    name: whenCondition,
+                                ),
+                                Repeated(
+                                    rules: [
+                                        Repeated(
+                                            rules: [
+                                                Ident(
+                                                    name: NL,
+                                                ),
+                                            ],
+                                        ),
+                                        ',',
+                                        Repeated(
+                                            rules: [
+                                                Ident(
+                                                    name: NL,
+                                                ),
+                                            ],
+                                        ),
+                                        Ident(
+                                            name: whenCondition,
+                                        ),
+                                    ],
+                                ),
+                                Optional(
+                                    rules: [
+                                        Repeated(
+                                            rules: [
+                                                Ident(
+                                                    name: NL,
+                                                ),
+                                            ],
+                                        ),
+                                        ',',
+                                    ],
+                                ),
+                                Repeated(
+                                    rules: [
+                                        Ident(
+                                            name: NL,
+                                        ),
+                                    ],
+                                ),
+                                "->",
+                                Repeated(
+                                    rules: [
+                                        Ident(
+                                            name: NL,
+                                        ),
+                                    ],
+                                ),
+                                Ident(
+                                    name: controlStructureBody,
+                                ),
+                                Optional(
+                                    rules: [
+                                        Ident(
+                                            name: semi,
+                                        ),
+                                    ],
+                                ),
+                            ],
+                        ),
+                        Group(
+                            rules: [
+                                "else",
+                                Repeated(
+                                    rules: [
+                                        Ident(
+                                            name: NL,
+                                        ),
+                                    ],
+                                ),
+                                "->",
+                                Repeated(
+                                    rules: [
+                                        Ident(
+                                            name: NL,
+                                        ),
+                                    ],
+                                ),
+                                Ident(
+                                    name: controlStructureBody,
+                                ),
+                                Optional(
+                                    rules: [
+                                        Ident(
+                                            name: semi,
+                                        ),
+                                    ],
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: whenCondition),
+            asts: [
+                Choice(
+                    rules: [
+                        Ident(
+                            name: expression,
+                        ),
+                        Ident(
+                            name: rangeTest,
+                        ),
+                        Ident(
+                            name: typeTest,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: rangeTest),
+            asts: [
+                Ident(name: inOperator),
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Ident(name: expression),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: typeTest),
+            asts: [
+                Ident(name: isOperator),
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Ident(name: TYPE),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: tryExpression),
+            asts: [
+                "try",
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Ident(name: block),
+                Group(
+                    rules: [
+                        Choice(
+                            rules: [
+                                Group(
+                                    rules: [
+                                        Group(
+                                            rules: [
+                                                Repeated(
+                                                    rules: [
+                                                        Ident(
+                                                            name: NL,
+                                                        ),
+                                                    ],
+                                                ),
+                                                Ident(
+                                                    name: catchBlock,
+                                                ),
+                                                Repeated(
+                                                    rules: [
+                                                        Repeated(
+                                                            rules: [
+                                                                Ident(
+                                                                    name: NL,
+                                                                ),
+                                                            ],
+                                                        ),
+                                                        Ident(
+                                                            name: catchBlock,
+                                                        ),
+                                                    ],
+                                                ),
+                                            ],
+                                        ),
+                                        Optional(
+                                            rules: [
+                                                Repeated(
+                                                    rules: [
+                                                        Ident(
+                                                            name: NL,
+                                                        ),
+                                                    ],
+                                                ),
+                                                Ident(
+                                                    name: finallyBlock,
+                                                ),
+                                            ],
+                                        ),
+                                    ],
+                                ),
+                                Group(
+                                    rules: [
+                                        Repeated(
+                                            rules: [
+                                                Ident(
+                                                    name: NL,
+                                                ),
+                                            ],
+                                        ),
+                                        Ident(
+                                            name: finallyBlock,
+                                        ),
+                                    ],
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: catchBlock),
+            asts: [
+                "catch",
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                '(',
+                Repeated(
+                    rules: [
+                        Ident(
+                            name: annotation,
+                        ),
+                    ],
+                ),
+                Ident(
+                    name: simpleIdentifier,
+                ),
+                ':',
+                Ident(name: TYPE),
+                Optional(
+                    rules: [
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        ',',
+                    ],
+                ),
+                ')',
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Ident(name: block),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: finallyBlock),
+            asts: [
+                "finally",
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Ident(name: block),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: jumpExpression),
+            asts: [
+                Choice(
+                    rules: [
+                        Group(
+                            rules: [
+                                "throw",
+                                Repeated(
+                                    rules: [
+                                        Ident(
+                                            name: NL,
+                                        ),
+                                    ],
+                                ),
+                                Ident(
+                                    name: expression,
+                                ),
+                            ],
+                        ),
+                        Group(
+                            rules: [
+                                Group(
+                                    rules: [
+                                        Choice(
+                                            rules: [
+                                                "return",
+                                                Ident(
+                                                    name: RETURN_AT,
+                                                ),
+                                            ],
+                                        ),
+                                    ],
+                                ),
+                                Optional(
+                                    rules: [
+                                        Ident(
+                                            name: expression,
+                                        ),
+                                    ],
+                                ),
+                            ],
+                        ),
+                        "continue",
+                        Ident(
+                            name: CONTINUE_AT,
+                        ),
+                        "break",
+                        Ident(
+                            name: BREAK_AT,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: callableReference,
+            ),
+            asts: [
+                Optional(
+                    rules: [
+                        Ident(
+                            name: receiverType,
+                        ),
+                    ],
+                ),
+                "::",
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                Group(
+                    rules: [
+                        Choice(
+                            rules: [
+                                Ident(
+                                    name: simpleIdentifier,
+                                ),
+                                "class",
+                            ],
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: assignmentAndOperator,
+            ),
+            asts: [
+                Choice(
+                    rules: [
+                        "+=",
+                        "-=",
+                        "*=",
+                        "/=",
+                        "%=",
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: equalityOperator,
+            ),
+            asts: [
+                Choice(
+                    rules: [
+                        "!=",
+                        "!==",
+                        "==",
+                        "===",
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: comparisonOperator,
+            ),
+            asts: [
+                Choice(
+                    rules: [
+                        '<',
+                        '>',
+                        "<=",
+                        ">=",
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: inOperator),
+            asts: [
+                Choice(
+                    rules: [
+                        "in",
+                        Ident(
+                            name: NOT_IN,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: isOperator),
+            asts: [
+                Choice(
+                    rules: [
+                        "is",
+                        Ident(
+                            name: NOT_IS,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: additiveOperator,
+            ),
+            asts: [Choice(rules: ['+', '-'])],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: multiplicativeOperator,
+            ),
+            asts: [
+                Choice(
+                    rules: ['*', '/', '%'],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: asOperator),
+            asts: [
+                Choice(
+                    rules: ["as", "as?"],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: prefixUnaryOperator,
+            ),
+            asts: [
+                Choice(
+                    rules: [
+                        "++",
+                        "--",
+                        '-',
+                        '+',
+                        Ident(
+                            name: excl,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: postfixUnaryOperator,
+            ),
+            asts: [
+                Choice(
+                    rules: [
+                        "++",
+                        "--",
+                        Group(
+                            rules: [
+                                '!',
+                                Ident(
+                                    name: excl,
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: excl),
+            asts: [
+                Choice(
+                    rules: [
+                        '!',
+                        Ident(
+                            name: EXCL_WS,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: memberAccessOperator,
+            ),
+            asts: [
+                Choice(
+                    rules: [
+                        Group(
+                            rules: [
+                                Repeated(
+                                    rules: [
+                                        Ident(
+                                            name: NL,
+                                        ),
+                                    ],
+                                ),
+                                '.',
+                            ],
+                        ),
+                        Group(
+                            rules: [
+                                Repeated(
+                                    rules: [
+                                        Ident(
+                                            name: NL,
+                                        ),
+                                    ],
+                                ),
+                                Ident(
+                                    name: safeNav,
+                                ),
+                            ],
+                        ),
+                        "::",
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: safeNav),
+            asts: [
+                Ident(name: QUEST_NO_WS),
+                '.',
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: modifiers),
+            asts: [
+                Choice(
+                    rules: [
+                        Ident(
+                            name: annotation,
+                        ),
+                        Ident(
+                            name: modifier,
+                        ),
+                    ],
+                ),
+                Repeated(
+                    rules: [
+                        Choice(
+                            rules: [
+                                Ident(
+                                    name: annotation,
+                                ),
+                                Ident(
+                                    name: modifier,
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: parameterModifiers,
+            ),
+            asts: [
+                Choice(
+                    rules: [
+                        Ident(
+                            name: annotation,
+                        ),
+                        Ident(
+                            name: parameterModifier,
+                        ),
+                    ],
+                ),
+                Repeated(
+                    rules: [
+                        Choice(
+                            rules: [
+                                Ident(
+                                    name: annotation,
+                                ),
+                                Ident(
+                                    name: parameterModifier,
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: modifier),
+            asts: [
+                Group(
+                    rules: [
+                        Choice(
+                            rules: [
+                                Ident(
+                                    name: classModifier,
+                                ),
+                                Ident(
+                                    name: memberModifier,
+                                ),
+                                Ident(
+                                    name: visibilityModifier,
+                                ),
+                                Ident(
+                                    name: functionModifier,
+                                ),
+                                Ident(
+                                    name: propertyModifier,
+                                ),
+                                Ident(
+                                    name: inheritanceModifier,
+                                ),
+                                Ident(
+                                    name: parameterModifier,
+                                ),
+                                Ident(
+                                    name: platformModifier,
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: typeModifiers),
+            asts: [
+                Ident(
+                    name: typeModifier,
+                ),
+                Repeated(
+                    rules: [
+                        Ident(
+                            name: typeModifier,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: typeModifier),
+            asts: [
+                Choice(
+                    rules: [
+                        Ident(
+                            name: annotation,
+                        ),
+                        Group(
+                            rules: [
+                                "suspend",
+                                Repeated(
+                                    rules: [
+                                        Ident(
+                                            name: NL,
+                                        ),
+                                    ],
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: classModifier),
+            asts: [
+                Choice(
+                    rules: [
+                        "enum",
+                        "sealed",
+                        "annotation",
+                        "data",
+                        "inner",
+                        "value",
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: memberModifier),
+            asts: [
+                Choice(
+                    rules: [
+                        "override",
+                        "lateinit",
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: visibilityModifier,
+            ),
+            asts: [
+                Choice(
+                    rules: [
+                        "public",
+                        "private",
+                        "internal",
+                        "protected",
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: varianceModifier,
+            ),
+            asts: [
+                Choice(
+                    rules: ["in", "out"],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: typeParameterModifiers,
+            ),
+            asts: [
+                Ident(
+                    name: typeParameterModifier,
+                ),
+                Repeated(
+                    rules: [
+                        Ident(
+                            name: typeParameterModifier,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: typeParameterModifier,
+            ),
+            asts: [
+                Choice(
+                    rules: [
+                        Group(
+                            rules: [
+                                Ident(
+                                    name: reificationModifier,
+                                ),
+                                Repeated(
+                                    rules: [
+                                        Ident(
+                                            name: NL,
+                                        ),
+                                    ],
+                                ),
+                            ],
+                        ),
+                        Group(
+                            rules: [
+                                Ident(
+                                    name: varianceModifier,
+                                ),
+                                Repeated(
+                                    rules: [
+                                        Ident(
+                                            name: NL,
+                                        ),
+                                    ],
+                                ),
+                            ],
+                        ),
+                        Ident(
+                            name: annotation,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: functionModifier,
+            ),
+            asts: [
+                Choice(
+                    rules: [
+                        "tailrec",
+                        "operator",
+                        "infix",
+                        "inline",
+                        "external",
+                        "suspend",
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: propertyModifier,
+            ),
+            asts: ["const"],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: inheritanceModifier,
+            ),
+            asts: [
+                Choice(
+                    rules: [
+                        "abstract",
+                        "final",
+                        "open",
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: parameterModifier,
+            ),
+            asts: [
+                Choice(
+                    rules: [
+                        "vararg",
+                        "noinline",
+                        "crossinline",
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: reificationModifier,
+            ),
+            asts: ["reified"],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: platformModifier,
+            ),
+            asts: [
+                Choice(
+                    rules: ["expect", "actual"],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: annotation),
+            asts: [
+                Group(
+                    rules: [
+                        Choice(
+                            rules: [
+                                Ident(
+                                    name: singleAnnotation,
+                                ),
+                                Ident(
+                                    name: multiAnnotation,
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: singleAnnotation,
+            ),
+            asts: [
+                Group(
+                    rules: [
+                        Choice(
+                            rules: [
+                                Group(
+                                    rules: [
+                                        Ident(
+                                            name: annotationUseSiteTarget,
+                                        ),
+                                        Repeated(
+                                            rules: [
+                                                Ident(
+                                                    name: NL,
+                                                ),
+                                            ],
+                                        ),
+                                    ],
+                                ),
+                                Ident(
+                                    name: AT_NO_WS,
+                                ),
+                                Ident(
+                                    name: AT_PRE_WS,
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+                Ident(
+                    name: unescapedAnnotation,
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: multiAnnotation),
+            asts: [
+                Group(
+                    rules: [
+                        Choice(
+                            rules: [
+                                Group(
+                                    rules: [
+                                        Ident(
+                                            name: annotationUseSiteTarget,
+                                        ),
+                                        Repeated(
+                                            rules: [
+                                                Ident(
+                                                    name: NL,
+                                                ),
+                                            ],
+                                        ),
+                                    ],
+                                ),
+                                Ident(
+                                    name: AT_NO_WS,
+                                ),
+                                Ident(
+                                    name: AT_PRE_WS,
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+                '[',
+                Group(
+                    rules: [
+                        Ident(
+                            name: unescapedAnnotation,
+                        ),
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: unescapedAnnotation,
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+                ']',
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: annotationUseSiteTarget,
+            ),
+            asts: [
+                Group(
+                    rules: [
+                        Choice(
+                            rules: [
+                                Ident(
+                                    name: AT_NO_WS,
+                                ),
+                                Ident(
+                                    name: AT_PRE_WS,
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+                Group(
+                    rules: [
+                        Choice(
+                            rules: [
+                                "field",
+                                "property",
+                                "get",
+                                "set",
+                                "receiver",
+                                "param",
+                                "setparam",
+                                "delegate",
+                            ],
+                        ),
+                    ],
+                ),
+                Repeated(
+                    rules: [Ident(name: NL)],
+                ),
+                ':',
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: unescapedAnnotation,
+            ),
+            asts: [
+                Choice(
+                    rules: [
+                        Ident(
+                            name: constructorInvocation,
+                        ),
+                        Ident(
+                            name: userType,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(
+                name: simpleIdentifier,
+            ),
+            asts: [
+                Choice(
+                    rules: [
+                        Ident(
+                            name: Identifier,
+                        ),
+                        "abstract",
+                        "annotation",
+                        "by",
+                        "catch",
+                        "companion",
+                        "constructor",
+                        "crossinline",
+                        "data",
+                        "dynamic",
+                        "enum",
+                        "external",
+                        "final",
+                        "finally",
+                        "get",
+                        "import",
+                        "infix",
+                        "init",
+                        "inline",
+                        "inner",
+                        "internal",
+                        "lateinit",
+                        "noinline",
+                        "open",
+                        "operator",
+                        "out",
+                        "override",
+                        "private",
+                        "protected",
+                        "public",
+                        "reified",
+                        "sealed",
+                        "tailrec",
+                        "set",
+                        "vararg",
+                        "where",
+                        "field",
+                        "property",
+                        "receiver",
+                        "param",
+                        "setparam",
+                        "delegate",
+                        "file",
+                        "expect",
+                        "actual",
+                        "const",
+                        "suspend",
+                        "value",
+                    ],
+                ),
+            ],
+        ),
+        TopLevelParseEntry(
+            field: Field(name: identifier),
+            asts: [
+                Ident(
+                    name: simpleIdentifier,
+                ),
+                Repeated(
+                    rules: [
+                        Repeated(
+                            rules: [
+                                Ident(
+                                    name: NL,
+                                ),
+                            ],
+                        ),
+                        '.',
+                        Ident(
+                            name: simpleIdentifier,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+    ],
+)

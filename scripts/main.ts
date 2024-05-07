@@ -1,9 +1,35 @@
-use macros::gen_ast;
+// used to pre format the texts from kotlin spec before using inside the code
+// run deno run scripts/main.ts
 
-#[test]
-fn all_syntax_input() {
-    gen_ast! {
-    kotlinFile:
+function main() {
+  let spec = content();
+  // replace '"""' -> TRIPLE_QUOTE_OPEN
+  spec = spec.replace(/'"""'/g, "TRIPLE_QUOTE_OPEN");
+  // replace 'c' -> ~c~
+  spec = spec.replace(/'([^'])'/g, "~$1~");
+  // replace 'many' -> "many"
+  spec = spec.replace(/'([^']{2,})'/g, '"$1"');
+  // replace ~c~ -> 'c'
+  spec = spec.replace(/~([^~])~/g, "'$1'");
+  // replace type -> TYPE
+  spec = spec.replace(/\btype\b/g, "TYPE");
+  // formatting
+  let lines = spec.split("\n").map((l) => {
+    let line = l.trim();
+    // to every line without : at end add \t
+    // but add a line above
+    if (line.match(/\w+:/)) {
+      return `\n  ${line}`;
+    }
+    return `    ${line}`;
+  });
+  spec = lines.join("\n");
+  console.log(spec);
+}
+
+function content() {
+  return `
+        kotlinFile:
         [shebangLine]
         {NL}
         {fileAnnotation}
@@ -11,8 +37,7 @@ fn all_syntax_input() {
         importList
         {topLevelObject}
         EOF
-
-      script:
+        script:
         [shebangLine]
         {NL}
         {fileAnnotation}
@@ -20,55 +45,45 @@ fn all_syntax_input() {
         importList
         {statement semi}
         EOF
-
-      shebangLine:
+        shebangLine:
         ShebangLine (NL {NL})
-
-      fileAnnotation:
+        fileAnnotation:
         (AT_NO_WS | AT_PRE_WS)
-        "file"
+        'file'
         {NL}
         ':'
         {NL}
         (('[' (unescapedAnnotation {unescapedAnnotation}) ']') | unescapedAnnotation)
         {NL}
-
-      packageHeader:
-        ["package" identifier [semi]]
-
-      importList:
+        packageHeader:
+        ['package' identifier [semi]]
+        importList:
         {importHeader}
-
-      importHeader:
-        "import" identifier [('.' '*') | importAlias] [semi]
-
-      importAlias:
-        "as" simpleIdentifier
-
-      topLevelObject:
+        importHeader:
+        'import' identifier [('.' '*') | importAlias] [semi]
+        importAlias:
+        'as' simpleIdentifier
+        topLevelObject:
         declaration [semis]
-
-      typeAlias:
+        typeAlias:
         [modifiers]
-        "typealias"
+        'typealias'
         {NL}
         simpleIdentifier
         [{NL} typeParameters]
         {NL}
         '='
         {NL}
-        TYPE
-
-      declaration:
+        type
+        declaration:
         classDeclaration
         | objectDeclaration
         | functionDeclaration
         | propertyDeclaration
         | typeAlias
-
-      classDeclaration:
+        classDeclaration:
         [modifiers]
-        ("class" | (["fun" {NL}] "interface"))
+        ('class' | (['fun' {NL}] 'interface'))
         {NL}
         simpleIdentifier
         [{NL} typeParameters]
@@ -76,58 +91,48 @@ fn all_syntax_input() {
         [{NL} ':' {NL} delegationSpecifiers]
         [{NL} typeConstraints]
         [({NL} classBody) | ({NL} enumClassBody)]
-
-      primaryConstructor:
-        [[modifiers] "constructor" {NL}] classParameters
-
-      classBody:
+        primaryConstructor:
+        [[modifiers] 'constructor' {NL}] classParameters
+        classBody:
         '{'
         {NL}
         classMemberDeclarations
         {NL}
         '}'
-
-      classParameters:
+        classParameters:
         '('
         {NL}
         [classParameter {{NL} ',' {NL} classParameter} [{NL} ',']]
         {NL}
         ')'
-
-      classParameter:
+        classParameter:
         [modifiers]
-        ["val" | "var"]
+        ['val' | 'var']
         {NL}
         simpleIdentifier
         ':'
         {NL}
-        TYPE
+        type
         [{NL} '=' {NL} expression]
-
-      delegationSpecifiers:
+        delegationSpecifiers:
         annotatedDelegationSpecifier {{NL} ',' {NL} annotatedDelegationSpecifier}
-
-      delegationSpecifier:
+        delegationSpecifier:
         constructorInvocation
         | explicitDelegation
         | userType
         | functionType
-        | ("suspend" {NL} functionType)
-
-      constructorInvocation:
+        | ('suspend' {NL} functionType)
+        constructorInvocation:
         userType {NL} valueArguments
-
-      annotatedDelegationSpecifier:
+        annotatedDelegationSpecifier:
         {annotation} {NL} delegationSpecifier
-
-      explicitDelegation:
+        explicitDelegation:
         (userType | functionType)
         {NL}
-        "by"
+        'by'
         {NL}
         expression
-
-      typeParameters:
+        typeParameters:
         '<'
         {NL}
         typeParameter
@@ -135,75 +140,62 @@ fn all_syntax_input() {
         [{NL} ',']
         {NL}
         '>'
-
-      typeParameter:
-        [typeParameterModifiers] {NL} simpleIdentifier [{NL} ':' {NL} TYPE]
-
-      typeConstraints:
-        "where" {NL} typeConstraint {{NL} ',' {NL} typeConstraint}
-
-      typeConstraint:
+        typeParameter:
+        [typeParameterModifiers] {NL} simpleIdentifier [{NL} ':' {NL} type]
+        typeConstraints:
+        'where' {NL} typeConstraint {{NL} ',' {NL} typeConstraint}
+        typeConstraint:
         {annotation}
         simpleIdentifier
         {NL}
         ':'
         {NL}
-        TYPE
-
-      classMemberDeclarations:
+        type
+        classMemberDeclarations:
         {classMemberDeclaration [semis]}
-
-      classMemberDeclaration:
+        classMemberDeclaration:
         declaration
         | companionObject
         | anonymousInitializer
         | secondaryConstructor
-
-      anonymousInitializer:
-        "init" {NL} block
-
-      companionObject:
+        anonymousInitializer:
+        'init' {NL} block
+        companionObject:
         [modifiers]
-        "companion"
+        'companion'
         {NL}
-        ["data"]
+        ['data']
         {NL}
-        "object"
+        'object'
         [{NL} simpleIdentifier]
         [{NL} ':' {NL} delegationSpecifiers]
         [{NL} classBody]
-
-      functionValueParameters:
+        functionValueParameters:
         '('
         {NL}
         [functionValueParameter {{NL} ',' {NL} functionValueParameter} [{NL} ',']]
         {NL}
         ')'
-
-      functionValueParameter:
+        functionValueParameter:
         [parameterModifiers] parameter [{NL} '=' {NL} expression]
-
-      functionDeclaration:
+        functionDeclaration:
         [modifiers]
-        "fun"
+        'fun'
         [{NL} typeParameters]
         [{NL} receiverType {NL} '.']
         {NL}
         simpleIdentifier
         {NL}
         functionValueParameters
-        [{NL} ':' {NL} TYPE]
+        [{NL} ':' {NL} type]
         [{NL} typeConstraints]
         [{NL} functionBody]
-
-      functionBody:
+        functionBody:
         block
         | ('=' {NL} expression)
-
-      variableDeclaration:
-        {annotation} {NL} simpleIdentifier [{NL} ':' {NL} TYPE]
-
-      multiVariableDeclaration:
+        variableDeclaration:
+        {annotation} {NL} simpleIdentifier [{NL} ':' {NL} type]
+        multiVariableDeclaration:
         '('
         {NL}
         variableDeclaration
@@ -211,10 +203,9 @@ fn all_syntax_input() {
         [{NL} ',']
         {NL}
         ')'
-
-      propertyDeclaration:
+        propertyDeclaration:
         [modifiers]
-        ("val" | "var")
+        ('val' | 'var')
         [{NL} typeParameters]
         [{NL} receiverType {NL} '.']
         ({NL} (multiVariableDeclaration | variableDeclaration))
@@ -223,136 +214,108 @@ fn all_syntax_input() {
         [{NL} ';']
         {NL}
         (([getter] [{NL} [semi] setter]) | ([setter] [{NL} [semi] getter]))
-
-      propertyDelegate:
-        "by" {NL} expression
-
-      getter:
-        [modifiers] "get" [{NL} '(' {NL} ')' [{NL} ':' {NL} TYPE] {NL} functionBody]
-
-      setter:
-        [modifiers] "set" [{NL} '(' {NL} functionValueParameterWithOptionalType [{NL} ','] {NL} ')' [{NL} ':' {NL} TYPE] {NL} functionBody]
-
-      parametersWithOptionalType:
+        propertyDelegate:
+        'by' {NL} expression
+        getter:
+        [modifiers] 'get' [{NL} '(' {NL} ')' [{NL} ':' {NL} type] {NL} functionBody]
+        setter:
+        [modifiers] 'set' [{NL} '(' {NL} functionValueParameterWithOptionalType [{NL} ','] {NL} ')' [{NL} ':' {NL} type] {NL} functionBody]
+        parametersWithOptionalType:
         '('
         {NL}
         [functionValueParameterWithOptionalType {{NL} ',' {NL} functionValueParameterWithOptionalType} [{NL} ',']]
         {NL}
         ')'
-
-      functionValueParameterWithOptionalType:
+        functionValueParameterWithOptionalType:
         [parameterModifiers] parameterWithOptionalType [{NL} '=' {NL} expression]
-
-      parameterWithOptionalType:
-        simpleIdentifier {NL} [':' {NL} TYPE]
-
-      parameter:
+        parameterWithOptionalType:
+        simpleIdentifier {NL} [':' {NL} type]
+        parameter:
         simpleIdentifier
         {NL}
         ':'
         {NL}
-        TYPE
-
-      objectDeclaration:
+        type
+        objectDeclaration:
         [modifiers]
-        "object"
+        'object'
         {NL}
         simpleIdentifier
         [{NL} ':' {NL} delegationSpecifiers]
         [{NL} classBody]
-
-      secondaryConstructor:
+        secondaryConstructor:
         [modifiers]
-        "constructor"
+        'constructor'
         {NL}
         functionValueParameters
         [{NL} ':' {NL} constructorDelegationCall]
         {NL}
         [block]
-
-      constructorDelegationCall:
-        ("this" | "super") {NL} valueArguments
-
-      enumClassBody:
+        constructorDelegationCall:
+        ('this' | 'super') {NL} valueArguments
+        enumClassBody:
         '{'
         {NL}
         [enumEntries]
         [{NL} ';' {NL} classMemberDeclarations]
         {NL}
         '}'
-
-      enumEntries:
+        enumEntries:
         enumEntry {{NL} ',' {NL} enumEntry} {NL} [',']
-
-      enumEntry:
+        enumEntry:
         [modifiers {NL}] simpleIdentifier [{NL} valueArguments] [{NL} classBody]
-
-      TYPE:
+        type:
         [typeModifiers] (functionType | parenthesizedType | nullableType | typeReference | definitelyNonNullableType)
-
-      typeReference:
+        typeReference:
         userType
-        | "dynamic"
-
-      nullableType:
+        | 'dynamic'
+        nullableType:
         (typeReference | parenthesizedType) {NL} (quest {quest})
-
-      quest:
+        quest:
         QUEST_NO_WS
         | QUEST_WS
-
-      userType:
+        userType:
         simpleUserType {{NL} '.' {NL} simpleUserType}
-
-      simpleUserType:
+        simpleUserType:
         simpleIdentifier [{NL} typeArguments]
-
-      typeProjection:
-        ([typeProjectionModifiers] TYPE)
+        typeProjection:
+        ([typeProjectionModifiers] type)
         | '*'
-
-      typeProjectionModifiers:
+        typeProjectionModifiers:
         typeProjectionModifier {typeProjectionModifier}
-
-      typeProjectionModifier:
+        typeProjectionModifier:
         (varianceModifier {NL})
         | annotation
-
-      functionType:
+        functionType:
         [receiverType {NL} '.' {NL}]
         functionTypeParameters
         {NL}
-        "->"
+        '->'
         {NL}
-        TYPE
-
-      functionTypeParameters:
+        type
+        functionTypeParameters:
         '('
         {NL}
-        [parameter | TYPE]
-        {{NL} ',' {NL} (parameter | TYPE)}
+        [parameter | type]
+        {{NL} ',' {NL} (parameter | type)}
         [{NL} ',']
         {NL}
         ')'
-
-      parenthesizedType:
+        parenthesizedType:
         '('
         {NL}
-        TYPE
+        type
         {NL}
         ')'
-
-      receiverType:
+        receiverType:
         [typeModifiers] (parenthesizedType | nullableType | typeReference)
-
-      parenthesizedUserType:
+        parenthesizedUserType:
         '('
         {NL}
         (userType | parenthesizedUserType)
         {NL}
         ')'
-
-      definitelyNonNullableType:
+        definitelyNonNullableType:
         [typeModifiers]
         (userType | parenthesizedUserType)
         {NL}
@@ -360,162 +323,126 @@ fn all_syntax_input() {
         {NL}
         [typeModifiers]
         (userType | parenthesizedUserType)
-
-      statements:
+        statements:
         [statement {semis statement}] [semis]
-
-      statement:
+        statement:
         {label | annotation} (declaration | assignment | loopStatement | expression)
-
-      label:
+        label:
         simpleIdentifier (AT_NO_WS | AT_POST_WS) {NL}
-
-      controlStructureBody:
+        controlStructureBody:
         block
         | statement
-
-      block:
+        block:
         '{'
         {NL}
         statements
         {NL}
         '}'
-
-      loopStatement:
+        loopStatement:
         forStatement
         | whileStatement
         | doWhileStatement
-
-      forStatement:
-        "for"
+        forStatement:
+        'for'
         {NL}
         '('
         {annotation}
         (variableDeclaration | multiVariableDeclaration)
-        "in"
+        'in'
         expression
         ')'
         {NL}
         [controlStructureBody]
-
-      whileStatement:
-        "while"
+        whileStatement:
+        'while'
         {NL}
         '('
         expression
         ')'
         {NL}
         (controlStructureBody | ';')
-
-      doWhileStatement:
-        "do"
+        doWhileStatement:
+        'do'
         {NL}
         [controlStructureBody]
         {NL}
-        "while"
+        'while'
         {NL}
         '('
         expression
         ')'
-
-      assignment:
+        assignment:
         ((directlyAssignableExpression '=') | (assignableExpression assignmentAndOperator)) {NL} expression
-
-      semi:
+        semi:
         (';' | NL) {NL}
-
-      semis:
+        semis:
         ';' | NL {';' | NL}
-
-      expression:
+        expression:
         disjunction
-
-      disjunction:
-        conjunction {{NL} "||" {NL} conjunction}
-
-      conjunction:
-        equality {{NL} "&&" {NL} equality}
-
-      equality:
+        disjunction:
+        conjunction {{NL} '||' {NL} conjunction}
+        conjunction:
+        equality {{NL} '&&' {NL} equality}
+        equality:
         comparison {equalityOperator {NL} comparison}
-
-      comparison:
+        comparison:
         genericCallLikeComparison {comparisonOperator {NL} genericCallLikeComparison}
-
-      genericCallLikeComparison:
+        genericCallLikeComparison:
         infixOperation {callSuffix}
-
-      infixOperation:
-        elvisExpression {(inOperator {NL} elvisExpression) | (isOperator {NL} TYPE)}
-
-      elvisExpression:
+        infixOperation:
+        elvisExpression {(inOperator {NL} elvisExpression) | (isOperator {NL} type)}
+        elvisExpression:
         infixFunctionCall {{NL} elvis {NL} infixFunctionCall}
-
-      elvis:
+        elvis:
         QUEST_NO_WS ':'
-
-      infixFunctionCall:
+        infixFunctionCall:
         rangeExpression {simpleIdentifier {NL} rangeExpression}
-
-      rangeExpression:
-        additiveExpression {(".." | "..<") {NL} additiveExpression}
-
-      additiveExpression:
+        rangeExpression:
+        additiveExpression {('..' | '..<') {NL} additiveExpression}
+        additiveExpression:
         multiplicativeExpression {additiveOperator {NL} multiplicativeExpression}
-
-      multiplicativeExpression:
+        multiplicativeExpression:
         asExpression {multiplicativeOperator {NL} asExpression}
-
-      asExpression:
-        prefixUnaryExpression {{NL} asOperator {NL} TYPE}
-
-      prefixUnaryExpression:
+        asExpression:
+        prefixUnaryExpression {{NL} asOperator {NL} type}
+        prefixUnaryExpression:
         {unaryPrefix} postfixUnaryExpression
-
-      unaryPrefix:
+        unaryPrefix:
         annotation
         | label
         | (prefixUnaryOperator {NL})
-
-      postfixUnaryExpression:
+        postfixUnaryExpression:
         primaryExpression {postfixUnarySuffix}
-
-      postfixUnarySuffix:
+        postfixUnarySuffix:
         postfixUnaryOperator
         | typeArguments
         | callSuffix
         | indexingSuffix
         | navigationSuffix
-
-      directlyAssignableExpression:
+        directlyAssignableExpression:
         (postfixUnaryExpression assignableSuffix)
         | simpleIdentifier
         | parenthesizedDirectlyAssignableExpression
-
-      parenthesizedDirectlyAssignableExpression:
+        parenthesizedDirectlyAssignableExpression:
         '('
         {NL}
         directlyAssignableExpression
         {NL}
         ')'
-
-      assignableExpression:
+        assignableExpression:
         prefixUnaryExpression
         | parenthesizedAssignableExpression
-
-      parenthesizedAssignableExpression:
+        parenthesizedAssignableExpression:
         '('
         {NL}
         assignableExpression
         {NL}
         ')'
-
-      assignableSuffix:
+        assignableSuffix:
         typeArguments
         | indexingSuffix
         | navigationSuffix
-
-      indexingSuffix:
+        indexingSuffix:
         '['
         {NL}
         expression
@@ -523,17 +450,13 @@ fn all_syntax_input() {
         [{NL} ',']
         {NL}
         ']'
-
-      navigationSuffix:
-        memberAccessOperator {NL} (simpleIdentifier | parenthesizedExpression | "class")
-
-      callSuffix:
+        navigationSuffix:
+        memberAccessOperator {NL} (simpleIdentifier | parenthesizedExpression | 'class')
+        callSuffix:
         [typeArguments] (([valueArguments] annotatedLambda) | valueArguments)
-
-      annotatedLambda:
+        annotatedLambda:
         {annotation} [label] {NL} lambdaLiteral
-
-      typeArguments:
+        typeArguments:
         '<'
         {NL}
         typeProjection
@@ -541,19 +464,16 @@ fn all_syntax_input() {
         [{NL} ',']
         {NL}
         '>'
-
-      valueArguments:
+        valueArguments:
         '(' {NL} [valueArgument {{NL} ',' {NL} valueArgument} [{NL} ','] {NL}] ')'
-
-      valueArgument:
+        valueArgument:
         [annotation]
         {NL}
         [simpleIdentifier {NL} '=' {NL}]
         ['*']
         {NL}
         expression
-
-      primaryExpression:
+        primaryExpression:
         parenthesizedExpression
         | simpleIdentifier
         | literalConstant
@@ -568,109 +488,90 @@ fn all_syntax_input() {
         | whenExpression
         | tryExpression
         | jumpExpression
-
-      parenthesizedExpression:
+        parenthesizedExpression:
         '('
         {NL}
         expression
         {NL}
         ')'
-
-      collectionLiteral:
+        collectionLiteral:
         '[' {NL} [expression {{NL} ',' {NL} expression} [{NL} ','] {NL}] ']'
-
-      literalConstant:
+        literalConstant:
         BooleanLiteral
         | IntegerLiteral
         | HexLiteral
         | BinLiteral
         | CharacterLiteral
         | RealLiteral
-        | "null"
+        | 'null'
         | LongLiteral
         | UnsignedLiteral
-
-      stringLiteral:
+        stringLiteral:
         lineStringLiteral
         | multiLineStringLiteral
-
-      lineStringLiteral:
+        lineStringLiteral:
         '"' {lineStringContent | lineStringExpression} '"'
-
-      multiLineStringLiteral:
-        TRIPLE_QUOTE_OPEN {multiLineStringContent | multiLineStringExpression | '"'} TRIPLE_QUOTE_CLOSE
-
-      lineStringContent:
+        multiLineStringLiteral:
+        '"""' {multiLineStringContent | multiLineStringExpression | '"'} TRIPLE_QUOTE_CLOSE
+        lineStringContent:
         LineStrText
         | LineStrEscapedChar
         | LineStrRef
-
-      lineStringExpression:
-        "${"
+        lineStringExpression:
+        '\${'
         {NL}
         expression
         {NL}
         '}'
-
-      multiLineStringContent:
+        multiLineStringContent:
         MultiLineStrText
         | '"'
         | MultiLineStrRef
-
-      multiLineStringExpression:
-        "${"
+        multiLineStringExpression:
+        '\${'
         {NL}
         expression
         {NL}
         '}'
-
-      lambdaLiteral:
+        lambdaLiteral:
         '{'
         {NL}
-        [[lambdaParameters] {NL} "->" {NL}]
+        [[lambdaParameters] {NL} '->' {NL}]
         statements
         {NL}
         '}'
-
-      lambdaParameters:
+        lambdaParameters:
         lambdaParameter {{NL} ',' {NL} lambdaParameter} [{NL} ',']
-
-      lambdaParameter:
+        lambdaParameter:
         variableDeclaration
-        | (multiVariableDeclaration [{NL} ':' {NL} TYPE])
-
-      anonymousFunction:
-        ["suspend"]
+        | (multiVariableDeclaration [{NL} ':' {NL} type])
+        anonymousFunction:
+        ['suspend']
         {NL}
-        "fun"
-        [{NL} TYPE {NL} '.']
+        'fun'
+        [{NL} type {NL} '.']
         {NL}
         parametersWithOptionalType
-        [{NL} ':' {NL} TYPE]
+        [{NL} ':' {NL} type]
         [{NL} typeConstraints]
         [{NL} functionBody]
-
-      functionLiteral:
+        functionLiteral:
         lambdaLiteral
         | anonymousFunction
-
-      objectLiteral:
-        ["data"]
+        objectLiteral:
+        ['data']
         {NL}
-        "object"
+        'object'
         [{NL} ':' {NL} delegationSpecifiers {NL}]
         [{NL} classBody]
-
-      thisExpression:
-        "this"
+        thisExpression:
+        'this'
         | THIS_AT
-
-      superExpression:
-        ("super" ['<' {NL} TYPE {NL} '>'] [AT_NO_WS simpleIdentifier])
+        superExpression:
+        ('super' ['<' {NL} type {NL} '>'] [AT_NO_WS simpleIdentifier])
         | SUPER_AT
-
-      ifExpression:
-        "if"
+        ifExpression:
+        'if'
         {NL}
         '('
         {NL}
@@ -678,13 +579,11 @@ fn all_syntax_input() {
         {NL}
         ')'
         {NL}
-        (controlStructureBody | ([controlStructureBody] {NL} [';'] {NL} "else" {NL} (controlStructureBody | ';')) | ';')
-
-      whenSubject:
-        '(' [{annotation} {NL} "val" {NL} variableDeclaration {NL} '=' {NL}] expression ')'
-
-      whenExpression:
-        "when"
+        (controlStructureBody | ([controlStructureBody] {NL} [';'] {NL} 'else' {NL} (controlStructureBody | ';')) | ';')
+        whenSubject:
+        '(' [{annotation} {NL} 'val' {NL} variableDeclaration {NL} '=' {NL}] expression ')'
+        whenExpression:
+        'when'
         {NL}
         [whenSubject]
         {NL}
@@ -693,257 +592,213 @@ fn all_syntax_input() {
         {whenEntry {NL}}
         {NL}
         '}'
-
-      whenEntry:
-        (whenCondition {{NL} ',' {NL} whenCondition} [{NL} ','] {NL} "->" {NL} controlStructureBody [semi])
-        | ("else" {NL} "->" {NL} controlStructureBody [semi])
-
-      whenCondition:
+        whenEntry:
+        (whenCondition {{NL} ',' {NL} whenCondition} [{NL} ','] {NL} '->' {NL} controlStructureBody [semi])
+        | ('else' {NL} '->' {NL} controlStructureBody [semi])
+        whenCondition:
         expression
         | rangeTest
         | typeTest
-
-      rangeTest:
+        rangeTest:
         inOperator {NL} expression
-
-      typeTest:
-        isOperator {NL} TYPE
-
-      tryExpression:
-        "try" {NL} block ((({NL} catchBlock {{NL} catchBlock}) [{NL} finallyBlock]) | ({NL} finallyBlock))
-
-      catchBlock:
-        "catch"
+        typeTest:
+        isOperator {NL} type
+        tryExpression:
+        'try' {NL} block ((({NL} catchBlock {{NL} catchBlock}) [{NL} finallyBlock]) | ({NL} finallyBlock))
+        catchBlock:
+        'catch'
         {NL}
         '('
         {annotation}
         simpleIdentifier
         ':'
-        TYPE
+        type
         [{NL} ',']
         ')'
         {NL}
         block
-
-      finallyBlock:
-        "finally" {NL} block
-
-      jumpExpression:
-        ("throw" {NL} expression)
-        | (("return" | RETURN_AT) [expression])
-        | "continue"
+        finallyBlock:
+        'finally' {NL} block
+        jumpExpression:
+        ('throw' {NL} expression)
+        | (('return' | RETURN_AT) [expression])
+        | 'continue'
         | CONTINUE_AT
-        | "break"
+        | 'break'
         | BREAK_AT
-
-      callableReference:
-        [receiverType] "::" {NL} (simpleIdentifier | "class")
-
-      assignmentAndOperator:
-        "+="
-        | "-="
-        | "*="
-        | "/="
-        | "%="
-
-      equalityOperator:
-        "!="
-        | "!=="
-        | "=="
-        | "==="
-
-      comparisonOperator:
+        callableReference:
+        [receiverType] '::' {NL} (simpleIdentifier | 'class')
+        assignmentAndOperator:
+        '+='
+        | '-='
+        | '*='
+        | '/='
+        | '%='
+        equalityOperator:
+        '!='
+        | '!=='
+        | '=='
+        | '==='
+        comparisonOperator:
         '<'
         | '>'
-        | "<="
-        | ">="
-
-      inOperator:
-        "in"
+        | '<='
+        | '>='
+        inOperator:
+        'in'
         | NOT_IN
-
-      isOperator:
-        "is"
+        isOperator:
+        'is'
         | NOT_IS
-
-      additiveOperator:
+        additiveOperator:
         '+'
         | '-'
-
-      multiplicativeOperator:
+        multiplicativeOperator:
         '*'
         | '/'
         | '%'
-
-      asOperator:
-        "as"
-        | "as?"
-
-      prefixUnaryOperator:
-        "++"
-        | "--"
+        asOperator:
+        'as'
+        | 'as?'
+        prefixUnaryOperator:
+        '++'
+        | '--'
         | '-'
         | '+'
         | excl
-
-      postfixUnaryOperator:
-        "++"
-        | "--"
+        postfixUnaryOperator:
+        '++'
+        | '--'
         | ('!' excl)
-
-      excl:
+        excl:
         '!'
         | EXCL_WS
-
-      memberAccessOperator:
+        memberAccessOperator:
         ({NL} '.')
         | ({NL} safeNav)
-        | "::"
-
-      safeNav:
+        | '::'
+        safeNav:
         QUEST_NO_WS '.'
-
-      modifiers:
+        modifiers:
         annotation | modifier {annotation | modifier}
-
-      parameterModifiers:
+        parameterModifiers:
         annotation | parameterModifier {annotation | parameterModifier}
-
-      modifier:
+        modifier:
         (classModifier | memberModifier | visibilityModifier | functionModifier | propertyModifier | inheritanceModifier | parameterModifier | platformModifier) {NL}
-
-      typeModifiers:
+        typeModifiers:
         typeModifier {typeModifier}
-
-      typeModifier:
+        typeModifier:
         annotation
-        | ("suspend" {NL})
-
-      classModifier:
-        "enum"
-        | "sealed"
-        | "annotation"
-        | "data"
-        | "inner"
-        | "value"
-
-      memberModifier:
-        "override"
-        | "lateinit"
-
-      visibilityModifier:
-        "public"
-        | "private"
-        | "internal"
-        | "protected"
-
-      varianceModifier:
-        "in"
-        | "out"
-
-      typeParameterModifiers:
+        | ('suspend' {NL})
+        classModifier:
+        'enum'
+        | 'sealed'
+        | 'annotation'
+        | 'data'
+        | 'inner'
+        | 'value'
+        memberModifier:
+        'override'
+        | 'lateinit'
+        visibilityModifier:
+        'public'
+        | 'private'
+        | 'internal'
+        | 'protected'
+        varianceModifier:
+        'in'
+        | 'out'
+        typeParameterModifiers:
         typeParameterModifier {typeParameterModifier}
-
-      typeParameterModifier:
+        typeParameterModifier:
         (reificationModifier {NL})
         | (varianceModifier {NL})
         | annotation
-
-      functionModifier:
-        "tailrec"
-        | "operator"
-        | "infix"
-        | "inline"
-        | "external"
-        | "suspend"
-
-      propertyModifier:
-        "const"
-
-      inheritanceModifier:
-        "abstract"
-        | "final"
-        | "open"
-
-      parameterModifier:
-        "vararg"
-        | "noinline"
-        | "crossinline"
-
-      reificationModifier:
-        "reified"
-
-      platformModifier:
-        "expect"
-        | "actual"
-
-      annotation:
+        functionModifier:
+        'tailrec'
+        | 'operator'
+        | 'infix'
+        | 'inline'
+        | 'external'
+        | 'suspend'
+        propertyModifier:
+        'const'
+        inheritanceModifier:
+        'abstract'
+        | 'final'
+        | 'open'
+        parameterModifier:
+        'vararg'
+        | 'noinline'
+        | 'crossinline'
+        reificationModifier:
+        'reified'
+        platformModifier:
+        'expect'
+        | 'actual'
+        annotation:
         (singleAnnotation | multiAnnotation) {NL}
-
-      singleAnnotation:
+        singleAnnotation:
         ((annotationUseSiteTarget {NL}) | AT_NO_WS | AT_PRE_WS) unescapedAnnotation
-
-      multiAnnotation:
+        multiAnnotation:
         ((annotationUseSiteTarget {NL}) | AT_NO_WS | AT_PRE_WS) '[' (unescapedAnnotation {unescapedAnnotation}) ']'
-
-      annotationUseSiteTarget:
-        (AT_NO_WS | AT_PRE_WS) ("field" | "property" | "get" | "set" | "receiver" | "param" | "setparam" | "delegate") {NL} ':'
-
-      unescapedAnnotation:
+        annotationUseSiteTarget:
+        (AT_NO_WS | AT_PRE_WS) ('field' | 'property' | 'get' | 'set' | 'receiver' | 'param' | 'setparam' | 'delegate') {NL} ':'
+        unescapedAnnotation:
         constructorInvocation
         | userType
-
-      simpleIdentifier:
+        simpleIdentifier:
         Identifier
-        | "abstract"
-        | "annotation"
-        | "by"
-        | "catch"
-        | "companion"
-        | "constructor"
-        | "crossinline"
-        | "data"
-        | "dynamic"
-        | "enum"
-        | "external"
-        | "final"
-        | "finally"
-        | "get"
-        | "import"
-        | "infix"
-        | "init"
-        | "inline"
-        | "inner"
-        | "internal"
-        | "lateinit"
-        | "noinline"
-        | "open"
-        | "operator"
-        | "out"
-        | "override"
-        | "private"
-        | "protected"
-        | "public"
-        | "reified"
-        | "sealed"
-        | "tailrec"
-        | "set"
-        | "vararg"
-        | "where"
-        | "field"
-        | "property"
-        | "receiver"
-        | "param"
-        | "setparam"
-        | "delegate"
-        | "file"
-        | "expect"
-        | "actual"
-        | "const"
-        | "suspend"
-        | "value"
-
-      identifier:
+        | 'abstract'
+        | 'annotation'
+        | 'by'
+        | 'catch'
+        | 'companion'
+        | 'constructor'
+        | 'crossinline'
+        | 'data'
+        | 'dynamic'
+        | 'enum'
+        | 'external'
+        | 'final'
+        | 'finally'
+        | 'get'
+        | 'import'
+        | 'infix'
+        | 'init'
+        | 'inline'
+        | 'inner'
+        | 'internal'
+        | 'lateinit'
+        | 'noinline'
+        | 'open'
+        | 'operator'
+        | 'out'
+        | 'override'
+        | 'private'
+        | 'protected'
+        | 'public'
+        | 'reified'
+        | 'sealed'
+        | 'tailrec'
+        | 'set'
+        | 'vararg'
+        | 'where'
+        | 'field'
+        | 'property'
+        | 'receiver'
+        | 'param'
+        | 'setparam'
+        | 'delegate'
+        | 'file'
+        | 'expect'
+        | 'actual'
+        | 'const'
+        | 'suspend'
+        | 'value'
+        identifier:
         simpleIdentifier {{NL} '.' simpleIdentifier}
-    };
+    `;
 }
+
+main();
