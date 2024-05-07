@@ -13,49 +13,17 @@ enum ParseEntry {
     Group(Vec<ParseEntry>),
 }
 
-fn print_vp(ps: &[ParseEntry]) -> String {
-    ps.iter()
-        .map(|p| p.to_string())
-        .collect::<Vec<_>>()
-        .join(", ")
-}
-
-impl fmt::Display for ParseEntry {
+impl fmt::Debug for ParseEntry {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ParseEntry::CharLit(ch) => write!(f, "'{}'", ch.value()),
-            ParseEntry::StrLit(lit) => write!(f, r#""{}""#, lit.value()),
-            ParseEntry::Ident(id) => write!(f, "Ident(name: {})", id),
-            ParseEntry::Optional(opt) => write!(f, "Optional(rules: [\n{}\n ])", print_vp(opt)),
-            ParseEntry::Repeated(rep) => write!(f, "Repeated(rules: [\n{}\n ])", print_vp(rep)),
-            ParseEntry::Choice(ch) => write!(f, "Choice(rules: [\n{}\n ])", print_vp(ch)),
-            ParseEntry::Group(grp) => write!(f, "Group(rules: [\n{}\n ])", print_vp(grp)),
+            ParseEntry::CharLit(lit) => lit.value().fmt(f),
+            ParseEntry::StrLit(lit) => lit.value().fmt(f),
+            ParseEntry::Ident(id) => id.fmt(f),
+            ParseEntry::Optional(entries) => f.debug_tuple("Optional").field(entries).finish(),
+            ParseEntry::Repeated(entries) => f.debug_tuple("Repeated").field(entries).finish(),
+            ParseEntry::Choice(entries) => f.debug_tuple("Choice").field(entries).finish(),
+            ParseEntry::Group(entries) => f.debug_tuple("Group").field(entries).finish(),
         }
-    }
-}
-
-impl fmt::Display for TopLevelParseEntry {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "TopLevelParseEntry (field: {}, asts: [\n{}\n ] )",
-            self.field,
-            print_vp(&self.asts)
-        )
-    }
-}
-
-impl fmt::Display for GenAst {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "GenAst ( entries: [\n{}\n ] )",
-            self.entries
-                .iter()
-                .map(|p| p.to_string())
-                .collect::<Vec<_>>()
-                .join(", ")
-        )
     }
 }
 
@@ -100,27 +68,42 @@ struct TopLevelParseEntry {
     asts: Vec<ParseEntry>,
 }
 
+impl fmt::Debug for TopLevelParseEntry {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("TopLevelParseEntry")
+            .field("field", &self.field)
+            .field("asts", &self.asts)
+            .finish()
+    }
+}
+
 pub struct GenAst {
     entries: Vec<TopLevelParseEntry>,
 }
 
-struct Field {
-    name: Ident,
-    colon_token: Token![:],
+impl fmt::Debug for GenAst {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("GenAst")
+            .field("entries", &self.entries)
+            .finish()
+    }
 }
 
-impl fmt::Display for Field {
+struct Field {
+    name: Ident,
+}
+
+impl fmt::Debug for Field {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Field ( name: {} )", self.name)
+        f.debug_struct("Field").field("name", &self.name).finish()
     }
 }
 
 impl Parse for Field {
     fn parse(input: ParseStream) -> syn::Result<Self> {
-        Ok(Field {
-            name: input.parse()?,
-            colon_token: input.parse()?,
-        })
+        let name: Ident = input.parse()?;
+        input.parse::<Token![:]>()?;
+        Ok(Field { name })
     }
 }
 
@@ -197,7 +180,7 @@ impl Parse for TopLevelParseEntry {
         }
         if result.is_empty() {
             return Err(syn::Error::new(
-                field.colon_token.span,
+                input.span(),
                 "expected rules after rule name",
             ));
         }
