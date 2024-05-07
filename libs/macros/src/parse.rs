@@ -80,12 +80,8 @@ where
 {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let mut result: Vec<T> = Vec::new();
-        loop {
-            if let Ok(next) = input.parse::<T>() {
-                result.push(next);
-            } else {
-                break;
-            }
+        while let Ok(next) = input.parse::<T>() {
+            result.push(next);
         }
 
         if result.is_empty() {
