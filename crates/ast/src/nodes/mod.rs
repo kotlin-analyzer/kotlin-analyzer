@@ -66,11 +66,11 @@ impl Serialize for SimpleIdentifier {
         let identifier = self.0.children_with_tokens().next().unwrap();
         // always true
         if let SyntaxKind::Token(token) = identifier.kind() {
-            return serializer.serialize_str(&format!("{:?}@{:?}", token, identifier.text_range()));
+            serializer.serialize_str(&format!("{:?}@{:?}", token, identifier.text_range()))
         } else {
-            return Err(serde::ser::Error::custom(
+            Err(serde::ser::Error::custom(
                 "SimpleIdentifier should only contain a Token",
-            ));
+            ))
         }
     }
 }

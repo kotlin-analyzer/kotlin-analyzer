@@ -17,7 +17,7 @@ fn integrate() {
                 "{:?}@{:?} - {}",
                 child.kind(),
                 child.text_range(),
-                child.to_string()
+                child
             )
         })
         .collect::<Vec<_>>();

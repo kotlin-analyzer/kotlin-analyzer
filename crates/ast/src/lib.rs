@@ -23,12 +23,6 @@ macro_rules! ast_node {
     };
 }
 
-macro_rules! gen_ast {
-    ($rules: tt) => {
-        impl Root {}
-    };
-}
-
 #[derive(PartialEq, Eq, Hash, Clone)]
 #[repr(transparent)]
 pub struct Root(SyntaxNode);
@@ -52,28 +46,6 @@ impl Serialize for Root {
         }
     }
 }
-
-gen_ast!(
-    {
-        kotlinFile:
-            [shebangLine]
-            {NL}
-            {fileAnnotation}
-            packageHeader
-            importList
-            {topLevelObject}
-            EOF
-
-        script:
-            [shebangLine]
-            {NL}
-            {fileAnnotation}
-            packageHeader
-            importList
-            {statement semi}
-            EOF
-    }
-);
 
 impl Root {
     pub fn cast(node: SyntaxNode) -> Option<Self> {
