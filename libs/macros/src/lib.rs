@@ -1,4 +1,8 @@
+mod combinators;
+mod generate_ast;
+mod map;
 mod parse;
+
 use parse::GenAst;
 use proc_macro::TokenStream;
 use syn::parse_macro_input;

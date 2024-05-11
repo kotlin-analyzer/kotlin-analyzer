@@ -3,7 +3,7 @@ use itertools::{peek_nth, PeekNth};
 use lexer::{Lexer, SpannedWithSource};
 use parser::{ParseError, TokenSource, TreeSink};
 use rowan::{GreenNode, GreenNodeBuilder};
-use syntax::{Syntax, SyntaxKind, SyntaxNode};
+use syntax::{SyntaxKind, SyntaxNode};
 use tokens::Token;
 
 struct TestTreeSink {
@@ -21,10 +21,10 @@ where
 impl TreeSink for TestTreeSink {
     fn token(&mut self, token: Token, substring: &str) {
         self.builder
-            .token(SyntaxKind::Token(token).into(), substring);
+            .token(SyntaxKind::from(token).into(), substring);
     }
 
-    fn start_node(&mut self, kind: Syntax) {
+    fn start_node(&mut self, kind: SyntaxKind) {
         self.builder.start_node(kind.into());
     }
 

@@ -1,6 +1,5 @@
 use crate::ast_node;
-use serde::Serialize;
-use syntax::{Syntax::*, SyntaxKind, SyntaxNode};
+use syntax::{SyntaxKind::*, SyntaxNode};
 
 ast_node!(KotlinFile, KOTLIN_FILE);
 ast_node!(KotlinScript, SCRIPT);
@@ -56,21 +55,3 @@ ast_node!(ImportList, IMPORT_LIST);
 ast_node!(TopLevelObject, TOP_LEVEL_OBJECT);
 ast_node!(Statement, STATEMENT);
 ast_node!(SimpleIdentifier, SIMPLE_IDENTIFIER);
-
-impl Serialize for SimpleIdentifier {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        // safe to unwrap here
-        let identifier = self.0.children_with_tokens().next().unwrap();
-        // always true
-        if let SyntaxKind::Token(token) = identifier.kind() {
-            serializer.serialize_str(&format!("{:?}@{:?}", token, identifier.text_range()))
-        } else {
-            Err(serde::ser::Error::custom(
-                "SimpleIdentifier should only contain a Token",
-            ))
-        }
-    }
-}

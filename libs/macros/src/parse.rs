@@ -3,7 +3,9 @@ use std::fmt;
 use syn::parse::{Parse, ParseStream};
 use syn::{braced, bracketed, parenthesized, Error, Ident, Lit, LitChar, LitStr, Token};
 
-enum ParseEntry {
+use crate::combinators::Seq;
+
+pub(crate) enum ParseEntry {
     CharLit(LitChar),
     StrLit(LitStr),
     Ident(Ident),
@@ -27,45 +29,9 @@ impl fmt::Debug for ParseEntry {
     }
 }
 
-struct Seq<T>(Vec<T>);
-struct InOrder<T, P>(T, P);
-
-impl<T, P> Parse for InOrder<T, P>
-where
-    T: Parse,
-    P: Parse,
-{
-    fn parse(input: ParseStream) -> syn::Result<Self> {
-        let first: T = input.parse()?;
-        let second: P = input.parse()?;
-        Ok(InOrder(first, second))
-    }
-}
-
-impl<T> Parse for Seq<T>
-where
-    T: Parse,
-{
-    fn parse(input: ParseStream) -> syn::Result<Self> {
-        let mut result: Vec<T> = Vec::new();
-        while let Ok(next) = input.parse::<T>() {
-            result.push(next);
-        }
-
-        if result.is_empty() {
-            return Err(syn::Error::new(
-                input.span(),
-                "Seq expects at list one matching entry",
-            ));
-        }
-
-        Ok(Seq(result))
-    }
-}
-
-struct TopLevelParseEntry {
-    field: Field,
-    asts: Vec<ParseEntry>,
+pub(crate) struct TopLevelParseEntry {
+    pub field: Field,
+    pub asts: Vec<ParseEntry>,
 }
 
 impl fmt::Debug for TopLevelParseEntry {
@@ -77,7 +43,7 @@ impl fmt::Debug for TopLevelParseEntry {
     }
 }
 
-pub struct GenAst {
+pub(crate) struct GenAst {
     entries: Vec<TopLevelParseEntry>,
 }
 
@@ -89,8 +55,8 @@ impl fmt::Debug for GenAst {
     }
 }
 
-struct Field {
-    name: Ident,
+pub(crate) struct Field {
+    pub name: Ident,
 }
 
 impl fmt::Debug for Field {
