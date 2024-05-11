@@ -1,9 +1,8 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[allow(non_camel_case_types)]
-#[repr(u16)]
 pub enum Token {
-    /// White Space and Comments    
-    SHEBANG_LINE = 0,
+    ///! White Space and Comments    
+    SHEBANG_LINE_TOKEN,
     DELIMITED_COMMENT,
     LINE_COMMENT,
     WS,
@@ -31,7 +30,7 @@ pub enum Token {
     EXCL_NO_WS,
     COLON,
     SEMICOLON,
-    ASSIGNMENT,
+    ASSIGNMENT_TOKEN,
     ADD_ASSIGNMENT,
     MULT_ASSIGNMENT,
     DIV_ASSIGNMENT,
@@ -269,7 +268,7 @@ pub static OPERATORS: phf::Map<&'static str, Token> = phf_map! {
 
    ";" => SEMICOLON,
 
-   "=" => ASSIGNMENT,
+   "=" => ASSIGNMENT_TOKEN,
 
    "+=" => ADD_ASSIGNMENT,
 

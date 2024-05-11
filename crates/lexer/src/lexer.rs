@@ -511,7 +511,7 @@ fn hidden(step: Step<'_>) -> Option<Step<'_>> {
 fn shebang(step: Step<'_>) -> Option<Step<'_>> {
     tag("#!")
         .and(many0(not(tag("\u{000A}").or(tag("\u{000D}")))))
-        .with(SHEBANG_LINE)(step)
+        .with(SHEBANG_LINE_TOKEN)(step)
 }
 
 fn line_comment(step: Step<'_>) -> Option<Step<'_>> {
@@ -902,15 +902,15 @@ mod test {
 
     #[test]
     fn shebang_test() {
-        assert_success!(shebang, "#!", 2, SHEBANG_LINE);
-        assert_success!(shebang, "#!\n", 2, SHEBANG_LINE);
-        assert_success!(shebang, "#! sh echo", 10, SHEBANG_LINE);
-        assert_success!(shebang, "#! comment // nested", 20, SHEBANG_LINE);
+        assert_success!(shebang, "#!", 2, SHEBANG_LINE_TOKEN);
+        assert_success!(shebang, "#!\n", 2, SHEBANG_LINE_TOKEN);
+        assert_success!(shebang, "#! sh echo", 10, SHEBANG_LINE_TOKEN);
+        assert_success!(shebang, "#! comment // nested", 20, SHEBANG_LINE_TOKEN);
         assert_success!(
             shebang,
             "#! comment // nested #! deep /* more */",
             39,
-            SHEBANG_LINE
+            SHEBANG_LINE_TOKEN
         );
 
         assert_failure!(shebang, "// comment");

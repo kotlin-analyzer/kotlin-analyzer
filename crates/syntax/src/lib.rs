@@ -3,19 +3,171 @@ use tokens::Token;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[allow(non_camel_case_types)]
 #[repr(u16)]
-/// This represents only composite nodes and
-/// tokens are wrapped inside [SyntaxKind::TOKEN]
+/// This represents tokens and composite nodes
 /// Adapted from https://kotlinlang.org/spec/syntax-and-grammar.html#syntax-grammar
-/// ! Note that the first item starts from 154, so that [tokens::Token] can be part of this
-/// ! as [tokens::Token] starts from 0 and ends at 153. So we have to keep both in sync
-pub enum Syntax {
-    IDENTIFIER = 154,
+pub enum SyntaxKind {
+    // tokens
+    SHEBANG_LINE_TOKEN = 0,
+    DELIMITED_COMMENT,
+    LINE_COMMENT,
+    WS,
+    NL,
+    RESERVED,
+    DOT,
+    COMMA,
+    L_PAREN,
+    R_PAREN,
+    L_SQUARE,
+    R_SQUARE,
+    L_CURL,
+    R_CURL,
+    MULT,
+    MOD,
+    DIV,
+    ADD,
+    SUB,
+    INCR,
+    DECR,
+    DISJ,
+    EXCL_WS,
+    EXCL_NO_WS,
+    COLON,
+    SEMICOLON,
+    ASSIGNMENT_TOKEN,
+    ADD_ASSIGNMENT,
+    MULT_ASSIGNMENT,
+    DIV_ASSIGNMENT,
+    MOD_ASSIGNMENT,
+    ARROW,
+    DOUBLE_ARROW,
+    RANGE,
+    COLON_COLON,
+    DOUBLE_SEMICOLON,
+    HASH,
+    AT_NO_WS,
+    AT_POST_WS,
+    AT_PRE_WS,
+    AT_BOTH_WS,
+    QUEST_WS,
+    QUEST_NO_WS,
+    L_ANGLE,
+    R_ANGLE,
+    LE,
+    GE,
+    EXCL_EQ,
+    EXCL_EQ_EQ,
+    AS_SAFE,
+    EQ_EQ,
+    EQ_EQ_EQ,
+    SINGLE_QUOTE,
+    RETURN_AT,
+    CONTINUE_AT,
+    BREAK_AT,
+    THIS_AT,
+    SUPER_AT,
+    FILE,
+    FIELD,
+    PROPERTY,
+    GET,
+    SET,
+    RECEIVER,
+    PARAM,
+    SET_PARAM,
+    DELEGATE,
+    PACKAGE,
+    IMPORT,
+    CLASS,
+    INTERFACE,
+    FUN,
+    OBJECT,
+    VAL,
+    VAR,
+    TYPE_ALIAS,
+    CONSTRUCTOR,
+    BY,
+    COMPANION,
+    INIT,
+    THIS,
+    SUPER,
+    TYPEOF,
+    WHERE,
+    IF,
+    ELSE,
+    WHEN,
+    TRY,
+    CATCH,
+    FINALLY,
+    FOR,
+    DO,
+    WHILE,
+    THROW,
+    RETURN,
+    CONTINUE,
+    BREAK,
+    AS,
+    IS,
+    IN,
+    NOT_IS,
+    NOT_IN,
+    OUT,
+    DYNAMIC,
+    PUBLIC,
+    PRIVATE,
+    PROTECTED,
+    INTERNAL,
+    ENUM,
+    SEALED,
+    ANNOTATION,
+    DATA,
+    INNER,
+    TAILREC,
+    OPERATOR,
+    INLINE,
+    INFIX,
+    EXTERNAL,
+    SUSPEND,
+    OVERRIDE,
+    ABSTRACT,
+    FINAL,
+    OPEN,
+    CONST,
+    LATEINIT,
+    VAR_ARG,
+    NO_INLINE,
+    CROSS_INLINE,
+    REIFIED,
+    EXPECT,
+    ACTUAL,
+    VALUE,
+    INTEGER_LITERAL,
+    REAL_LITERAL,
+    HEX_LITERAL,
+    BIN_LITERAL,
+    LONG_LITERAL,
+    BOOLEAN_LITERAL,
+    NULL_LITERAL,
+    CHARACTER_LITERAL,
+    QUOTE_OPEN,
+    QUOTE_CLOSE,
+    TRIPLE_QUOTE_OPEN,
+    TRIPLE_QUOTE_CLOSE,
+    IDENTIFIER,
+    LINE_STR_REF,
+    MULTI_LINE_STR_REF,
+    MULTI_LINE_STRING_QUOTE,
+    LINE_STR_TEXT,
+    MULTI_LINE_STR_TEXT,
+    LINE_STR_ESCAPED_CHAR,
+    LINE_STR_EXPR_START,
+    MULTI_STR_EXPR_START,
+    EOF,
+    ERR,
+    // Main syntax starts from here
     SIMPLE_IDENTIFIER,
     UNESCAPED_ANNOTATION,
     ANNOTATION_USE_SITE_TARGET,
     MULTI_ANNOTATION,
     SINGLE_ANNOTATION,
-    ANNOTATION,
     PLATFORM_MODIFIER,
     REIFICATION_MODIFIER,
     PARAMETER_MODIFIER,
@@ -173,7 +325,6 @@ pub enum Syntax {
     PRIMARY_CONSTRUCTOR,
     CLASS_DECLARATION,
     DECLARATION,
-    TYPE_ALIAS,
     TOP_LEVEL_OBJECT,
     IMPORT_ALIAS,
     IMPORT_HEADER,
@@ -186,34 +337,181 @@ pub enum Syntax {
     ROOT,
 }
 
+impl From<Token> for SyntaxKind {
+    fn from(value: Token) -> Self {
+        match value {
+            Token::SHEBANG_LINE_TOKEN => SHEBANG_LINE_TOKEN,
+            Token::DELIMITED_COMMENT => DELIMITED_COMMENT,
+            Token::LINE_COMMENT => LINE_COMMENT,
+            Token::WS => WS,
+            Token::NL => NL,
+            Token::RESERVED => RESERVED,
+            Token::DOT => DOT,
+            Token::COMMA => COMMA,
+            Token::L_PAREN => L_PAREN,
+            Token::R_PAREN => R_PAREN,
+            Token::L_SQUARE => L_SQUARE,
+            Token::R_SQUARE => R_SQUARE,
+            Token::L_CURL => L_CURL,
+            Token::R_CURL => R_CURL,
+            Token::MULT => MULT,
+            Token::MOD => MOD,
+            Token::DIV => DIV,
+            Token::ADD => ADD,
+            Token::SUB => SUB,
+            Token::INCR => INCR,
+            Token::DECR => DECR,
+            Token::DISJ => DISJ,
+            Token::EXCL_WS => EXCL_WS,
+            Token::EXCL_NO_WS => EXCL_NO_WS,
+            Token::COLON => COLON,
+            Token::SEMICOLON => SEMICOLON,
+            Token::ASSIGNMENT_TOKEN => ASSIGNMENT_TOKEN,
+            Token::ADD_ASSIGNMENT => ADD_ASSIGNMENT,
+            Token::MULT_ASSIGNMENT => MULT_ASSIGNMENT,
+            Token::DIV_ASSIGNMENT => DIV_ASSIGNMENT,
+            Token::MOD_ASSIGNMENT => MOD_ASSIGNMENT,
+            Token::ARROW => ARROW,
+            Token::DOUBLE_ARROW => DOUBLE_ARROW,
+            Token::RANGE => RANGE,
+            Token::COLON_COLON => COLON_COLON,
+            Token::DOUBLE_SEMICOLON => DOUBLE_SEMICOLON,
+            Token::HASH => HASH,
+            Token::AT_NO_WS => AT_NO_WS,
+            Token::AT_POST_WS => AT_POST_WS,
+            Token::AT_PRE_WS => AT_PRE_WS,
+            Token::AT_BOTH_WS => AT_BOTH_WS,
+            Token::QUEST_WS => QUEST_WS,
+            Token::QUEST_NO_WS => QUEST_NO_WS,
+            Token::L_ANGLE => L_ANGLE,
+            Token::R_ANGLE => R_ANGLE,
+            Token::LE => LE,
+            Token::GE => GE,
+            Token::EXCL_EQ => EXCL_EQ,
+            Token::EXCL_EQ_EQ => EXCL_EQ_EQ,
+            Token::AS_SAFE => AS_SAFE,
+            Token::EQ_EQ => EQ_EQ,
+            Token::EQ_EQ_EQ => EQ_EQ_EQ,
+            Token::SINGLE_QUOTE => SINGLE_QUOTE,
+            Token::RETURN_AT => RETURN_AT,
+            Token::CONTINUE_AT => CONTINUE_AT,
+            Token::BREAK_AT => BREAK_AT,
+            Token::THIS_AT => THIS_AT,
+            Token::SUPER_AT => SUPER_AT,
+            Token::FILE => FILE,
+            Token::FIELD => FIELD,
+            Token::PROPERTY => PROPERTY,
+            Token::GET => GET,
+            Token::SET => SET,
+            Token::RECEIVER => RECEIVER,
+            Token::PARAM => PARAM,
+            Token::SET_PARAM => SET_PARAM,
+            Token::DELEGATE => DELEGATE,
+            Token::PACKAGE => PACKAGE,
+            Token::IMPORT => IMPORT,
+            Token::CLASS => CLASS,
+            Token::INTERFACE => INTERFACE,
+            Token::FUN => FUN,
+            Token::OBJECT => OBJECT,
+            Token::VAL => VAL,
+            Token::VAR => VAR,
+            Token::TYPE_ALIAS => TYPE_ALIAS,
+            Token::CONSTRUCTOR => CONSTRUCTOR,
+            Token::BY => BY,
+            Token::COMPANION => COMPANION,
+            Token::INIT => INIT,
+            Token::THIS => THIS,
+            Token::SUPER => SUPER,
+            Token::TYPEOF => TYPEOF,
+            Token::WHERE => WHERE,
+            Token::IF => IF,
+            Token::ELSE => ELSE,
+            Token::WHEN => WHEN,
+            Token::TRY => TRY,
+            Token::CATCH => CATCH,
+            Token::FINALLY => FINALLY,
+            Token::FOR => FOR,
+            Token::DO => DO,
+            Token::WHILE => WHILE,
+            Token::THROW => THROW,
+            Token::RETURN => RETURN,
+            Token::CONTINUE => CONTINUE,
+            Token::BREAK => BREAK,
+            Token::AS => AS,
+            Token::IS => IS,
+            Token::IN => IN,
+            Token::NOT_IS => NOT_IS,
+            Token::NOT_IN => NOT_IN,
+            Token::OUT => OUT,
+            Token::DYNAMIC => DYNAMIC,
+            Token::PUBLIC => PUBLIC,
+            Token::PRIVATE => PRIVATE,
+            Token::PROTECTED => PROTECTED,
+            Token::INTERNAL => INTERNAL,
+            Token::ENUM => ENUM,
+            Token::SEALED => SEALED,
+            Token::ANNOTATION => ANNOTATION,
+            Token::DATA => DATA,
+            Token::INNER => INNER,
+            Token::TAILREC => TAILREC,
+            Token::OPERATOR => OPERATOR,
+            Token::INLINE => INLINE,
+            Token::INFIX => INFIX,
+            Token::EXTERNAL => EXTERNAL,
+            Token::SUSPEND => SUSPEND,
+            Token::OVERRIDE => OVERRIDE,
+            Token::ABSTRACT => ABSTRACT,
+            Token::FINAL => FINAL,
+            Token::OPEN => OPEN,
+            Token::CONST => CONST,
+            Token::LATEINIT => LATEINIT,
+            Token::VAR_ARG => VAR_ARG,
+            Token::NO_INLINE => NO_INLINE,
+            Token::CROSS_INLINE => CROSS_INLINE,
+            Token::REIFIED => REIFIED,
+            Token::EXPECT => EXPECT,
+            Token::ACTUAL => ACTUAL,
+            Token::VALUE => VALUE,
+            Token::INTEGER_LITERAL => INTEGER_LITERAL,
+            Token::REAL_LITERAL => REAL_LITERAL,
+            Token::HEX_LITERAL => HEX_LITERAL,
+            Token::BIN_LITERAL => BIN_LITERAL,
+            Token::LONG_LITERAL => LONG_LITERAL,
+            Token::BOOLEAN_LITERAL => BOOLEAN_LITERAL,
+            Token::NULL_LITERAL => NULL_LITERAL,
+            Token::CHARACTER_LITERAL => CHARACTER_LITERAL,
+            Token::QUOTE_OPEN => QUOTE_OPEN,
+            Token::QUOTE_CLOSE => QUOTE_CLOSE,
+            Token::TRIPLE_QUOTE_OPEN => TRIPLE_QUOTE_OPEN,
+            Token::TRIPLE_QUOTE_CLOSE => TRIPLE_QUOTE_CLOSE,
+            Token::IDENTIFIER => IDENTIFIER,
+            Token::LINE_STR_REF => LINE_STR_REF,
+            Token::MULTI_LINE_STR_REF => MULTI_LINE_STR_REF,
+            Token::MULTI_LINE_STRING_QUOTE => MULTI_LINE_STRING_QUOTE,
+            Token::LINE_STR_TEXT => LINE_STR_TEXT,
+            Token::MULTI_LINE_STR_TEXT => MULTI_LINE_STR_TEXT,
+            Token::LINE_STR_ESCAPED_CHAR => LINE_STR_ESCAPED_CHAR,
+            Token::LINE_STR_EXPR_START => LINE_STR_EXPR_START,
+            Token::MULTI_STR_EXPR_START => MULTI_STR_EXPR_START,
+            Token::EOF => EOF,
+            Token::ERR => ERR,
+        }
+    }
+}
+
 pub type SyntaxNode = rowan::SyntaxNode<Lang>;
 #[allow(unused)]
 pub type SyntaxToken = rowan::SyntaxToken<Lang>;
 #[allow(unused)]
 pub type SyntaxElement = rowan::NodeOrToken<SyntaxNode, SyntaxToken>;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum SyntaxKind {
-    Token(Token),
-    Syntax(Syntax),
-}
-
-impl From<Syntax> for rowan::SyntaxKind {
-    fn from(kind: Syntax) -> Self {
+impl From<SyntaxKind> for rowan::SyntaxKind {
+    fn from(kind: SyntaxKind) -> Self {
         Self(kind as u16)
     }
 }
 
-impl From<SyntaxKind> for rowan::SyntaxKind {
-    fn from(kind: SyntaxKind) -> Self {
-        match kind {
-            SyntaxKind::Token(token) => Self(token as u16),
-            SyntaxKind::Syntax(kind) => Self(kind as u16),
-        }
-    }
-}
-
-use Syntax::*;
+use SyntaxKind::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Lang;
@@ -221,14 +519,9 @@ pub struct Lang;
 impl rowan::Language for Lang {
     type Kind = SyntaxKind;
     fn kind_from_raw(raw: rowan::SyntaxKind) -> Self::Kind {
-        if raw.0 < 154 {
-            // safety: Token is repr u16
-            SyntaxKind::Token(unsafe { std::mem::transmute::<u16, Token>(raw.0) })
-        } else {
-            assert!(raw.0 <= ROOT as u16);
-            // safety: SyntaxKind is repr u16
-            SyntaxKind::Syntax(unsafe { std::mem::transmute::<u16, Syntax>(raw.0) })
-        }
+        assert!(raw.0 <= ROOT as u16);
+        // safety: SyntaxKind is repr u16
+        unsafe { std::mem::transmute::<u16, SyntaxKind>(raw.0) }
     }
 
     fn kind_to_raw(kind: Self::Kind) -> rowan::SyntaxKind {
@@ -244,17 +537,10 @@ mod test {
 
     #[test]
     fn test_conversion() {
-        assert_eq!(
-            Lang::kind_from_raw(rowan::SyntaxKind(ROOT as u16)),
-            SyntaxKind::Syntax(ROOT)
-        );
-        assert_eq!(
-            Lang::kind_from_raw(rowan::SyntaxKind(Token::IDENTIFIER as u16)),
-            SyntaxKind::Token(Token::IDENTIFIER)
-        );
+        assert_eq!(Lang::kind_from_raw(rowan::SyntaxKind(ROOT as u16)), ROOT);
         assert_eq!(
             Lang::kind_from_raw(rowan::SyntaxKind(SHEBANG_LINE as u16)),
-            SyntaxKind::Syntax(SHEBANG_LINE)
+            SHEBANG_LINE
         );
     }
 }

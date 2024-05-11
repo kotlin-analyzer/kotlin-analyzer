@@ -13,7 +13,7 @@ macro_rules! ast_node {
         impl $ast {
             #[allow(unused)]
             pub fn cast(node: ::syntax::SyntaxNode) -> Option<Self> {
-                if node.kind() == ::syntax::SyntaxKind::Syntax($kind) {
+                if node.kind() == $kind {
                     Some(Self(node))
                 } else {
                     None
