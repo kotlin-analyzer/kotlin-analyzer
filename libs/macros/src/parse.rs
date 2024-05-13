@@ -44,7 +44,7 @@ impl fmt::Debug for TopLevelParseEntry {
 }
 
 pub(crate) struct GenAst {
-    entries: Vec<TopLevelParseEntry>,
+    pub entries: Vec<TopLevelParseEntry>,
 }
 
 impl fmt::Debug for GenAst {
