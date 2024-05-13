@@ -225,6 +225,7 @@ pub static HARD_KEYWORDS: phf::Map<&'static str, Token> = phf_map! {
     "var" => VAR,
     "when" => WHEN,
     "while" => WHILE,
+    "continue" => CONTINUE,
 };
 
 pub static OPERATORS: phf::Map<&'static str, Token> = phf_map! {
@@ -383,13 +384,17 @@ pub static SOFT_KEYWORDS: phf::Map<&'static str, Token> = phf_map! {
 macro_rules! T {
     ($lit: tt) => {{
         let key = format!("{}", stringify!($lit));
-        let token = HARD_KEYWORDS
-            .get(&key)
-            .or(SOFT_KEYWORDS.get(&key))
-            .or(OPERATORS.get(&key))
-            .expect(&format!("expected a valid token, but got {key}"));
-        *token
+        let token = resolve_token(&key).expect(&format!("expected a valid token, but got {key}"));
+        token
     }};
+}
+
+pub fn resolve_token(key: &str) -> Option<Token> {
+    HARD_KEYWORDS
+        .get(key)
+        .or(SOFT_KEYWORDS.get(key))
+        .or(OPERATORS.get(key))
+        .copied()
 }
 
 #[cfg(test)]

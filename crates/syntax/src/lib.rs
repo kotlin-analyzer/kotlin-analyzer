@@ -513,6 +513,16 @@ impl From<SyntaxKind> for rowan::SyntaxKind {
 
 use SyntaxKind::*;
 
+pub fn cast_syntax_kind(syntax: SyntaxKind) -> impl Fn(SyntaxNode) -> Option<SyntaxNode> {
+    move |node| {
+        if node.kind() == syntax {
+            Some(node)
+        } else {
+            None
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Lang;
 
