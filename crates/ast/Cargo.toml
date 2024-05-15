@@ -12,3 +12,7 @@ rust-version.workspace = true
 syntax.workspace = true
 ron = "0.8"
 serde = { version = "1", features = ["derive"] }
+
+[build-dependencies]
+pest.workspace = true
+pest_derive.workspace = true

@@ -74,7 +74,7 @@ fn gen_parse_entry(
                 };
                 quote! {
                     fn #method_name(&self) -> #return_type {
-                        self.node().children().#iter_fn(cast_syntax_kind(::syntax::SyntaxKind::#syntax_name))
+                        self.node().children().#iter_fn(::syntax::cast_syntax_kind(::syntax::SyntaxKind::#syntax_name))
                     }
                 }
             } else {
@@ -135,7 +135,7 @@ fn gen_parse_entry(
                 };
                 quote! {
                     fn #method_name(&self) -> #return_type {
-                        self.node().children().#iter_fn(cast_syntax_kind(::syntax::SyntaxKind::#syntax_name))
+                        self.node().children().#iter_fn(::syntax::cast_syntax_kind(::syntax::SyntaxKind::#syntax_name))
                     }
                 }
             }
@@ -147,9 +147,9 @@ fn gen_parse_entry(
                 }
                 // treat as the same level
                 ParseEntry::Optional(_) => gen_parse_entry(e, field_ident, depth + 1, ret_type),
-                ParseEntry::Repeated(_) => todo!(),
-                ParseEntry::Choice(_) => todo!(),
-                ParseEntry::Group(_) => todo!(),
+                ParseEntry::Repeated(_) => quote!(),
+                ParseEntry::Choice(_) => quote!(),
+                ParseEntry::Group(_) => quote!(),
             });
             quote! {
                 #(#methods)*
@@ -167,8 +167,8 @@ fn gen_parse_entry(
                 ParseEntry::Repeated(_) => {
                     gen_parse_entry(e, field_ident, depth + 1, RetType::Many)
                 }
-                ParseEntry::Choice(_) => todo!(),
-                ParseEntry::Group(_) => todo!(),
+                ParseEntry::Choice(_) => quote!(),
+                ParseEntry::Group(_) => quote!(),
             });
             quote! {
                 #(#methods)*
@@ -208,7 +208,7 @@ fn gen_field(field: &Field) -> TokenStream {
         impl #typename {
             #[allow(unused)]
             pub fn cast(node: ::syntax::SyntaxNode) -> Option<Self> {
-                if node.kind() == ::syntax::Syntax::#syntax_name {
+                if node.kind() == ::syntax::SyntaxKind::#syntax_name {
                     Some(Self(node))
                 } else {
                     None
