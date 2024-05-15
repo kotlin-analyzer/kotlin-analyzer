@@ -7,3 +7,18 @@ authors.workspace = true
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = "2.0.61"
+proc-macro2 = "1.0"
+quote = "1.0.36"
+tokens.workspace = true
+inflector-plus.workspace = true
+prettyplease = "0.2.20"
+
+[dev-dependencies]
+assert-panic.workspace = true
+syntax.workspace = true
