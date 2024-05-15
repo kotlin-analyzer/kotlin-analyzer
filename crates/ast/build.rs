@@ -100,41 +100,36 @@ fn parse_spec() {
 
     let rules = KotlinSpecParser::parse(Rule::syntax_grammar, &buf).unwrap();
 
-    fn parse_top_level(pair: Pair<Rule>) {
+    fn parse_top_level(pair: Pair<Rule>) -> Option<TopLevelParseEntry> {
         match pair.as_rule() {
-            Rule::top_level => pair.into_inner().for_each(|pair| {
-                let mut inner_rules = pair.clone().into_inner();
-                let field = inner_rules
-                    .next()
-                    .unwrap()
-                    .into_inner()
-                    .next()
-                    .unwrap()
-                    .as_str();
-                let next = inner_rules.next().unwrap().as_rule();
-                p!("{field:?}: {next:?}")
-            }),
-            _ => unreachable!(),
-        };
-    }
-    fn parse_entry(pair: Pair<Rule>) -> ParseEntry {
-        match pair.as_rule() {
-            Rule::char => todo!(),
-            Rule::string => todo!(),
-            Rule::ident => todo!(),
-            Rule::repeated => todo!(),
-            Rule::choice => todo!(),
-            Rule::optional => todo!(),
-            Rule::group => todo!(),
-            Rule::entry => todo!(),
-            Rule::basic_entry => todo!(),
-            Rule::field => todo!(),
-            Rule::top_level => todo!(),
-            Rule::syntax_grammar => todo!(),
-            _ => todo!(),
+            Rule::top_level => {
+                let mut inner_rules = pair.into_inner();
+                let field = inner_rules.next().unwrap().as_str();
+                let asts = inner_rules.map(parse_entry).collect::<Vec<_>>();
+                Some(TopLevelParseEntry {
+                    field: Field { name: field },
+                    asts,
+                })
+            }
+            _ => None,
         }
     }
-    rules.for_each(parse_top_level);
 
-    // rules_to_value(rules)
+    fn parse_entry(pair: Pair<Rule>) -> ParseEntry {
+        match pair.as_rule() {
+            Rule::char => ParseEntry::CharLit(pair.as_str().chars().nth(1).unwrap()),
+            Rule::string => {
+                let res = pair.as_str();
+                ParseEntry::StrLit(&res[1..res.len() - 1])
+            }
+            Rule::ident => ParseEntry::Ident(pair.as_str()),
+            Rule::repeated => ParseEntry::Repeated(pair.into_inner().map(parse_entry).collect()),
+            Rule::choice => ParseEntry::Choice(pair.into_inner().map(parse_entry).collect()),
+            Rule::optional => ParseEntry::Optional(pair.into_inner().map(parse_entry).collect()),
+            Rule::group => ParseEntry::Group(pair.into_inner().map(parse_entry).collect()),
+            _ => unreachable!(),
+        }
+    }
+    let result = rules.flat_map(parse_top_level).collect::<Vec<_>>();
+    p!("{result:?}");
 }

@@ -1,15 +1,14 @@
-char     = { "'" ~ ANY ~ "'" }
-string   = { "\'" ~ ANY{2, } ~ "\'" }
-ident    = { (ASCII_ALPHA | "_"){2, } }
-repeated = { "{" ~ entry+ ~ "}" }
-choice   = { (basic_entry ~ "|")+ ~ basic_entry }
-optional = { "[" ~ entry+ ~ "]" }
-group    = { "(" ~ entry+ ~ ")" }
+char     = @{ "'" ~ ANY ~ "'" }
+string   = @{ "'" ~ (!"'" ~ ANY){2, } ~ "'" }
+ident    = @{ (ASCII_ALPHA | "_"){2, } }
+repeated =  { "{" ~ entry+ ~ "}" }
+choice   =  { (basic_entry ~ "|")+ ~ basic_entry }
+optional =  { "[" ~ entry+ ~ "]" }
+group    =  { "(" ~ entry+ ~ ")" }
 
-entry       = { choice | basic_entry }
-basic_entry = { group | repeated | optional | char | string | ident }
+entry       = _{ choice | basic_entry }
+basic_entry = _{ group | repeated | optional | char | string | (ident ~ !":") }
 
-field          =  { (ASCII_ALPHA | "_"){2, } }
-top_level      =  { field ~ ":" ~ entry+ }
-syntax_grammar =  { SOI ~ top_level+ ~ EOI }
-WHITE_SPACE    = _{ " " | "\n" | "\t" | "\r" }
+top_level      = !{ ident ~ ":" ~ entry+ }
+syntax_grammar = _{ SOI ~ top_level+ ~ EOI }
+WHITESPACE     = _{ " " | "\n" | "\t" | "\r" }

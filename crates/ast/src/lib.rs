@@ -24,10 +24,6 @@ macro_rules! ast_node {
     };
 }
 
-fn main() {
-    println!("{}", message());
-}
-
 #[derive(PartialEq, Eq, Hash, Clone)]
 #[repr(transparent)]
 pub struct Root(SyntaxNode);
