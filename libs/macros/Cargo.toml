@@ -17,8 +17,8 @@ proc-macro2 = "1.0"
 quote = "1.0.36"
 tokens.workspace = true
 inflector-plus.workspace = true
+prettyplease = "0.2.20"
 
 [dev-dependencies]
-prettyplease = "0.2.20"
 assert-panic.workspace = true
 syntax.workspace = true
