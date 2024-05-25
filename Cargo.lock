@@ -21,11 +21,13 @@ checksum = "763b2b82aee23fe46c14c792470080c26538396e9ea589f548298f26b22d7f41"
 name = "ast"
 version = "0.0.1"
 dependencies = [
+ "inflector-plus",
  "pest",
  "pest_derive",
  "ron",
  "serde",
  "syntax",
+ "tokens",
 ]
 
 [[package]]

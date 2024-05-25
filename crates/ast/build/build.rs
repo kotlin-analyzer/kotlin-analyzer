@@ -1,3 +1,5 @@
+mod generators;
+
 use std::env;
 use std::fmt;
 use std::fs;
@@ -8,6 +10,7 @@ use std::path::Path;
 use pest::iterators::Pair;
 use pest::Parser;
 use pest_derive::Parser;
+use tokens::resolve_token;
 
 macro_rules! p {
     ($($tokens: tt)*) => {
@@ -23,6 +26,45 @@ pub(crate) enum ParseEntry<'a> {
     Repeated(Vec<ParseEntry<'a>>),
     Choice(Vec<ParseEntry<'a>>),
     Group(Vec<ParseEntry<'a>>),
+}
+
+enum ReducedEntry<'a> {
+    CharLit(char),
+    StrLit(&'a str),
+    Ident(&'a str),
+}
+
+impl ParseEntry<'_> {
+    fn type_name(&self) -> Option<String> {
+        match self {
+            ParseEntry::CharLit(ch) => resolve_token(&ch.to_string()).map(|t| format!("{:?}", t)),
+            ParseEntry::StrLit(st) => resolve_token(&st.to_string()).map(|t| format!("{:?}", t)),
+            ParseEntry::Ident(id) => Some(id.to_string()),
+            ParseEntry::Optional(entries) => todo!(),
+            ParseEntry::Repeated(_) => todo!(),
+            ParseEntry::Choice(_) => todo!(),
+            ParseEntry::Group(_) => todo!(),
+        }
+    }
+
+    fn iter<'a>(&'a self) -> impl Iterator<Item = ReducedEntry<'a>> + 'a {
+        let once;
+        let many;
+        match self {
+            // ParseEntry::CharLit(ch) => vec![ReducedEntry::CharLit(*ch)],
+            // ParseEntry::StrLit(st) => vec![ReducedEntry::StrLit(st)],
+            ParseEntry::Ident(id) => {
+                return res.chain(std::iter::once(ReducedEntry::Ident(id)));
+            }
+            ParseEntry::Optional(entries)
+            | ParseEntry::Repeated(entries)
+            | ParseEntry::Choice(entries)
+            | ParseEntry::Group(entries) => {
+                return entries.iter().flat_map(|e| e.iter());
+            }
+            _ => unreachable!(),
+        };
+    }
 }
 
 impl fmt::Debug for ParseEntry<'_> {
@@ -75,7 +117,7 @@ impl fmt::Debug for Field<'_> {
 }
 
 #[derive(Parser)]
-#[grammar = "../../../pest/kotlin_spec.pest"]
+#[grammar = "../../pest/kotlin_spec.pest"]
 struct KotlinSpecParser;
 
 fn main() {
@@ -91,6 +133,8 @@ fn main() {
     )
     .unwrap();
     println!("cargo::rerun-if-changed=build.rs");
+    println!("cargo::rerun-if-changed=../../spec/syntax_grammar.ini");
+    println!("cargo::rerun-if-changed=../../pest/kotlin_spec.pest");
 }
 
 fn parse_spec() {
