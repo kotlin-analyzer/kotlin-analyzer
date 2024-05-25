@@ -60,7 +60,7 @@ impl Root {
     pub fn kind(&self) -> RootKind {
         KotlinFile::cast(self.0.clone())
             .map(RootKind::File)
-            .or_else(|| KotlinScript::cast(self.0.clone()).map(RootKind::Script))
+            .or(KotlinScript::cast(self.0.clone()).map(RootKind::Script))
             .unwrap()
     }
 }
