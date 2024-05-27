@@ -48,22 +48,21 @@ impl ParseEntry<'_> {
     }
 
     fn iter<'a>(&'a self) -> impl Iterator<Item = ReducedEntry<'a>> + 'a {
-        let once;
-        let many;
         match self {
             // ParseEntry::CharLit(ch) => vec![ReducedEntry::CharLit(*ch)],
             // ParseEntry::StrLit(st) => vec![ReducedEntry::StrLit(st)],
             ParseEntry::Ident(id) => {
-                return res.chain(std::iter::once(ReducedEntry::Ident(id)));
+                // return res.chain(std::iter::once(ReducedEntry::Ident(id)));
             }
             ParseEntry::Optional(entries)
             | ParseEntry::Repeated(entries)
             | ParseEntry::Choice(entries)
             | ParseEntry::Group(entries) => {
-                return entries.iter().flat_map(|e| e.iter());
+                // return entries.iter().flat_map(|e| e.iter());
             }
             _ => unreachable!(),
         };
+        std::iter::empty()
     }
 }
 
