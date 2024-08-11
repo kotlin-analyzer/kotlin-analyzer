@@ -1,13 +1,17 @@
 #![allow(unused)]
 
+use std::collections::HashMap;
+
 use inflector::Inflector;
+use itertools::Itertools;
 use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote};
 use syn::{Ident, LitStr};
 use tokens::resolve_token;
 
-use crate::parse::{Field, GenAst, ParseEntry, TopLevelParseEntry};
+use crate::parse::{Config, Field, GenAst, ParseEntry, TopLevelParseEntry};
 
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 enum SimpleName {
     Token(String),
     Ident(String),
@@ -28,24 +32,28 @@ impl SimpleName {
         }
     }
 
-    fn cast_closure(&self) -> TokenStream {
-        let ty = self.type_name();
+    fn variant_name(&self) -> String {
         match self {
-            SimpleName::Token(_) => quote!(::syntax::cast_syntax_kind(::syntax::SyntaxKind::#ty)),
-            SimpleName::Ident(_) => quote!(#ty::cast),
+            SimpleName::Token(tok) => tok.to_screaming_snake_case(),
+            SimpleName::Ident(id) => self.type_name(),
+        }
+    }
+
+    fn cast_closure(&self) -> TokenStream {
+        let variant = format_ident!("{}", self.variant_name());
+        match self {
+            SimpleName::Token(_) => {
+                quote!(::syntax::cast_syntax_kind(::syntax::SyntaxKind::#variant))
+            }
+            SimpleName::Ident(_) => quote!(#variant::cast),
         }
     }
 }
 
-struct Single {
-    method: Option<Ident>,
-    iter_fn: Option<Ident>,
-    return_type: Option<TokenStream>,
-    cast: Option<TokenStream>,
-}
-
 enum GenInterface {
+    None,
     Single {
+        simple_name: Option<SimpleName>,
         method: Option<Ident>,
         iter_fn: Ident,
         return_type: Option<TokenStream>,
@@ -53,8 +61,183 @@ enum GenInterface {
     },
     Many(Vec<GenInterface>),
     Enum {
-        variants: Vec<Ident>,
+        variants: Vec<GenInterface>,
+        simple_name: Option<SimpleName>,
     },
+}
+#[derive(Default)]
+struct Generated {
+    impls: TokenStream,
+    new_types: Option<TokenStream>,
+    new_type_kinds: Vec<Ident>,
+}
+
+impl GenInterface {
+    fn generate(self, field_ident: &Ident) -> Option<Generated> {
+        match self {
+            GenInterface::Single {
+                method,
+                iter_fn,
+                return_type,
+                cast,
+                ..
+            } => {
+                let method = method?;
+                let return_type = return_type?;
+                let cast = cast?;
+                let method_body = quote! {
+                    fn #method(&self) -> #return_type {
+                        self.0.children().#iter_fn(#cast)
+                    }
+                };
+                Some(Generated {
+                    impls: method_body,
+                    new_types: None,
+                    new_type_kinds: Vec::new(),
+                })
+            }
+            GenInterface::Enum {
+                variants,
+                simple_name,
+            } => {
+                let casts = variants
+                    .iter()
+                    .flat_map(|v| v.simple_name())
+                    .map(|v| v.cast_closure());
+
+                let name = if let Some(name) = simple_name.as_ref() {
+                    format_ident!("{}", name.name())
+                } else {
+                    format_ident!("{field_ident}")
+                };
+
+                let kind_name = format_ident!("{}Kind", name);
+
+                let mut casts_for_kind = variants.iter().flat_map(|v| v.simple_name()).map(|v| {
+                    let variant_name = format_ident!("{}", v.name().to_pascal_case());
+                    let cast = v.cast_closure();
+                    quote!(#cast(self.0.clone()).map(#kind_name::#variant_name))
+                });
+
+                let first_cast = casts_for_kind
+                    .next()
+                    .expect("choice variant expected to have at least one entry");
+
+                let mut enum_variants = variants.iter().flat_map(|v| v.simple_name()).map(|v| {
+                    let ident = format_ident!("{}", v.name().to_pascal_case());
+                    let ty = format_ident!("{}", v.type_name());
+                    quote!(#ident(#ty))
+                });
+
+                let impls = quote! {
+                    pub fn cast(node: SyntaxNode) -> Option<Self> {
+                        if #(#casts(node.clone()).is_some())||* {
+                            Some(#name(node))
+                        } else {
+                            None
+                        }
+                    }
+
+                    pub fn kind(&self) -> #kind_name {
+                            #first_cast
+                            #(.or(#casts_for_kind))*
+                            .unwrap()
+                    }
+                };
+
+                let nested_enum_name = simple_name
+                    .as_ref()
+                    .map(|name| format_ident!("{}", name.name()));
+
+                let (nested_enum, impls) = if let Some(name) = simple_name.as_ref() {
+                    let ident = format_ident!("{}", name.name());
+                    let method_name = format_ident!("{}", name.name().to_snake_case());
+
+                    (
+                        quote! {
+                            #[derive(PartialEq, Eq, Hash, Clone)]
+                            #[repr(transparent)]
+                            pub struct #ident(::syntax::SyntaxNode);
+
+                            impl #ident {
+                                #impls
+                            }
+
+                        },
+                        quote! {
+                            fn #method_name(&self) -> Option<#ident> {
+                                self.0.children().find_map(#ident::cast)
+                            }
+                        },
+                    )
+                } else {
+                    (quote!(), impls)
+                };
+
+                // TODO: a lot depends on simple_name
+                // if it exists
+                // impls would got into the new type and would not be returned
+                // but the new type's name would be sent back so the parent type can use it
+
+                let new_types = quote! {
+                    pub enum #kind_name {
+                        #(#enum_variants),*
+                    }
+                    #nested_enum
+                };
+
+                Some(Generated {
+                    impls,
+                    new_types: Some(new_types),
+                    // TODO
+                    new_type_kinds: nested_enum_name.into_iter().collect(),
+                })
+            }
+            GenInterface::Many(entries) => {
+                let collected = entries
+                    .into_iter()
+                    .flat_map(|e| e.generate(field_ident))
+                    .fold(Generated::default(), |acc, next| {
+                        let next_impls = next.impls;
+                        let next_new_types = next.new_types;
+                        let acc_impls = acc.impls;
+                        let acc_new_types = acc.new_types;
+                        let new_type_kinds = acc
+                            .new_type_kinds
+                            .into_iter()
+                            .chain(next.new_type_kinds.into_iter())
+                            .collect();
+                        Generated {
+                            impls: quote! {
+                                #acc_impls
+                                #next_impls
+                            },
+                            new_types: next_new_types
+                                .map(|next| {
+                                    quote! {
+                                        #acc_new_types
+
+                                        #next
+                                    }
+                                })
+                                .or(acc_new_types),
+                            new_type_kinds,
+                        }
+                    });
+                Some(collected)
+            }
+            GenInterface::None => None,
+        }
+    }
+
+    fn simple_name(&self) -> Option<&SimpleName> {
+        match self {
+            GenInterface::None => None,
+            GenInterface::Single { simple_name, .. } => simple_name.as_ref(),
+            GenInterface::Many(_) => None,
+            GenInterface::Enum { simple_name, .. } => simple_name.as_ref(),
+        }
+    }
 }
 
 impl ParseEntry {
@@ -69,26 +252,31 @@ impl ParseEntry {
     }
 
     fn identifiers(&self) -> Vec<SimpleName> {
+        if self.config().ignore {
+            return vec![];
+        }
         match self {
-            ParseEntry::CharLit(ch) => resolve_token(&ch.value().to_string())
+            ParseEntry::CharLit(ch, ..) => resolve_token(&ch.value().to_string())
                 .map(|t| vec![SimpleName::Token(format!("{:?}", t))])
                 .unwrap_or_default(),
-            ParseEntry::StrLit(st) => resolve_token(&st.value().to_string())
+            ParseEntry::StrLit(st, ..) => resolve_token(&st.value().to_string())
                 .map(|t| vec![SimpleName::Token(format!("{:?}", t))])
                 .unwrap_or_default(),
-            ParseEntry::Ident(id) => {
+            ParseEntry::Ident(id, ..) => {
                 if id.to_string().starts_with(char::is_lowercase) {
                     vec![SimpleName::Ident(id.to_string())]
                 } else {
                     vec![SimpleName::Token(id.to_string())]
                 }
             }
-            ParseEntry::Repeated(entries)
-            | ParseEntry::Choice(entries)
-            | ParseEntry::Group(entries)
-            | ParseEntry::Optional(entries) => {
-                entries.iter().flat_map(|e| e.identifiers()).collect()
-            }
+            ParseEntry::Repeated(entries, ..)
+            | ParseEntry::Choice(entries, ..)
+            | ParseEntry::Group(entries, ..)
+            | ParseEntry::Optional(entries, ..) => entries
+                .iter()
+                .flat_map(|e| e.identifiers())
+                .dedup()
+                .collect(),
         }
     }
 
@@ -104,6 +292,55 @@ impl ParseEntry {
     fn type_name(&self) -> Option<String> {
         self.simple_name().map(|name| name.type_name())
     }
+
+    fn process(&self, ret_type: RetType, ctx: &mut Context) -> GenInterface {
+        if self.config().ignore {
+            return GenInterface::None;
+        }
+        match self {
+            ParseEntry::CharLit(_, ..) | ParseEntry::StrLit(_, ..) | ParseEntry::Ident(_, ..) => {
+                let key = self.simple_name();
+                let ctx_value = key.and_then(|k| ctx.env.get(&k));
+                if let Some(prev_ret) = ctx_value {
+                    if *prev_ret == ret_type || ret_type == RetType::Optional {
+                        return GenInterface::None;
+                    }
+                }
+                GenInterface::Single {
+                    method: ret_type.method_name(self),
+                    iter_fn: ret_type.iter_fn(),
+                    return_type: ret_type.return_type(self),
+                    cast: self.simple_name().map(|s| s.cast_closure()),
+                    simple_name: self.simple_name(), // we can use the name from config here
+                }
+            }
+            ParseEntry::Optional(entries, ..) => {
+                GenInterface::Many(entries.iter().map(|e| e.process(ret_type, ctx)).collect())
+            }
+            ParseEntry::Repeated(entries, ..) => GenInterface::Many(
+                entries
+                    .iter()
+                    .map(|e| e.process(RetType::Many, ctx))
+                    .collect(),
+            ),
+            ParseEntry::Choice(entries, config) => {
+                ctx.set_config(config.clone());
+                let variants = entries.iter().map(|e| e.process(ret_type, ctx)).collect();
+
+                let simple_name = ctx.config.name.clone().map(SimpleName::Ident);
+
+                GenInterface::Enum {
+                    variants,
+                    simple_name,
+                }
+            }
+            ParseEntry::Group(entries, config) => {
+                ctx.set_config(config.clone());
+
+                GenInterface::Many(entries.iter().map(|e| e.process(ret_type, ctx)).collect())
+            }
+        }
+    }
 }
 
 pub fn generate_ast(ast: GenAst) -> TokenStream {
@@ -113,41 +350,55 @@ pub fn generate_ast(ast: GenAst) -> TokenStream {
     }
 }
 
-fn gen_top_level(top: TopLevelParseEntry) -> TokenStream {
+pub fn gen_top_level(top: TopLevelParseEntry) -> TokenStream {
     let typename = format_ident!("{}", top.field.name.to_string().to_pascal_case());
-    let entries = top
-        .asts
-        .iter()
-        .map(|entry| gen_parse_entry(entry, &top.field.name, 0, RetType::Optional));
-    let field = gen_field(&top.field);
-    let syntax_name = format_ident!("{}", top.field.name.to_string().to_screaming_snake_case());
-    quote! {
-        #field
-        impl #typename {
-            #(#entries)*
-        }
+    let len = top.asts.len();
+    let mut entries = top.asts.into_iter();
+    let entry = match len {
+        1 => entries.next().unwrap(),
+        _ => ParseEntry::Group(entries.collect(), Config::default()),
     };
-    quote! {
-        #[derive(PartialEq, Eq, Hash, Clone)]
-        #[repr(transparent)]
-        // todo add doc
-        pub struct #typename(::syntax::SyntaxNode);
 
-        impl #typename {
-            use ::syntax::{ SyntaxNode, SyntaxKind };
-            #[allow(unused)]
+    let Generated {
+        impls, new_types, ..
+    } = entry
+        .process(RetType::Optional, &mut Context::default())
+        .generate(&typename)
+        .unwrap_or_default();
+
+    let syntax_name = format_ident!("{}", top.field.name.to_string().to_screaming_snake_case());
+    let field_cast = if new_types.is_none() {
+        quote! {
             pub fn cast(node: SyntaxNode) -> Option<Self> {
-                if node.kind() == SyntaxKind::#syntax_name {
+                if node.kind() == ::syntax::SyntaxKind::#syntax_name {
                     Some(Self(node))
                 } else {
                     None
                 }
             }
         }
+    } else {
+        quote!()
+    };
+
+    quote! {
+        #[derive(PartialEq, Eq, Hash, Clone)]
+        #[repr(transparent)]
+        // todo add doc
+        pub struct #typename(::syntax::SyntaxNode);
+
+        #new_types
+
+        impl #typename {
+            #field_cast
+
+            #impls
+        }
+
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum RetType {
     Optional,
     Many,
@@ -179,220 +430,24 @@ impl RetType {
         Some(ident)
     }
 }
+#[derive(Debug, Default)]
+struct Context {
+    env: HashMap<SimpleName, RetType>,
+    config: Config,
+}
 
-fn process_entry(entry: &ParseEntry, ret_type: RetType) -> GenInterface {
-    match entry {
-        ParseEntry::CharLit(_) | ParseEntry::StrLit(_) | ParseEntry::Ident(_) => {
-            GenInterface::Single {
-                method: ret_type.method_name(entry),
-                iter_fn: ret_type.iter_fn(),
-                return_type: ret_type.return_type(entry),
-                cast: entry.simple_name().map(|s| s.cast_closure()),
-            }
+impl Context {
+    fn set_config(&mut self, config: Config) -> &mut Self {
+        self.config.ignore = config.ignore;
+        if let Some(_) = config.name {
+            self.config.name = config.name;
         }
-        ParseEntry::Optional(entries) => {
-            GenInterface::Many(entries.iter().map(|e| process_entry(e, ret_type)).collect())
-        }
-        ParseEntry::Repeated(entries) => GenInterface::Many(
-            entries
-                .iter()
-                .map(|e| process_entry(e, RetType::Many))
-                .collect(),
-        ),
-        ParseEntry::Choice(entries) => {
-            let variants = entries
-                .iter()
-                .flat_map(|e| e.type_name().map(|id| format_ident!("{}", id)))
-                .collect();
-            GenInterface::Enum { variants }
-        }
-        ParseEntry::Group(entries) => {
-            GenInterface::Many(entries.iter().map(|e| process_entry(e, ret_type)).collect())
-        }
+        self
     }
 }
 
-fn gen_parse_entry(
-    entry: &ParseEntry,
-    field_ident: &Ident,
-    depth: u8,
-    ret_type: RetType,
-) -> TokenStream {
-    let typename = format_ident!("{}", field_ident.to_string().to_pascal_case());
-    match entry {
-        ParseEntry::CharLit(_) | ParseEntry::StrLit(_) => {
-            let name = match entry {
-                ParseEntry::CharLit(ch) => ch.value().to_string(),
-                ParseEntry::StrLit(st) => st.value().to_string(),
-                _ => unreachable!(),
-            };
-            let token = resolve_token(&name);
-
-            if let Some(token) = token {
-                let token_fmt = format!("{:?}", token);
-
-                let method_name = match ret_type {
-                    RetType::Optional => format_ident!("get_{}", token_fmt.to_snake_case()),
-                    RetType::Many => format_ident!("get_{}", token_fmt.to_snake_case().to_plural()),
-                };
-
-                let syntax_name = format_ident!("{}", token_fmt);
-
-                let iter_fn = if matches!(ret_type, RetType::Many) {
-                    format_ident!("filter_map")
-                } else {
-                    format_ident!("find_map")
-                };
-
-                let return_type = match ret_type {
-                    RetType::Optional => quote!(Option<::syntax::SyntaxNode>),
-                    RetType::Many => quote!(impl Iterator<Item = ::syntax::SyntaxNode> + '_),
-                };
-                quote! {
-                    fn #method_name(&self) -> #return_type {
-                        self.node().children().#iter_fn(::syntax::cast_syntax_kind(::syntax::SyntaxKind::#syntax_name))
-                    }
-                }
-            } else {
-                // could not resolve token - should be rare but can happen
-                quote! {}
-            }
-        }
-        ParseEntry::Ident(id) => {
-            if id
-                .to_string()
-                .chars()
-                .nth(0)
-                .map(|ch| ch.is_lowercase())
-                .unwrap_or_default()
-            {
-                let method_name = match ret_type {
-                    RetType::Optional => format_ident!("{}", id.to_string().to_snake_case()),
-                    RetType::Many => {
-                        format_ident!("{}", id.to_string().to_plural().to_snake_case())
-                    }
-                };
-                let type_name = format_ident!("{}", id.to_string().to_pascal_case());
-
-                let return_type = match ret_type {
-                    RetType::Optional => quote!(Option<#type_name>),
-                    RetType::Many => quote!(impl Iterator<Item = #type_name> + '_),
-                };
-                let iter_fn = if matches!(ret_type, RetType::Many) {
-                    format_ident!("filter_map")
-                } else {
-                    format_ident!("find_map")
-                };
-
-                quote! {
-                    fn #method_name(&self) -> #return_type {
-                        self.node().children().#iter_fn(#type_name::cast)
-                    }
-                }
-            } else {
-                let method_name = match ret_type {
-                    RetType::Optional => format_ident!("get_{}", id.to_string().to_snake_case()),
-                    RetType::Many => {
-                        format_ident!("get_{}", id.to_string().to_snake_case().to_plural())
-                    }
-                };
-
-                let syntax_name = format_ident!("{}", id.to_string());
-
-                let iter_fn = if matches!(ret_type, RetType::Many) {
-                    format_ident!("filter_map")
-                } else {
-                    format_ident!("find_map")
-                };
-
-                let return_type = match ret_type {
-                    RetType::Optional => quote!(Option<::syntax::SyntaxNode>),
-                    RetType::Many => quote!(impl Iterator<Item = ::syntax::SyntaxNode> + '_),
-                };
-                quote! {
-                    fn #method_name(&self) -> #return_type {
-                        self.node().children().#iter_fn(::syntax::cast_syntax_kind(::syntax::SyntaxKind::#syntax_name))
-                    }
-                }
-            }
-        }
-        ParseEntry::Optional(entries) => {
-            let methods = entries.iter().map(|e| match e {
-                ParseEntry::CharLit(_) | ParseEntry::StrLit(_) | ParseEntry::Ident(_) => {
-                    gen_parse_entry(e, field_ident, depth + 1, ret_type)
-                }
-                // treat as the same level
-                ParseEntry::Optional(_) => gen_parse_entry(e, field_ident, depth + 1, ret_type),
-                ParseEntry::Repeated(_) => quote!(),
-                ParseEntry::Choice(_) => quote!(),
-                ParseEntry::Group(_) => quote!(),
-            });
-            quote! {
-                #(#methods)*
-            }
-        }
-        ParseEntry::Repeated(entries) => {
-            let methods = entries.iter().map(|e| match e {
-                ParseEntry::CharLit(_) | ParseEntry::StrLit(_) | ParseEntry::Ident(_) => {
-                    gen_parse_entry(e, field_ident, depth + 1, RetType::Many)
-                }
-                // treat as the same level
-                ParseEntry::Optional(_) => {
-                    gen_parse_entry(e, field_ident, depth + 1, RetType::Many)
-                }
-                ParseEntry::Repeated(_) => {
-                    gen_parse_entry(e, field_ident, depth + 1, RetType::Many)
-                }
-                ParseEntry::Choice(_) => quote!(),
-                ParseEntry::Group(_) => quote!(),
-            });
-            quote! {
-                #(#methods)*
-            }
-        }
-        ParseEntry::Choice(entries) => {
-            // todo: generate kind type here - depth would come in handy here
-            let methods = entries.iter().map(|e| match e {
-                ParseEntry::Choice(_) => unreachable!("can not have choice within choice"),
-                _ => gen_parse_entry(e, field_ident, depth + 1, ret_type),
-            });
-            quote! {
-                #(#methods)*
-            }
-        }
-        ParseEntry::Group(entries) => {
-            let methods = entries
-                .iter()
-                .map(|e| gen_parse_entry(e, field_ident, depth + 1, ret_type));
-            quote! {
-                #(#methods)*
-            }
-        }
-    }
-}
-
-fn gen_field(field: &Field) -> TokenStream {
-    let name = field.name.to_string();
-    let typename = format_ident!("{}", name.to_pascal_case());
-    let syntax_name = format_ident!("{}", name.to_screaming_snake_case());
-    quote! {
-        #[derive(PartialEq, Eq, Hash, Clone)]
-        #[repr(transparent)]
-        // todo add doc
-        pub struct #typename(::syntax::SyntaxNode);
-
-        impl #typename {
-            #[allow(unused)]
-            pub fn cast(node: ::syntax::SyntaxNode) -> Option<Self> {
-                if node.kind() == ::syntax::SyntaxKind::#syntax_name {
-                    Some(Self(node))
-                } else {
-                    None
-                }
-            }
-        }
-    }
-}
+// entry -> process -> generate
+// Entry -> GenInterface -> Generated
 
 #[cfg(test)]
 mod test {
@@ -409,52 +464,65 @@ mod test {
     }
 
     #[test]
-    fn field() {
-        let output = gen_field(&Field {
-            name: Ident::new("packageHeader", Span::call_site()),
+    fn test_gen_top_level() {
+        let field = Field {
+            name: Ident::new("kotlinFile", Span::call_site()),
+        };
+        let output = gen_top_level(TopLevelParseEntry {
+            field,
+            asts: vec![ParseEntry::Ident(
+                Ident::new("packageHeader", Span::call_site()),
+                Config::default(),
+            )],
         });
         pretty_print(output);
     }
 
     #[test]
-    fn test_lit_char_entry() {
-        let field = Field {
-            name: Ident::new("packageHeader", Span::call_site()),
-        };
-        let output = gen_parse_entry(
-            &ParseEntry::CharLit(LitChar::new('=', Span::call_site())),
-            &field.name,
-            0,
-            RetType::Optional,
-        );
-        pretty_print(output);
-    }
-
-    #[test]
-    fn test_lit_str_entry() {
-        let field = Field {
-            name: Ident::new("packageHeader", Span::call_site()),
-        };
-        let output = gen_parse_entry(
-            &ParseEntry::StrLit(LitStr::new("where", Span::call_site())),
-            &field.name,
-            0,
-            RetType::Many,
-        );
-        pretty_print(output);
-    }
-
-    #[test]
-    fn test_lit_ident_entry() {
+    fn test_gen_top_level_with_choice() {
         let field = Field {
             name: Ident::new("kotlinFile", Span::call_site()),
         };
-        let output = gen_parse_entry(
-            &ParseEntry::Ident(Ident::new("packageHeader", Span::call_site())),
-            &field.name,
-            0,
-            RetType::Many,
-        );
+        let output = gen_top_level(TopLevelParseEntry {
+            field,
+            asts: vec![ParseEntry::Choice(
+                vec![
+                    ParseEntry::Ident(
+                        Ident::new("Identifier", Span::call_site()),
+                        Config::default(),
+                    ),
+                    ParseEntry::Ident(
+                        Ident::new("topLevelObject", Span::call_site()),
+                        Config::default(),
+                    ),
+                ],
+                Config::default(),
+            )],
+        });
+        pretty_print(output);
+    }
+
+    #[test]
+    fn test_gen_top_level_with_group() {
+        let field = Field {
+            name: Ident::new("kotlinFile", Span::call_site()),
+        };
+        let output = gen_top_level(TopLevelParseEntry {
+            field,
+            asts: vec![ParseEntry::Group(
+                vec![
+                    ParseEntry::Ident(
+                        Ident::new("Identifier", Span::call_site()),
+                        Config::default(),
+                    ),
+                    ParseEntry::Ident(
+                        Ident::new("topLevelObject", Span::call_site()),
+                        Config::default(),
+                    ),
+                ],
+                Config::default(),
+            )],
+        });
         pretty_print(output);
     }
 }

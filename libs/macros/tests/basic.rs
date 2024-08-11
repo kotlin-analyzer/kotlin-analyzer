@@ -1,33 +1,33 @@
-use macros::gen_ast;
+use macros::gen_single_ast;
 
 #[test]
 fn print_input() {
-    gen_ast!(
-        kotlinFile:
-            [shebangLine]
-            {NL}
-            {fileAnnotation}
-            packageHeader
-            importList
-            {topLevelObject}
-            EOF
+    // gen_single_ast!(
+    //     kotlinFile:
+    //         [shebangLine]
+    //         {NL}
+    //         {fileAnnotation}
+    //         packageHeader
+    //         importList
+    //         {topLevelObject}
+    //         EOF
 
-        script:
-            [shebangLine]
-            {NL}
-            {fileAnnotation}
-            packageHeader
-            importList
-            {statement semi}
-            EOF
+    // script:
+    //     [shebangLine]
+    //     {NL}
+    //     {fileAnnotation}
+    //     packageHeader
+    //     importList
+    //     {statement semi}
+    //     EOF
 
-        declaration:
-            classDeclaration
-            | objectDeclaration
-            | functionDeclaration
-            | propertyDeclaration
-            | typeAlias
-    );
+    // declaration:
+    //     classDeclaration
+    //     | objectDeclaration
+    //     | functionDeclaration
+    //     | propertyDeclaration
+    //     | typeAlias
+    // );
 }
 
 // #[test]

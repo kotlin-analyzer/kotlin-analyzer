@@ -33,9 +33,9 @@ impl<T, S> Separated<T, S> {
         let items = self.items.into_iter().map(|e| e.0);
         items.chain(self.last.into_iter())
     }
-    pub fn separators(self) -> impl Iterator<Item = S> {
-        self.items.into_iter().map(|e| e.1)
-    }
+    // pub fn separators(self) -> impl Iterator<Item = S> {
+    //     self.items.into_iter().map(|e| e.1)
+    // }
 }
 
 impl<T, P> Parse for InOrder<T, P>
@@ -144,6 +144,17 @@ where
     }
 }
 
+pub struct Optional<T>(pub Option<T>);
+
+impl<T> Parse for Optional<T>
+where
+    T: Parse,
+{
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        Ok(Optional(input.parse::<T>().ok()))
+    }
+}
+
 impl<T, S> Parse for Separated<T, S>
 where
     T: Parse,
@@ -234,5 +245,15 @@ mod test {
                 a , b , c
             };
         });
+    }
+
+    #[test]
+    fn test_optional() {
+        let optional: Optional<InOrder<Ident, InOrder<Token![@], Ident>>> = parse_quote! {
+            ikechukwu@eze
+        };
+
+        assert_eq!(optional.0.as_ref().unwrap().first.to_string(), "ikechukwu");
+        assert_eq!(optional.0.unwrap().second.second.to_string(), "eze");
     }
 }

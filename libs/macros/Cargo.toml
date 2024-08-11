@@ -18,7 +18,7 @@ quote = "1.0.36"
 tokens.workspace = true
 inflector-plus.workspace = true
 prettyplease = "0.2.20"
+itertools.workspace = true
 
 [dev-dependencies]
 assert-panic.workspace = true
-syntax.workspace = true

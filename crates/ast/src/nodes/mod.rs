@@ -1,57 +1,122 @@
-use crate::ast_node;
-use syntax::{SyntaxKind::*, SyntaxNode};
+// use crate::ast_node;
+use macros::{gen_ast, gen_single_ast};
+use syntax::SyntaxNode;
 
-ast_node!(KotlinFile, KOTLIN_FILE);
-ast_node!(KotlinScript, SCRIPT);
-
-trait TopLevel {
-    fn node(&self) -> &SyntaxNode;
-
-    fn shebang_line(&self) -> Option<ShebangLine> {
-        self.node().children().find_map(ShebangLine::cast)
-    }
-
-    fn package_header(&self) -> Option<PackageHeader> {
-        self.node().children().find_map(PackageHeader::cast)
-    }
-
-    fn import_list(&self) -> Option<ImportList> {
-        self.node().children().find_map(ImportList::cast)
-    }
-
-    fn file_annotations(&self) -> impl Iterator<Item = FileAnnotation> + '_ {
-        self.node().children().filter_map(FileAnnotation::cast)
-    }
+gen_single_ast! {
+    simpleIdentifier:
+        Identifier
+        | "abstract"
+        | "annotation"
+        | "by"
+        | "catch"
+        | "companion"
+        | "constructor"
+        | "crossinline"
+        | "data"
+        | "dynamic"
+        | "enum"
+        | "external"
+        | "final"
+        | "finally"
+        | "get"
+        | "import"
+        | "infix"
+        | "init"
+        | "inline"
+        | "inner"
+        | "internal"
+        | "lateinit"
+        | "noinline"
+        | "open"
+        | "operator"
+        | "out"
+        | "override"
+        | "private"
+        | "protected"
+        | "public"
+        | "reified"
+        | "sealed"
+        | "tailrec"
+        | "set"
+        | "vararg"
+        | "where"
+        | "field"
+        | "property"
+        | "receiver"
+        | "param"
+        | "setparam"
+        | "delegate"
+        | "file"
+        | "expect"
+        | "actual"
+        | "const"
+        | "suspend"
+        | "value"
 }
 
-impl KotlinFile {
-    pub fn top_level_objects(&self) -> impl Iterator<Item = TopLevelObject> + '_ {
-        self.0.children().filter_map(TopLevelObject::cast)
-    }
+gen_single_ast! {
+    identifier:
+        simpleIdentifier {{NL} "." simpleIdentifier}
 }
 
-impl TopLevel for KotlinFile {
-    fn node(&self) -> &SyntaxNode {
-        &self.0
-    }
+gen_single_ast! {
+    annotationUseSiteTarget:
+        (AT_NO_WS | AT_PRE_WS)@At
+        ("field" | "property" | "get" | "set" | "receiver" | "param" | "setparam" | "delegate")@AnnotationTarget
+        {NL} ':'
 }
 
-impl KotlinScript {
-    pub fn statements(&self) -> impl Iterator<Item = Statement> + '_ {
-        self.0.children().filter_map(Statement::cast)
-    }
+gen_ast! {
+    functionModifier:
+    "tailrec"
+    | "operator"
+    | "infix"
+    | "inline"
+    | "external"
+    | "suspend"
+
+  propertyModifier:
+    "const"
+
+  inheritanceModifier:
+    "abstract"
+    | "final"
+    | "open"
+
+  parameterModifier:
+    "vararg"
+    | "noinline"
+    | "crossinline"
+
+  reificationModifier:
+    "reified"
+
+  platformModifier:
+    "expect"
+    | "actual"
 }
 
-impl TopLevel for KotlinScript {
-    fn node(&self) -> &SyntaxNode {
-        &self.0
-    }
-}
+gen_ast! {
+    classModifier:
+    "enum"
+    | "sealed"
+    | "annotation"
+    | "data"
+    | "inner"
+    | "value"
 
-ast_node!(ShebangLine, SHEBANG_LINE);
-ast_node!(FileAnnotation, FILE_ANNOTATION);
-ast_node!(PackageHeader, PACKAGE_HEADER);
-ast_node!(ImportList, IMPORT_LIST);
-ast_node!(TopLevelObject, TOP_LEVEL_OBJECT);
-ast_node!(Statement, STATEMENT);
-ast_node!(SimpleIdentifier, SIMPLE_IDENTIFIER);
+  memberModifier:
+    "override"
+    | "lateinit"
+
+  visibilityModifier:
+    "public"
+    | "private"
+    | "internal"
+    | "protected"
+
+  varianceModifier:
+    "in"
+    | "out"
+
+}
