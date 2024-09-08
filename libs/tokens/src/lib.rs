@@ -32,6 +32,7 @@ pub enum Token {
     SEMICOLON,
     ASSIGNMENT_TOKEN,
     ADD_ASSIGNMENT,
+    SUB_ASSIGNMENT,
     MULT_ASSIGNMENT,
     DIV_ASSIGNMENT,
     MOD_ASSIGNMENT,
@@ -256,6 +257,7 @@ pub static OPERATORS: phf::Map<&'static str, Token> = phf_map! {
    "+" => ADD,
 
    "-" => SUB,
+   "-=" => SUB_ASSIGNMENT,
 
    "++" => INCR,
 

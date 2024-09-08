@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 use syn::{
     parse::{Parse, ParseStream},
     Token,
