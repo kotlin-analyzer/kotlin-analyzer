@@ -407,16 +407,37 @@ pub fn generate_ast(ast: GenAst) -> Result<TokenStream> {
 
 pub fn gen_top_level(top: TopLevelParseEntry) -> Result<TokenStream> {
     let typename = format_ident!("{}", top.field.name.to_string().to_pascal_case());
-    let Some(entry) = top.asts.get(0) else {
-        return Err(Error::new(
-            top.field.name.span(),
-            "top level field should have only one entry",
-        ));
-    };
+    let mut context = Context::default();
 
-    let Generated { impls, new_types } = entry
-        .process(RetType::Optional, &mut Context::default())?
-        .generate(&typename, false)
+    let entries = top
+        .asts
+        .into_iter()
+        .map(|ast| {
+            ast.process(RetType::Optional, &mut context)?
+                .generate(&typename, false)
+        })
+        .collect::<Result<Vec<_>>>()?;
+
+    let Generated { impls, new_types } = entries
+        .into_iter()
+        .reduce(
+            |Generated { impls, new_types },
+             Generated {
+                 impls: next_impls,
+                 new_types: next_new_types,
+             }| Generated {
+                impls: quote! {
+                   #impls
+
+                   #next_impls
+                },
+                new_types: quote! {
+                   #new_types
+
+                   #next_new_types
+                },
+            },
+        )
         .unwrap_or_default();
 
     let syntax_name = format_ident!("{}", top.field.name.to_string().to_screaming_snake_case());

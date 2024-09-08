@@ -25,6 +25,7 @@ pub enum Token {
     SUB,
     INCR,
     DECR,
+    CONJ,
     DISJ,
     EXCL_WS,
     EXCL_NO_WS,
@@ -39,6 +40,8 @@ pub enum Token {
     ARROW,
     DOUBLE_ARROW,
     RANGE,
+    // ! not named in docs
+    RANGE_LESS,
     COLON_COLON,
     DOUBLE_SEMICOLON,
     HASH,
@@ -263,6 +266,8 @@ pub static OPERATORS: phf::Map<&'static str, Token> = phf_map! {
 
    "--" => DECR,
 
+   "&&" => CONJ,
+
    "||" => DISJ,
 
    "!" => EXCL_NO_WS,
@@ -286,6 +291,8 @@ pub static OPERATORS: phf::Map<&'static str, Token> = phf_map! {
    "=>" => DOUBLE_ARROW,
 
    ".." => RANGE,
+
+   "..<" => RANGE_LESS,
 
    "::" => COLON_COLON,
 

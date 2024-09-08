@@ -226,9 +226,9 @@ gen_single_ast! {
   valueArgument:
   [annotation]
   {NL}
-  [simpleIdentifier {NL} "=" {NL}]
+  [simpleIdentifier _{NL} "=" _{NL}]
   ["*"]
-  {NL}
+  _{NL}
   expression
 }
 
@@ -283,7 +283,7 @@ gen_single_ast! {
 
 gen_ast! {
   elvisExpression:
-    infixFunctionCall {{NL} elvis {NL} infixFunctionCall}
+    infixFunctionCall {{NL} elvis _{NL} infixFunctionCall}
 
   elvis:
     QUEST_NO_WS ":"
@@ -303,7 +303,7 @@ multiplicativeExpression:
   asExpression {multiplicativeOperator {NL} asExpression}
 
 asExpression:
-  prefixUnaryExpression {{NL} asOperator {NL} TYPE}
+  prefixUnaryExpression {{NL} asOperator _{NL} TYPE}
 }
 
 // gen_single_ast! {

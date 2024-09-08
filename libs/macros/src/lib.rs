@@ -29,11 +29,11 @@ pub fn gen_single_ast(input: TokenStream) -> TokenStream {
 pub fn gen_ast_debug(input: TokenStream) -> TokenStream {
     let ast = parse_macro_input!(input as TopLevelParseEntry);
     let output_ast = format!("{:#?}", ast);
-    std::fs::write("./debug.ron", output_ast).expect("unable to create file");
+    std::fs::write("debug.ron", output_ast).expect("unable to create file");
 
     match generate_ast::gen_top_level(ast) {
         Ok(stream) => {
-            std::fs::write("./debug.rs", pretty_print(stream.clone().into()))
+            std::fs::write("debug.rs", pretty_print(stream.clone().into()))
                 .expect("unable to create debug.rs file");
             stream.into()
         }
