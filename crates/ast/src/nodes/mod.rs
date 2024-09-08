@@ -304,6 +304,44 @@ multiplicativeExpression:
 
 asExpression:
   prefixUnaryExpression {{NL} asOperator _{NL} TYPE}
+
+prefixUnaryExpression:
+  {unaryPrefix} postfixUnaryExpression
+
+postfixUnaryExpression:
+  primaryExpression {postfixUnarySuffix}
+}
+
+gen_single_ast! {
+  primaryExpression:
+  parenthesizedExpression
+  | simpleIdentifier
+  | literalConstant
+  | stringLiteral
+  | callableReference
+  | functionLiteral
+  | objectLiteral
+  | collectionLiteral
+  | thisExpression
+  | superExpression
+  | ifExpression
+  | whenExpression
+  | tryExpression
+  | jumpExpression
+}
+
+gen_ast! {
+  unaryPrefix:
+  annotation
+  | label
+  | (prefixUnaryOperator {NL})
+
+  postfixUnarySuffix:
+    postfixUnaryOperator
+    | typeArguments
+    | callSuffix
+    | indexingSuffix
+    | navigationSuffix
 }
 
 // gen_single_ast! {

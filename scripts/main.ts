@@ -4,15 +4,11 @@
 function main() {
   let spec = content();
   // replace '"""' -> TRIPLE_QUOTE_OPEN
-  // spec = spec.replace(/'"""'/g, "TRIPLE_QUOTE_OPEN");
-  // // replace 'c' -> ~c~
-  // spec = spec.replace(/'([^'])'/g, "~$1~");
+  spec = spec.replace(/'"""'/g, "TRIPLE_QUOTE_OPEN");
   // // replace 'many' -> "many"
-  // spec = spec.replace(/'([^']{2,})'/g, '"$1"');
-  // // replace ~c~ -> 'c'
-  // spec = spec.replace(/~([^~])~/g, "'$1'");
+  spec = spec.replace(/'([^']+)'/g, '"$1"');
   // // replace type -> TYPE
-  // spec = spec.replace(/\btype\b/g, "TYPE");
+  spec = spec.replace(/\btype\b/g, "TYPE");
   // formatting
   let lines = spec.split("\n").map((l) => {
     let line = l.trim();
