@@ -1,4 +1,4 @@
-use macros::gen_single_ast;
+// use macros::gen_single_ast;
 
 #[test]
 fn print_input() {

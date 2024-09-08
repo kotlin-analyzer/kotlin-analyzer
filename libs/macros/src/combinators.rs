@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 use syn::parse::{Parse, ParseStream};
 
 pub struct Seq<T>(pub Vec<T>);
