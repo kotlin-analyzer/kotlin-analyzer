@@ -1,6 +1,6 @@
 #![allow(unused)]
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use inflector::Inflector;
 use itertools::Itertools;
@@ -10,6 +10,18 @@ use syn::{spanned::Spanned, token::Paren, Error, Ident, LitStr, Result};
 use tokens::Token;
 
 use crate::parse::{Config, Field, GenAst, ParseEntry, ParseEntryExt, TopLevelParseEntry};
+
+macro_rules! err {
+    ($span: expr, $message: literal) => {{
+        let span: Span = $span;
+        let message: &'static str = $message;
+        Err(Error::new(span, message))
+    }};
+    ($message: literal) => {{
+        let message: &'static str = $message;
+        Err(Error::new(Span::call_site(), message))
+    }};
+}
 
 #[derive(Debug, Clone)]
 enum SimpleName {
@@ -75,6 +87,7 @@ enum GenInterface {
     Many {
         entries: Vec<GenInterface>,
         simple_name: Option<SimpleName>,
+        span: Span,
     },
     Enum {
         variants: Vec<GenInterface>,
@@ -146,15 +159,20 @@ impl GenInterface {
                     format_ident!("{}Kind", field_ident)
                 };
 
-                let mut casts_for_kind = variants.iter().flat_map(|v| v.simple_name()).map(|v| {
+                let casts_for_kind = variants
+                    .iter()
+                    .map(|v| v.simple_name())
+                    .collect::<Result<Vec<_>>>()?;
+
+                let mut casts_for_kind = casts_for_kind.into_iter().map(|v| {
                     let variant_name = format_ident!("{}", v.name().to_pascal_case());
                     let cast = v.cast_closure();
                     quote!(#cast(self.0.clone()).map(#kind_name::#variant_name))
                 });
 
-                let first_cast = casts_for_kind
-                    .next()
-                    .expect("choice variant expected to have at least one entry");
+                let first_cast = casts_for_kind.next().ok_or_else(|| {
+                    Error::new(span, "choice variant expected to have at least one entry")
+                })?;
 
                 let mut enum_variants = variants.iter().flat_map(|v| v.simple_name()).map(|v| {
                     let ident = format_ident!("{}", v.name().to_pascal_case());
@@ -242,12 +260,12 @@ impl GenInterface {
         }
     }
 
-    fn simple_name(&self) -> Option<SimpleName> {
+    fn simple_name(&self) -> Result<SimpleName> {
         match self {
-            GenInterface::None => None,
-            GenInterface::Single { simple_name, .. } => Some(simple_name.clone()),
-            GenInterface::Many { simple_name, .. } => simple_name.clone(),
-            GenInterface::Enum { name, .. } => name.clone().map(SimpleName::Ident),
+            GenInterface::None => err!("Unexpected error. None variants does not have simple name"),
+            GenInterface::Single { simple_name, .. } => Ok(simple_name.clone()),
+            GenInterface::Many { simple_name, span, .. } => simple_name.clone().ok_or_else(|| Error::new(span.clone(), "Expected complex variant within a choice entry to have a name.\nTry adding @Name")),
+            GenInterface::Enum { name, span, .. } => name.clone().map(SimpleName::Ident).ok_or_else(|| Error::new(span.clone(), "Unexpected nested choice entry")),
         }
     }
 }
@@ -298,33 +316,6 @@ impl ParseEntryExt {
         }
     }
 
-    fn span(&self) -> Span {
-        match &self.entry {
-            ParseEntry::CharLit(ch) => ch.span(),
-            ParseEntry::StrLit(st) => st.span(),
-            ParseEntry::Ident(id) => id.span(),
-            ParseEntry::Optional {
-                bracket_token,
-                entries,
-            } => bracket_token.span.span(),
-            ParseEntry::Repeated {
-                brace_token,
-                entries,
-            } => brace_token.span.span(),
-            ParseEntry::Choice { entries } => {
-                let first = &entries[0];
-                // TODO: uncomment when Span::join becomes stable
-                // let last = entries[entries.len() - 1];
-                // first.span().join(last.span())
-                first.span()
-            }
-            ParseEntry::Group {
-                paren_token,
-                entries,
-            } => paren_token.span.span(),
-        }
-    }
-
     fn method_name(&self) -> Result<String> {
         self.simple_name().map(|name| match name {
             SimpleName::Token { .. } | SimpleName::TokenIdent(_) => {
@@ -347,19 +338,18 @@ impl ParseEntryExt {
         }
         match &self.entry {
             ParseEntry::CharLit(_, ..) | ParseEntry::StrLit(_, ..) | ParseEntry::Ident(_, ..) => {
-                // let key = self.simple_name()?;
-                // let ctx_value = ctx.env.get(&key);
-                // if let Some(prev_ret) = ctx_value {
-                //     if *prev_ret == ret_type || ret_type == RetType::Optional {
-                //         return Ok(GenInterface::None);
-                //     }
-                // }
+                let simple_name = self.simple_name()?;
+                if let Some(prev_ret) = ctx.env.get(&simple_name.name()) {
+                    return Ok(GenInterface::None);
+                }
+                ctx.env.insert(simple_name.name());
+
                 Ok(GenInterface::Single {
                     method: ret_type.method_name(self)?,
                     iter_fn: ret_type.iter_fn(),
                     return_type: ret_type.return_type(self)?,
-                    cast: self.simple_name().map(|s| s.cast_closure())?,
-                    simple_name: self.simple_name()?,
+                    cast: simple_name.cast_closure(),
+                    simple_name,
                 })
             }
             ParseEntry::Repeated { entries, .. } => Ok(GenInterface::Many {
@@ -368,6 +358,7 @@ impl ParseEntryExt {
                     .map(|e| e.process(RetType::Many, ctx))
                     .collect::<Result<Vec<_>>>()?,
                 simple_name: self.simple_name().ok(),
+                span: self.span(),
             }),
             ParseEntry::Choice { entries, .. } => {
                 let variants = entries
@@ -388,6 +379,7 @@ impl ParseEntryExt {
                         .map(|e| e.process(ret_type, ctx))
                         .collect::<Result<Vec<_>>>()?,
                     simple_name: self.simple_name().ok(),
+                    span: self.span(),
                 })
             }
         }
@@ -506,16 +498,5 @@ impl RetType {
 }
 #[derive(Debug, Default)]
 struct Context {
-    env: HashMap<SimpleName, RetType>,
-    config: Config,
-}
-
-impl Context {
-    fn set_config(&mut self, config: Config) -> &mut Self {
-        self.config.ignore = config.ignore;
-        if let Some(_) = config.name {
-            self.config.name = config.name;
-        }
-        self
-    }
+    env: HashSet<String>,
 }

@@ -180,7 +180,7 @@ gen_ast! {
   postfixUnaryOperator:
     "++"
     | "--"
-    | ("!" excl)
+    | ("!" excl)@BangExcl
 
   excl:
     "!"
@@ -195,15 +195,15 @@ gen_ast! {
     QUEST_NO_WS "."
 }
 
-gen_single_ast! {
+gen_ast_debug! {
   fileAnnotation:
   (AT_NO_WS | AT_PRE_WS)@FileAnnotationAt
   "file"
   {NL}
   ":"
-  _{NL}
-  (("[" (unescapedAnnotation {unescapedAnnotation}) "]") | unescapedAnnotation)@FileUnescapedAnnotation
-  _{NL}
+  {NL}
+  (("[" (unescapedAnnotation {unescapedAnnotation}) "]")@BoxedUnescapedAnnotation | unescapedAnnotation)@FileUnescapedAnnotation
+  {NL}
 }
 
 gen_single_ast! {
@@ -219,16 +219,16 @@ gen_single_ast! {
 
 gen_single_ast! {
     valueArguments:
-    "(" {NL} [valueArgument {_{NL} "," _{NL} valueArgument} [_{NL} ","] _{NL}] ")"
+    "(" {NL} [valueArgument {{NL} "," {NL} valueArgument} [{NL} ","] {NL}] ")"
 }
 
 gen_single_ast! {
   valueArgument:
   [annotation]
   {NL}
-  [simpleIdentifier _{NL} "=" _{NL}]
+  [simpleIdentifier {NL} "=" {NL}]
   ["*"]
-  _{NL}
+  {NL}
   expression
 }
 
@@ -239,7 +239,7 @@ gen_single_ast! {
 
 gen_single_ast! {
   userType:
-  simpleUserType {_{NL} "." {NL} simpleUserType}
+  simpleUserType {{NL} "." {NL} simpleUserType}
 }
 
 gen_single_ast! {
@@ -259,16 +259,16 @@ gen_single_ast! {
 
 gen_ast! {
   disjunction:
-    conjunction {{NL} "||" _{NL} conjunction}
+    conjunction {{NL} "||" {NL} conjunction}
 
   conjunction:
-    equality {{NL} "&&" _{NL} equality}
+    equality {{NL} "&&" {NL} equality}
 
   equality:
     comparison {equalityOperator {NL} comparison}
 
   comparison:
-    _genericCallLikeComparison {comparisonOperator {NL} genericCallLikeComparison}
+    genericCallLikeComparison {comparisonOperator {NL} genericCallLikeComparison}
 }
 
 gen_single_ast! {
@@ -278,12 +278,12 @@ gen_single_ast! {
 
 gen_single_ast! {
   infixOperation:
-    elvisExpression {(inOperator {NL} elvisExpression) | (isOperator _{NL} TYPE)}
+    elvisExpression {(inOperator {NL} elvisExpression) | (isOperator {NL} TYPE)}
 }
 
 gen_ast! {
   elvisExpression:
-    infixFunctionCall {{NL} elvis _{NL} infixFunctionCall}
+    infixFunctionCall {{NL} elvis {NL} infixFunctionCall}
 
   elvis:
     QUEST_NO_WS ":"
@@ -303,7 +303,7 @@ multiplicativeExpression:
   asExpression {multiplicativeOperator {NL} asExpression}
 
 asExpression:
-  prefixUnaryExpression {{NL} asOperator _{NL} TYPE}
+  prefixUnaryExpression {{NL} asOperator {NL} TYPE}
 
 prefixUnaryExpression:
   {unaryPrefix} postfixUnaryExpression
@@ -314,20 +314,29 @@ postfixUnaryExpression:
 
 gen_single_ast! {
   primaryExpression:
-  parenthesizedExpression
-  | simpleIdentifier
-  | literalConstant
-  | stringLiteral
-  | callableReference
-  | functionLiteral
-  | objectLiteral
-  | collectionLiteral
-  | thisExpression
-  | superExpression
-  | ifExpression
-  | whenExpression
-  | tryExpression
-  | jumpExpression
+    parenthesizedExpression
+    | simpleIdentifier
+    | literalConstant
+    | stringLiteral
+    | callableReference
+    | functionLiteral
+    | objectLiteral
+    | collectionLiteral
+    | thisExpression
+    | superExpression
+    | ifExpression
+    | whenExpression
+    | tryExpression
+    | jumpExpression
+}
+
+gen_single_ast! {
+  parenthesizedExpression:
+  "("
+  {NL}
+  expression
+  {NL}
+  ")"
 }
 
 gen_ast! {

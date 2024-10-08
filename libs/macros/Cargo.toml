@@ -12,12 +12,12 @@ rust-version.workspace = true
 proc-macro = true
 
 [dependencies]
-syn = "2.0.61"
-proc-macro2 = "1.0"
-quote = "1.0.36"
+syn = "2.0.77"
+proc-macro2 = "1.0.86"
+quote = "1.0.37"
 tokens.workspace = true
 inflector-plus.workspace = true
-prettyplease = "0.2.20"
+prettyplease = "0.2.22"
 itertools.workspace = true
 
 [dev-dependencies]
