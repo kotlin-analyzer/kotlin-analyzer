@@ -1,12 +1,10 @@
-use std::error::Error;
 use std::fmt::{self, Debug};
 
 use proc_macro2::Span;
-use syn::parse::discouraged::Speculative;
 use syn::parse::{Parse, ParseStream};
 use syn::spanned::Spanned;
 use syn::token::{Brace, Bracket, Paren};
-use syn::{braced, bracketed, parenthesized, Error, Ident, Lit, LitChar, LitStr, Token};
+use syn::{braced, bracketed, parenthesized, Ident, Lit, LitChar, LitStr, Token};
 
 use crate::combinators::{InOrder, Optional, Seq};
 
@@ -36,15 +34,15 @@ pub(crate) enum BasicParseEntry {
 }
 
 #[derive(Clone)]
-pub(crate) enum ParseEntry {
+pub enum ParseEntry {
     Basic(BasicParseEntry),
     Choice { entries: Vec<ParseEntryExt> },
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct ParseEntryExt {
-    pub(crate) config: Config,
-    pub(crate) entry: ParseEntry,
+pub struct ParseEntryExt {
+    pub config: Config,
+    pub entry: ParseEntry,
 }
 
 impl fmt::Debug for BasicParseEntry {
@@ -117,7 +115,10 @@ fn parse_lits(input: ParseStream) -> syn::Result<BasicParseEntry> {
     Lit::parse(input).and_then(|x| match x {
         Lit::Str(y) => Ok(BasicParseEntry::StrLit(y)),
         Lit::Char(y) => Ok(BasicParseEntry::CharLit(y)),
-        _ => Err(Error::new(x.span(), "expected a string or char literal")),
+        _ => Err(syn::Error::new(
+            x.span(),
+            "expected a string or char literal",
+        )),
     })
 }
 
@@ -159,74 +160,47 @@ impl Parse for BasicParseEntry {
     }
 }
 
-fn parse_choice_2(input: ParseStream) -> syn::Result<ParseEntry> {
-    let first = input.parse::<BasicParseEntry>()?;
-    let mut output = Vec::new();
+impl From<BasicParseEntry> for ParseEntry {
+    fn from(value: BasicParseEntry) -> Self {
+        ParseEntry::Basic(value)
+    }
+}
+fn parse_choice(input: ParseStream) -> syn::Result<ParseEntry> {
+    let first = input.parse::<Configured<BasicParseEntry>>()?;
+    let mut rest = Vec::new();
 
     while input.peek(Token![|]) {
         // throw away
         input.parse::<Token![|]>()?;
 
-        output.push(input.parse::<BasicParseEntry>()?);
+        rest.push(input.parse::<Configured<BasicParseEntry>>()?);
     }
 
-    if output.len() < 2 {
+    if rest.len() < 2 {
         return Err(syn::Error::new(
-            first.span(),
+            first.parsed.span(),
             "choice must be separated by `|`",
         ));
     }
 
-    Ok(ParseEntry::Choice { entries: output })
-}
-fn parse_choice(input: ParseStream) -> syn::Result<ParseEntry> {
-    let mut result = Vec::new();
-    let mut last_pipe = None;
-    let mut saw_pipe_last = false;
-    let fork = input.fork();
+    let mut result = Vec::with_capacity(rest.len() + 1);
+    result.push(first);
+    result.extend(rest);
 
-    loop {
-        let Ok(Configured { config, parsed }) =
-            Configured::<ParseEntry>::parse_with(&fork, parse_basic_entry)
-        else {
-            break;
-        };
-        saw_pipe_last = false;
-
-        result.push(ParseEntryExt {
-            config,
-            entry: parsed,
-        });
-
-        let Ok(pipe) = fork.parse::<Token![|]>() else {
-            break;
-        };
-
-        last_pipe = Some(pipe);
-        saw_pipe_last = true;
-    }
-
-    if result.len() < 2 {
-        return Err(syn::Error::new(
-            input.span(),
-            "choice expected rules matching A|B but got none",
-        ));
-    };
-
-    if saw_pipe_last {
-        return Err(Error::new(
-            last_pipe.unwrap().span,
-            "Unexpected trailing pipe (|)",
-        ));
-    }
-
-    input.advance_to(&fork);
-    Ok(ParseEntry::Choice { entries: result })
+    Ok(ParseEntry::Choice {
+        entries: result
+            .into_iter()
+            .map(|c| ParseEntryExt {
+                config: c.config,
+                entry: c.parsed.into(),
+            })
+            .collect(),
+    })
 }
 
 impl Parse for ParseEntry {
     fn parse(input: ParseStream) -> syn::Result<Self> {
-        parse_choice(input).or_else(|_| parse_basic_entry(input))
+        parse_choice(input).or_else(|_| parse_basic_entry(input).map(ParseEntry::Basic))
     }
 }
 
@@ -253,14 +227,31 @@ impl<P> Configured<P> {
     }
 }
 
+impl<P> Parse for Configured<P>
+where
+    P: Parse,
+{
+    fn parse(input: ParseStream) -> syn::Result<Configured<P>> {
+        let ignore = input.parse::<Token![_]>().is_ok();
+        let parsed = input.parse::<P>()?;
+        let name_config: Optional<InOrder<Token![@], Ident>> = input.parse()?;
+
+        let config = Config {
+            name: name_config.0.map(|e| e.second),
+            ignore,
+        };
+
+        Ok(Configured { config, parsed })
+    }
+}
+
 impl Parse for ParseEntryExt {
     fn parse(input: ParseStream) -> syn::Result<Self> {
-        let Configured { config, parsed } =
-            Configured::<ParseEntry>::parse_with(input, ParseEntry::parse)?;
+        let Configured { config, parsed } = Configured::<ParseEntry>::parse(input)?;
 
         // Note: If entry is a Group with one element, we would want to unwrap that
         let res = match parsed {
-            ParseEntry::Group { entries, .. } if entries.len() == 1 => {
+            ParseEntry::Basic(BasicParseEntry::Group { entries, .. }) if entries.len() == 1 => {
                 let entry = &entries[0];
                 ParseEntryExt {
                     config: Config {
@@ -325,7 +316,7 @@ impl BasicParseEntry {
 }
 
 impl ParseEntry {
-    fn span(&self) -> Span {
+    pub fn span(&self) -> Span {
         match &self {
             ParseEntry::Basic(basic) => basic.span(),
             ParseEntry::Choice { entries } => {
