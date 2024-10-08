@@ -9,7 +9,9 @@ use quote::{format_ident, quote};
 use syn::{spanned::Spanned, token::Paren, Error, Ident, LitStr, Result};
 use tokens::Token;
 
-use crate::parse::{Config, Field, GenAst, ParseEntry, ParseEntryExt, TopLevelParseEntry};
+use crate::parse::{
+    BasicParseEntry, Config, Field, GenAst, ParseEntry, ParseEntryExt, TopLevelParseEntry,
+};
 
 macro_rules! err {
     ($span: expr, $message: literal) => {{
@@ -283,36 +285,42 @@ impl ParseEntryExt {
             .map(SimpleName::Ident)
             .ok_or_else(|| {
                 Error::new(
-                    self.span(),
+                    self.entry.span(),
                     "Missing name for entries. Try adding @Name at the end",
                 )
             });
 
         match &self.entry {
-            ParseEntry::CharLit(ch) => config_name.or_else(|_| {
-                resolve_token(&ch.value().to_string(), ch.span()).map(|token| SimpleName::Token {
-                    token,
-                    span: ch.span(),
-                })
-            }),
-            ParseEntry::StrLit(st) => config_name.or_else(|_| {
-                resolve_token(&st.value().to_string(), st.span()).map(|token| SimpleName::Token {
-                    token,
-                    span: st.span(),
-                })
-            }),
-            ParseEntry::Ident(id) => config_name.or_else(|_| {
-                if id.to_string().starts_with(char::is_lowercase) {
-                    Ok(SimpleName::Ident(id.clone()))
-                } else {
-                    Ok(SimpleName::TokenIdent(id.clone()))
-                }
-            }),
+            ParseEntry::Basic(basic) => match basic {
+                BasicParseEntry::CharLit(ch) => config_name.or_else(|_| {
+                    resolve_token(&ch.value().to_string(), ch.span()).map(|token| {
+                        SimpleName::Token {
+                            token,
+                            span: ch.span(),
+                        }
+                    })
+                }),
+                BasicParseEntry::StrLit(st) => config_name.or_else(|_| {
+                    resolve_token(&st.value().to_string(), st.span()).map(|token| {
+                        SimpleName::Token {
+                            token,
+                            span: st.span(),
+                        }
+                    })
+                }),
+                BasicParseEntry::Ident(id) => config_name.or_else(|_| {
+                    if id.to_string().starts_with(char::is_lowercase) {
+                        Ok(SimpleName::Ident(id.clone()))
+                    } else {
+                        Ok(SimpleName::TokenIdent(id.clone()))
+                    }
+                }),
 
-            ParseEntry::Optional { .. }
-            | ParseEntry::Repeated { .. }
-            | ParseEntry::Choice { .. }
-            | ParseEntry::Group { .. } => config_name,
+                BasicParseEntry::Optional { .. }
+                | BasicParseEntry::Repeated { .. }
+                | BasicParseEntry::Group { .. } => config_name,
+            },
+            ParseEntry::Choice { .. } => config_name,
         }
     }
 
@@ -358,7 +366,7 @@ impl ParseEntryExt {
                     .map(|e| e.process(RetType::Many, ctx))
                     .collect::<Result<Vec<_>>>()?,
                 simple_name: self.simple_name().ok(),
-                span: self.span(),
+                span: self.entry.span(),
             }),
             ParseEntry::Choice { entries, .. } => {
                 let variants = entries
@@ -369,7 +377,7 @@ impl ParseEntryExt {
                 Ok(GenInterface::Enum {
                     variants,
                     name: self.config.name.clone(),
-                    span: self.span(),
+                    span: self.entry.span(),
                 })
             }
             ParseEntry::Group { entries, .. } | ParseEntry::Optional { entries, .. } => {
@@ -379,7 +387,7 @@ impl ParseEntryExt {
                         .map(|e| e.process(ret_type, ctx))
                         .collect::<Result<Vec<_>>>()?,
                     simple_name: self.simple_name().ok(),
-                    span: self.span(),
+                    span: self.entry.span(),
                 })
             }
         }
