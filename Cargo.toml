@@ -11,17 +11,22 @@ rust-version = "1.82.0"
 
 
 [workspace.dependencies]
-lexer = { path = "./crates/lexer" }
-syntax = { path = "./crates/syntax" }
-parser = { path = "./crates/parser" }
-ast = { path = "./crates/ast" }
-tokens = { path = "./libs/tokens" }
-macros = { path = "./libs/macros" }
-classpath_resolver = { path = "./libs/classpath_resolver" }
-pretty_assertions = "1.4.0"
-itertools = "0.13.0"
 assert-panic = "1.0.1"
-rstest = "0.19.0"
+ast = { path = "./crates/ast" }
+classpath_resolver = { path = "./libs/classpath_resolver" }
 inflector-plus = "0.11.7"
-pest = "2.7.10"
-pest_derive = "2.7.10"
+itertools = "0.13.0"
+lexer = { path = "./crates/lexer" }
+macros = { path = "./libs/macros" }
+nonempty = "0.10.0"
+parser = { path = "./crates/parser" }
+pest = "2.7.13"
+pest_derive = "2.7.13"
+pretty_assertions = "1.4.1"
+prettyplease = "0.2.22"
+proc-macro2 = "1.0.87"
+quote = "1.0.37"
+rstest = "0.23.0"
+syn = "2.0.79"
+syntax = { path = "./crates/syntax" }
+tokens = { path = "./libs/tokens" }

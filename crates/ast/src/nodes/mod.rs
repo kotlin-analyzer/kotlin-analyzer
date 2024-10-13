@@ -136,6 +136,13 @@ gen_single_ast! {
   | "%="
 }
 
+gen_ast_debug! {
+  postfixUnaryOperator:
+  "++"
+  | "--"
+  | ("!" excl)@BangExcl
+}
+
 gen_ast! {
   equalityOperator:
     "!="
@@ -177,25 +184,20 @@ gen_ast! {
     | "+"
     | excl
 
-  postfixUnaryOperator:
-    "++"
-    | "--"
-    | ("!" excl)@BangExcl
-
   excl:
     "!"
     | EXCL_WS
 
   memberAccessOperator:
-    ({NL} ".")
-    | ({NL} safeNav)
+    ({NL} ".")@MemberAccessOperatorDot
+    | ({NL} safeNav)@MemberAccessOperatorDotSafeNav
     | "::"
 
   safeNav:
     QUEST_NO_WS "."
 }
 
-gen_ast_debug! {
+gen_single_ast! {
   fileAnnotation:
   (AT_NO_WS | AT_PRE_WS)@FileAnnotationAt
   "file"
@@ -339,12 +341,14 @@ gen_single_ast! {
   ")"
 }
 
-gen_ast! {
-  unaryPrefix:
-  annotation
-  | label
-  | (prefixUnaryOperator {NL})
+gen_single_ast! {
+    unaryPrefix:
+    annotation
+    | label
+    | (prefixUnaryOperator {NL})@UnaryPrefixPrefixUnaryOperator
+}
 
+gen_single_ast! {
   postfixUnarySuffix:
     postfixUnaryOperator
     | typeArguments
