@@ -9,4 +9,13 @@ license.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-nonempty = { workspace = true }
+syntax.workspace = true
+ron = "0.8"
+serde = { version = "1", features = ["derive"] }
+macros.workspace = true
+
+[build-dependencies]
+pest.workspace = true
+pest_derive.workspace = true
+tokens.workspace = true
+inflector-plus.workspace = true
