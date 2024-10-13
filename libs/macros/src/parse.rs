@@ -1,7 +1,9 @@
 use std::fmt::{self, Debug};
 
 use proc_macro2::Span;
+use syn::parse::discouraged::Speculative;
 use syn::parse::{Parse, ParseStream};
+use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::token::{Brace, Bracket, Paren};
 use syn::{braced, bracketed, parenthesized, Ident, Lit, LitChar, LitStr, Token};
@@ -165,66 +167,27 @@ impl From<BasicParseEntry> for ParseEntry {
         ParseEntry::Basic(value)
     }
 }
-fn parse_choice(input: ParseStream) -> syn::Result<ParseEntry> {
-    let first = input.parse::<Configured<BasicParseEntry>>()?;
-    let mut rest = Vec::new();
 
-    while input.peek(Token![|]) {
-        // throw away
-        input.parse::<Token![|]>()?;
+impl Parse for ParseEntry {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let result =
+            Punctuated::<Configured<BasicParseEntry>, Token![|]>::parse_separated_nonempty(input)?;
 
-        rest.push(input.parse::<Configured<BasicParseEntry>>()?);
-    }
-
-    if rest.len() < 2 {
-        return Err(syn::Error::new(
-            first.parsed.span(),
-            "choice must be separated by `|`",
-        ));
-    }
-
-    let mut result = Vec::with_capacity(rest.len() + 1);
-    result.push(first);
-    result.extend(rest);
-
-    Ok(ParseEntry::Choice {
-        entries: result
+        let result: Vec<_> = result
             .into_iter()
             .map(|c| ParseEntryExt {
                 config: c.config,
                 entry: c.parsed.into(),
             })
-            .collect(),
-    })
-}
+            .collect();
 
-impl Parse for ParseEntry {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
-        parse_choice(input).or_else(|_| parse_basic_entry(input).map(ParseEntry::Basic))
+        Ok(ParseEntry::Choice { entries: result })
     }
 }
 
 struct Configured<P> {
     config: Config,
     parsed: P,
-}
-
-impl<P> Configured<P> {
-    fn parse_with<U: Parse>(
-        input: ParseStream,
-        f: impl Fn(ParseStream) -> syn::Result<U>,
-    ) -> syn::Result<Configured<U>> {
-        let ignore = input.parse::<Token![_]>().is_ok();
-        let parsed = f(input)?;
-        let name_config: Optional<InOrder<Token![@], Ident>> = input.parse()?;
-
-        let config = Config {
-            name: name_config.0.map(|e| e.second),
-            ignore,
-        };
-
-        Ok(Configured { config, parsed })
-    }
 }
 
 impl<P> Parse for Configured<P>
@@ -249,9 +212,12 @@ impl Parse for ParseEntryExt {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let Configured { config, parsed } = Configured::<ParseEntry>::parse(input)?;
 
-        // Note: If entry is a Group with one element, we would want to unwrap that
+        // Note: If entry is a Group/Choice with one element, we would want to unwrap that
         let res = match parsed {
-            ParseEntry::Basic(BasicParseEntry::Group { entries, .. }) if entries.len() == 1 => {
+            ParseEntry::Choice { entries }
+            | ParseEntry::Basic(BasicParseEntry::Group { entries, .. })
+                if entries.len() == 1 =>
+            {
                 let entry = &entries[0];
                 ParseEntryExt {
                     config: Config {
@@ -261,6 +227,7 @@ impl Parse for ParseEntryExt {
                     entry: entry.entry.clone(),
                 }
             }
+
             _ => ParseEntryExt {
                 config,
                 entry: parsed,
@@ -273,21 +240,23 @@ impl Parse for ParseEntryExt {
 
 impl Parse for TopLevelParseEntry {
     fn parse(input: ParseStream) -> syn::Result<Self> {
+        let fork = input.fork();
         let mut result: Vec<ParseEntryExt> = Vec::new();
-        let field: Field = input.parse()?;
-        while !input.peek2(Token![:]) {
-            if let Ok(next) = input.parse::<ParseEntryExt>() {
-                result.push(next);
-            } else {
-                break;
-            }
+
+        let field: Field = fork.parse()?;
+        while !fork.peek2(Token![:]) && !fork.is_empty() {
+            let next = fork.parse::<ParseEntryExt>()?;
+            result.push(next);
         }
         if result.is_empty() {
             return Err(syn::Error::new(
-                input.span(),
+                fork.span(),
                 "expected rules after rule name",
             ));
         }
+
+        input.advance_to(&fork);
+
         Ok(TopLevelParseEntry {
             field,
             asts: result,
@@ -327,5 +296,155 @@ impl ParseEntry {
                 first.entry.span()
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use std::error::Error;
+
+    use super::*;
+    use proc_macro2::{TokenStream, TokenTree};
+
+    macro_rules! tt {
+        ($($tokens: tt)*) => {
+            stringify!($($tokens)*).parse::<proc_macro2::TokenStream>()?
+        };
+    }
+
+    #[allow(dead_code)]
+    #[derive(Debug)]
+    struct ParseTillEnd<P> {
+        main: P,
+        rest: TokenTree,
+    }
+
+    impl<P> Parse for ParseTillEnd<P>
+    where
+        P: Parse,
+    {
+        fn parse(input: ParseStream) -> syn::Result<Self> {
+            Ok(ParseTillEnd {
+                main: input.parse()?,
+                rest: input.parse()?,
+            })
+        }
+    }
+
+    #[test]
+    fn basic_entry_test() -> Result<(), Box<dyn Error>> {
+        let stream: TokenStream = tt! {
+            expression:
+                disjunction
+        };
+        let all = syn::parse2::<ParseTillEnd<Field>>(stream)?;
+
+        assert_eq!(all.main.name.to_string(), "expression");
+        assert_eq!(all.rest.to_string(), "disjunction");
+        Ok(())
+    }
+
+    #[test]
+    fn simple_top_level_entry_without_config() -> Result<(), Box<dyn Error>> {
+        let stream: TokenStream = tt! {
+            expression:
+                disjunction
+        };
+        syn::parse2::<InOrder<Field, ParseEntry>>(stream)?;
+        Ok(())
+    }
+
+    #[test]
+    fn simple_top_level_entry() -> Result<(), Box<dyn Error>> {
+        let stream: TokenStream = tt! {
+            expression:
+                disjunction
+        };
+        let top = syn::parse2::<TopLevelParseEntry>(stream)?;
+        assert!(
+            matches!(&top.asts[..], [ParseEntryExt {entry, ..} ] 
+                if matches!(entry, ParseEntry::Basic(BasicParseEntry::Ident(..))))
+        );
+
+        let stream: TokenStream = tt! {
+              propertyModifier:
+                "const"
+        };
+        let top = syn::parse2::<TopLevelParseEntry>(stream)?;
+        assert!(
+            matches!(&top.asts[..], [ParseEntryExt {entry, ..} ] 
+                if matches!(entry, ParseEntry::Basic(BasicParseEntry::StrLit(..))))
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn top_level_entry_with_choice() -> Result<(), Box<dyn Error>> {
+        let stream: TokenStream = tt! {
+            expression:
+                disjunction
+                | another
+        };
+        let top = syn::parse2::<TopLevelParseEntry>(stream)?;
+        assert!(
+            matches!(&top.asts[..], [ParseEntryExt {entry, ..} ] if matches!(entry, ParseEntry::Choice { .. }))
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn test_with_config() -> Result<(), Box<dyn Error>> {
+        let stream: TokenStream = tt! {
+            annotationUseSiteTarget:
+                (AT_NO_WS | AT_PRE_WS)@AnnotationUseSiteTargetAt
+                ("field" | "property" | "get" | "set" | "receiver" | "param" | "setparam" | "delegate")@AnnotationTarget
+                {NL} ':'
+        };
+        let top = syn::parse2::<TopLevelParseEntry>(stream)?;
+        dbg!(top);
+        // assert!(
+        //     matches!(&top.asts[..], [ParseEntryExt {entry, ..} ] if matches!(entry, ParseEntry::Choice { .. }))
+        // );
+        Ok(())
+    }
+
+    #[test]
+    fn gen_ast_test() -> Result<(), Box<dyn Error>> {
+        let stream: TokenStream = tt! {
+            functionModifier:
+            "tailrec"
+            | "operator"
+            | "infix"
+            | "inline"
+            | "external"
+            | "suspend"
+        
+          propertyModifier:
+            "const"
+        
+          inheritanceModifier:
+            "abstract"
+            | "final"
+            | "open"
+        
+          parameterModifier:
+            "vararg"
+            | "noinline"
+            | "crossinline"
+        
+          reificationModifier:
+            "reified"
+        
+          platformModifier:
+            "expect"
+            | "actual"
+        };
+        let gen = syn::parse2::<GenAst>(stream)?;
+        dbg!(gen);
+        // assert!(
+        //     matches!(&gen., [ParseEntryExt {entry, ..} ] 
+        //         if matches!(entry, ParseEntry::Basic(BasicParseEntry::StrLit(..))))
+        // );
+        Ok(())
     }
 }

@@ -3,6 +3,8 @@
 use syn::parse::{Parse, ParseStream};
 
 pub struct Seq<T>(pub Vec<T>);
+
+#[derive(Debug)]
 pub struct InOrder<T, P> {
     pub first: T,
     pub second: P,
@@ -186,7 +188,7 @@ where
         parse_separated(input, TrailingOpt::Deny).map(|sep| Self {
             items: sep.items,
             // This should always be Some<T>
-            last: sep.last.expect("expected last to be Some"),
+            last: sep.last.unwrap(),
         })
     }
 }
