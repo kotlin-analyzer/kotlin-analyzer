@@ -1,0 +1,50 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/rust
+{
+	"name": "Rust",
+	"image": "mcr.microsoft.com/devcontainers/rust:1-1-bullseye",
+	"features": {
+		"ghcr.io/devcontainers/features/docker-in-docker:2": {},
+		"ghcr.io/devcontainers/features/github-cli:1": {},
+		"ghcr.io/devcontainers/features/node:1": {},
+		"ghcr.io/meaningful-ooo/devcontainer-features/homebrew:2": {},
+		"ghcr.io/eitsupi/devcontainer-features/nushell:0": {},
+		"ghcr.io/lee-orr/rusty-dev-containers/cargo-binstall:0": {},
+		"ghcr.io/lee-orr/rusty-dev-containers/cargo-expand:0": {},
+		"ghcr.io/lee-orr/rusty-dev-containers/cargo-nextest:0": {},
+		"ghcr.io/lee-orr/rusty-dev-containers/helix:0": {},
+		"ghcr.io/lee-orr/rusty-dev-containers/sccache:0": {},
+		"ghcr.io/lee-orr/rusty-dev-containers/wasm-bindgen-cli:0": {},
+		"ghcr.io/lee-orr/rusty-dev-containers/zellij:0": {},
+		"ghcr.io/georgofenbeck/features/lazygit-homebrew:1": {},
+		"ghcr.io/devcontainers-extra/features/deno:1": {},
+		"ghcr.io/devcontainers-extra/features/neovim-homebrew:1": {}
+	},
+
+	// Use 'mounts' to make the cargo cache persistent in a Docker Volume.
+	"mounts": [
+		{
+			"source": "devcontainer-cargo-cache-${devcontainerId}",
+			"target": "/usr/local/cargo",
+			"type": "volume"
+		}
+	],
+
+	// Use 'forwardPorts' to make a list of ports inside the container available locally.
+	// "forwardPorts": [],
+
+	// Use 'postCreateCommand' to run commands after the container is created.
+	// "postCreateCommand": "rustc --version",
+
+	"remoteUser": "vscode",
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"rust-lang.rust-analyzer",
+				"a5huynh.vscode-ron",
+				"tamasfe.even-better-toml",
+				"TheNuProjectContributors.vscode-nushell-lang"
+			]
+		}
+	}
+}
