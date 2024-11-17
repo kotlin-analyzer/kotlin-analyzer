@@ -529,6 +529,31 @@ pub fn cast_syntax_kind(syntax: SyntaxKind) -> impl Fn(SyntaxNode) -> Option<Syn
     }
 }
 
+// pub fn cast_many_test(syntax: SyntaxKind) -> impl Fn(SyntaxNode) -> Option<SyntaxNode> {
+//     move |node| {
+//         // let children = node.children().
+//         // if node.kind() == syntax {
+//         //     Some(node)
+//         // } else {
+//         //     None
+//         // }
+//     }
+// }
+
+pub mod syntax_macros {
+    macro_rules! cast_many {
+        ($($cast_fn: expr)+) => {
+            move |node| {
+                if node.kind() == syntax {
+                    Some(node)
+                } else {
+                    None
+                }
+            }
+        };
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Lang;
 
