@@ -2,7 +2,7 @@
 #[allow(non_camel_case_types)]
 #[repr(u16)]
 pub enum Token {
-    ///! White Space and Comments    
+    /// White Space and Comments    
     SHEBANG_LINE = 0,
     DELIMITED_COMMENT,
     LINE_COMMENT,
@@ -139,7 +139,7 @@ pub enum Token {
     VALUE,
 
     //# ENDREGION
-    ///! LITERALS
+    /// LITERALS
     INTEGER_LITERAL,
     REAL_LITERAL,
 

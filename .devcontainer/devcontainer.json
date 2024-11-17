@@ -1,0 +1,42 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/ubuntu
+{
+	"name": "Ubuntu",
+	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
+	"image": "mcr.microsoft.com/devcontainers/base:noble",
+	"features": {
+		"ghcr.io/devcontainers/features/docker-in-docker:2": {},
+		"ghcr.io/devcontainers/features/github-cli:1": {},
+		"ghcr.io/devcontainers/features/node:1": {},
+		"ghcr.io/devcontainers/features/rust:1": {},
+		"ghcr.io/eitsupi/devcontainer-features/nushell:0": {},
+		"ghcr.io/devcontainers/features/common-utils:2": {},
+		"ghcr.io/georgofenbeck/features/lazygit-linuxbinary:1": {},
+		"ghcr.io/devcontainers-extra/features/deno:1": {},
+		"ghcr.io/devcontainers-extra/features/homebrew-package:1": {},
+		"ghcr.io/devcontainers-extra/features/neovim-homebrew:1": {},
+		"ghcr.io/phil-bell/devcontainer-features/antigen:1": {}
+	},
+
+	// Features to add to the dev container. More info: https://containers.dev/features.
+	// "features": {},
+
+	// Use 'forwardPorts' to make a list of ports inside the container available locally.
+	// "forwardPorts": [],
+
+	// Use 'postCreateCommand' to run commands after the container is created.
+	// "postCreateCommand": "uname -a",
+
+
+	"remoteUser": "vscode",
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"rust-lang.rust-analyzer",
+				"a5huynh.vscode-ron",
+				"tamasfe.even-better-toml",
+				"TheNuProjectContributors.vscode-nushell-lang"
+			]
+		}
+	}
+}
