@@ -59,6 +59,7 @@ where
 
 pub struct Parse {
     green_node: GreenNode,
+    #[allow(unused)]
     pub errors: Vec<ParseError>,
 }
 
