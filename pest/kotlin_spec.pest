@@ -1,0 +1,14 @@
+char     = @{ "'" ~ ANY ~ "'" }
+string   = @{ "'" ~ (!"'" ~ ANY){2, } ~ "'" }
+ident    = @{ (ASCII_ALPHA | "_"){2, } }
+repeated =  { "{" ~ entry+ ~ "}" }
+choice   =  { (basic_entry ~ "|")+ ~ basic_entry }
+optional =  { "[" ~ entry+ ~ "]" }
+group    =  { "(" ~ entry+ ~ ")" }
+
+entry       = _{ choice | basic_entry }
+basic_entry = _{ group | repeated | optional | char | string | (ident ~ !":") }
+
+top_level      = !{ ident ~ ":" ~ entry+ }
+syntax_grammar = _{ SOI ~ top_level+ ~ EOI }
+WHITESPACE     = _{ " " | "\n" | "\t" | "\r" }
