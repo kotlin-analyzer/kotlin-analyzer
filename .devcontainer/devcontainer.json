@@ -14,7 +14,8 @@
 		"ghcr.io/georgofenbeck/features/lazygit-linuxbinary:1": {},
 		"ghcr.io/devcontainers-extra/features/deno:1": {},
 		"ghcr.io/devcontainers-extra/features/homebrew-package:1": {},
-		"ghcr.io/devcontainers-extra/features/neovim-homebrew:1": {}
+		"ghcr.io/devcontainers-extra/features/neovim-homebrew:1": {},
+		"ghcr.io/phil-bell/devcontainer-features/antigen:1": {}
 	},
 
 	// Features to add to the dev container. More info: https://containers.dev/features.
