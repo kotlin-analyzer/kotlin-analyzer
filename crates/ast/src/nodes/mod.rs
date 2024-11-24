@@ -127,7 +127,7 @@ gen_ast! {
 
 }
 
-gen_single_ast! {
+gen_ast_debug! {
   assignmentAndOperator:
   "+="
   | "-="
@@ -136,7 +136,7 @@ gen_single_ast! {
   | "%="
 }
 
-gen_ast_debug! {
+gen_single_ast! {
   postfixUnaryOperator:
   "++"
   | "--"

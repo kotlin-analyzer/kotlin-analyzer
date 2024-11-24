@@ -1,5 +1,9 @@
 use tokens::Token;
 
+mod cast;
+
+pub use cast::*;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[allow(non_camel_case_types)]
 #[repr(u16)]
@@ -526,31 +530,6 @@ pub fn cast_syntax_kind(syntax: SyntaxKind) -> impl Fn(SyntaxNode) -> Option<Syn
         } else {
             None
         }
-    }
-}
-
-// pub fn cast_many_test(syntax: SyntaxKind) -> impl Fn(SyntaxNode) -> Option<SyntaxNode> {
-//     move |node| {
-//         // let children = node.children().
-//         // if node.kind() == syntax {
-//         //     Some(node)
-//         // } else {
-//         //     None
-//         // }
-//     }
-// }
-
-pub mod syntax_macros {
-    macro_rules! cast_many {
-        ($($cast_fn: expr)+) => {
-            move |node| {
-                if node.kind() == syntax {
-                    Some(node)
-                } else {
-                    None
-                }
-            }
-        };
     }
 }
 
