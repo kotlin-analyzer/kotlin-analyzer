@@ -21,7 +21,7 @@ fn integrate() {
 #[test]
 fn with_ast() {
     let text = "#! comment // nested #! deep /* more */\n";
-    let _ = parse(text).root();
+    // let _ = parse(text).root();
     // println!("{:?}", node);
     // println!("children count: {}", node.children().count());
     // let next = node.children().next().unwrap();

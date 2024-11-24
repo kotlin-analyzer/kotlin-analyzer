@@ -58,7 +58,7 @@ struct NameWithField {
 }
 
 impl ParseEntryExt {
-    fn extract_name<'a>(&self, field: Ident, is_multi: bool) -> Result<NameWithField> {
+    fn extract_name(&self, field: Ident, is_multi: bool) -> Result<NameWithField> {
         let config_name = self.config.name.clone();
         match &self.entry {
             ParseEntry::Basic(basic) => match basic {
@@ -230,12 +230,11 @@ impl NameWithField {
 
     fn return_type(&self, entry: &ParseEntryExt) -> TokenStream {
         let type_name = format_ident!("{}", self.type_name());
-        let stream = if !self.is_multi {
+        if !self.is_multi {
             quote!(Option<#type_name>)
         } else {
             quote!(impl Iterator<Item = #type_name> + '_)
-        };
-        stream
+        }
     }
 
     fn span(&self) -> Span {
@@ -724,9 +723,9 @@ impl ParseEntryExt {
         }
         match &self.entry {
             ParseEntry::Basic(basic) => match basic {
-                BasicParseEntry::CharLit(_, ..)
-                | BasicParseEntry::StrLit(_, ..)
-                | BasicParseEntry::Ident(_, ..) => {
+                BasicParseEntry::CharLit(..)
+                | BasicParseEntry::StrLit(..)
+                | BasicParseEntry::Ident(..) => {
                     let simple_name = self.simple_name()?;
                     if let Some(prev_ret) = ctx.env.get(&simple_name.name()) {
                         return Ok(GenInterface::None);
@@ -746,7 +745,7 @@ impl ParseEntryExt {
                     if is_nested =>
                 {
                     Ok(GenInterface::NestedMany {
-                        entries: entries.iter().cloned().collect(),
+                        entries: entries.to_vec(),
                         ident: self.config.name.clone().ok_or_else(|| {
                             Error::new(
                                 self.entry.span(),
