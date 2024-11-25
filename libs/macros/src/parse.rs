@@ -69,16 +69,28 @@ impl fmt::Debug for ParseEntry {
     }
 }
 
+/// Of the form:
+/// ```
+/// syntaxName:
+///     <Token>
+///     [otherSyntax]
+/// ```
+/// Example
+/// ```
+/// multiplicativeExpression:
+///     asExpression {multiplicativeOperator {NL} asExpression}
+/// ```
+/// NB: For TopLevelParseEntry with non-singular entry, we will wrap it in a Group
 pub(crate) struct TopLevelParseEntry {
     pub field: Field,
-    pub asts: Vec<ParseEntryExt>,
+    pub ast: ParseEntryExt,
 }
 
 impl fmt::Debug for TopLevelParseEntry {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("TopLevelParseEntry")
             .field("field", &self.field)
-            .field("asts", &self.asts)
+            .field("asts", &self.ast)
             .finish()
     }
 }
@@ -259,7 +271,16 @@ impl Parse for TopLevelParseEntry {
 
         Ok(TopLevelParseEntry {
             field,
-            asts: result,
+            ast: if result.len() == 1 {
+                result[0].clone()
+            } else {
+                ParseEntryExt {
+                     config: Config::default(), 
+                     entry: ParseEntry::Basic(BasicParseEntry::Group {
+                         paren_token: Paren::default(), entries: result 
+                        }) 
+                }
+            },
         })
     }
 }
@@ -362,7 +383,7 @@ mod test {
         };
         let top = syn::parse2::<TopLevelParseEntry>(stream)?;
         assert!(
-            matches!(&top.asts[..], [ParseEntryExt {entry, ..} ] 
+            matches!(&top.ast[..], [ParseEntryExt {entry, ..} ] 
                 if matches!(entry, ParseEntry::Basic(BasicParseEntry::Ident(..))))
         );
 
@@ -372,7 +393,7 @@ mod test {
         };
         let top = syn::parse2::<TopLevelParseEntry>(stream)?;
         assert!(
-            matches!(&top.asts[..], [ParseEntryExt {entry, ..} ] 
+            matches!(&top.ast[..], [ParseEntryExt {entry, ..} ] 
                 if matches!(entry, ParseEntry::Basic(BasicParseEntry::StrLit(..))))
         );
         Ok(())
@@ -387,7 +408,7 @@ mod test {
         };
         let top = syn::parse2::<TopLevelParseEntry>(stream)?;
         assert!(
-            matches!(&top.asts[..], [ParseEntryExt {entry, ..} ] if matches!(entry, ParseEntry::Choice { .. }))
+            matches!(&top.ast[..], [ParseEntryExt {entry, ..} ] if matches!(entry, ParseEntry::Choice { .. }))
         );
         Ok(())
     }
