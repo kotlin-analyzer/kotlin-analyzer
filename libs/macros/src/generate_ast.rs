@@ -7,7 +7,7 @@ use itertools::Itertools;
 use nonempty::NonEmpty;
 use proc_macro2::{extra::DelimSpan, Span, TokenStream};
 use quote::{format_ident, quote};
-use syn::{spanned::Spanned, token::Paren, Error, Ident, LitStr, Result};
+use syn::{spanned::Spanned, token::Paren, Error, Ident, ItemFn, LitStr, Result};
 use tokens::Token;
 
 use crate::parse::{
@@ -433,7 +433,7 @@ enum GenInterface {
         cast: TokenStream,
     },
     NestedMany {
-        entries: Vec<ParseEntryExt>,
+        entry: ParseEntryExt,
         ident: Ident,
         span: Span,
     },
@@ -622,10 +622,10 @@ impl GenInterface {
                 Ok(collected)
             }
             // Here we would create a new type for this
-            GenInterface::NestedMany { entries, ident, .. } => Ok(Generated {
+            GenInterface::NestedMany { entry, ident, .. } => Ok(Generated {
                 new_types: gen_top_level(TopLevelParseEntry {
                     field: Field { name: ident },
-                    asts: entries,
+                    ast: entry,
                 })?,
                 ..Default::default()
             }),
@@ -745,7 +745,7 @@ impl ParseEntryExt {
                     if is_nested =>
                 {
                     Ok(GenInterface::NestedMany {
-                        entries: entries.to_vec(),
+                        entry: self.clone(),
                         ident: self.config.name.clone().ok_or_else(|| {
                             Error::new(
                                 self.entry.span(),
@@ -766,7 +766,7 @@ impl ParseEntryExt {
                 }),
                 BasicParseEntry::Repeated { entries, .. } if is_nested => {
                     Ok(GenInterface::NestedMany {
-                        entries: entries.iter().cloned().collect(),
+                        entry: self.clone(),
                         ident: self.config.name.clone().ok_or_else(|| {
                             Error::new(
                                 self.entry.span(),
@@ -817,36 +817,10 @@ pub fn gen_top_level(top: TopLevelParseEntry) -> Result<TokenStream> {
     let typename = format_ident!("{}", top.field.name.to_string().to_pascal_case());
     let mut context = Context::default();
 
-    let entries = top
-        .asts
-        .into_iter()
-        .map(|ast| {
-            ast.process(RetType::Optional, &mut context, false)?
-                .generate(&typename, false)
-        })
-        .collect::<Result<Vec<_>>>()?;
-
-    let Generated { impls, new_types } = entries
-        .into_iter()
-        .reduce(
-            |Generated { impls, new_types },
-             Generated {
-                 impls: next_impls,
-                 new_types: next_new_types,
-             }| Generated {
-                impls: quote! {
-                   #impls
-
-                   #next_impls
-                },
-                new_types: quote! {
-                   #new_types
-
-                   #next_new_types
-                },
-            },
-        )
-        .unwrap_or_default();
+    let Generated { impls, new_types } = top
+        .ast
+        .process(RetType::Optional, &mut context, false)?
+        .generate(&typename, false)?;
 
     let syntax_name = format_ident!("{}", top.field.name.to_string().to_screaming_snake_case());
     let field_cast = if new_types.is_empty() {
@@ -882,4 +856,14 @@ pub fn gen_top_level(top: TopLevelParseEntry) -> Result<TokenStream> {
 #[derive(Debug, Default)]
 struct Context {
     env: HashSet<String>,
+}
+
+trait ToTokenStream {
+    fn to_stream(&self) -> Result<TokenStream>;
+}
+
+impl ToTokenStream for TopLevelParseEntry {
+    fn to_stream(&self) -> Result<TokenStream> {
+        todo!()
+    }
 }
