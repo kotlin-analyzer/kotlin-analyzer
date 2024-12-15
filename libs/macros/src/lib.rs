@@ -1,7 +1,10 @@
 mod combinators;
 mod generate_ast;
 mod map;
+mod name;
 mod parse;
+
+use std::path::{Path, PathBuf};
 
 use parse::{GenAst, TopLevelParseEntry};
 use proc_macro::TokenStream;
@@ -29,12 +32,16 @@ pub fn gen_single_ast(input: TokenStream) -> TokenStream {
 pub fn gen_ast_debug(input: TokenStream) -> TokenStream {
     let ast = parse_macro_input!(input as TopLevelParseEntry);
     let output_ast = format!("{:#?}", ast);
-    std::fs::write("debug.ron", output_ast).expect("unable to create file");
+    let cargo_path: PathBuf = std::env!("CARGO_MANIFEST_DIR").into();
+    std::fs::write(cargo_path.join("debug.ron"), output_ast).expect("unable to create file");
 
     match generate_ast::gen_top_level(ast) {
         Ok(stream) => {
-            std::fs::write("debug.rs", pretty_print(stream.clone().into()))
-                .expect("unable to create debug.rs file");
+            std::fs::write(
+                cargo_path.join("debug.rs"),
+                pretty_print(stream.clone().into()),
+            )
+            .expect("unable to create debug.rs file");
             stream.into()
         }
         Err(err) => err.to_compile_error().into(),

@@ -275,10 +275,11 @@ impl Parse for TopLevelParseEntry {
                 result[0].clone()
             } else {
                 ParseEntryExt {
-                     config: Config::default(), 
-                     entry: ParseEntry::Basic(BasicParseEntry::Group {
-                         paren_token: Paren::default(), entries: result 
-                        }) 
+                    config: Config::default(),
+                    entry: ParseEntry::Basic(BasicParseEntry::Group {
+                        paren_token: Paren::default(),
+                        entries: result,
+                    }),
                 }
             },
         })
@@ -293,7 +294,7 @@ impl Parse for GenAst {
 }
 
 impl BasicParseEntry {
-    fn span(&self) -> Span {
+    pub fn span(&self) -> Span {
         match &self {
             Self::CharLit(ch) => ch.span(),
             Self::StrLit(st) => st.span(),
@@ -382,20 +383,26 @@ mod test {
                 disjunction
         };
         let top = syn::parse2::<TopLevelParseEntry>(stream)?;
-        assert!(
-            matches!(&top.ast[..], [ParseEntryExt {entry, ..} ] 
-                if matches!(entry, ParseEntry::Basic(BasicParseEntry::Ident(..))))
-        );
+        assert!(matches!(
+            &top.ast,
+            ParseEntryExt {
+                entry: ParseEntry::Basic(BasicParseEntry::Ident(..)),
+                ..
+            }
+        ));
 
         let stream: TokenStream = tt! {
               propertyModifier:
                 "const"
         };
         let top = syn::parse2::<TopLevelParseEntry>(stream)?;
-        assert!(
-            matches!(&top.ast[..], [ParseEntryExt {entry, ..} ] 
-                if matches!(entry, ParseEntry::Basic(BasicParseEntry::StrLit(..))))
-        );
+        assert!(matches!(
+            &top.ast,
+            ParseEntryExt {
+                entry: ParseEntry::Basic(BasicParseEntry::StrLit(..)),
+                ..
+            }
+        ));
         Ok(())
     }
 
@@ -408,7 +415,7 @@ mod test {
         };
         let top = syn::parse2::<TopLevelParseEntry>(stream)?;
         assert!(
-            matches!(&top.ast[..], [ParseEntryExt {entry, ..} ] if matches!(entry, ParseEntry::Choice { .. }))
+            matches!(&top.ast, ParseEntryExt {entry, ..} if matches!(entry, ParseEntry::Choice { .. }))
         );
         Ok(())
     }
@@ -439,23 +446,23 @@ mod test {
             | "inline"
             | "external"
             | "suspend"
-        
+
           propertyModifier:
             "const"
-        
+
           inheritanceModifier:
             "abstract"
             | "final"
             | "open"
-        
+
           parameterModifier:
             "vararg"
             | "noinline"
             | "crossinline"
-        
+
           reificationModifier:
             "reified"
-        
+
           platformModifier:
             "expect"
             | "actual"
@@ -463,7 +470,7 @@ mod test {
         let gen = syn::parse2::<GenAst>(stream)?;
         dbg!(gen);
         // assert!(
-        //     matches!(&gen., [ParseEntryExt {entry, ..} ] 
+        //     matches!(&gen., [ParseEntryExt {entry, ..} ]
         //         if matches!(entry, ParseEntry::Basic(BasicParseEntry::StrLit(..))))
         // );
         Ok(())

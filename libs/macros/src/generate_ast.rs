@@ -10,8 +10,11 @@ use quote::{format_ident, quote};
 use syn::{spanned::Spanned, token::Paren, Error, Ident, ItemFn, LitStr, Result};
 use tokens::Token;
 
-use crate::parse::{
-    BasicParseEntry, Config, Field, GenAst, ParseEntry, ParseEntryExt, TopLevelParseEntry,
+use crate::{
+    name::{CompositeName, Name, Named, SimpleName},
+    parse::{
+        BasicParseEntry, Config, Field, GenAst, ParseEntry, ParseEntryExt, TopLevelParseEntry,
+    },
 };
 
 macro_rules! err {
@@ -24,362 +27,6 @@ macro_rules! err {
         let message: &'static str = $message;
         Err(Error::new(Span::call_site(), message))
     }};
-}
-
-#[derive(Debug, Clone)]
-enum SimpleName {
-    /// The form of symbols like `==`, `+=`, etc.
-    Token { token: Token, span: Span },
-    /// The form of an identitifier like name, functionName
-    Ident(Ident),
-    /// Explicit token name like AT_NO_WS, EQUAL
-    TokenIdent(Ident),
-}
-
-#[derive(Debug, Clone)]
-enum CompositeName {
-    Group(NonEmpty<NameWithField>),
-    Choice(NonEmpty<NameWithField>),
-    Optional(NonEmpty<NameWithField>),
-}
-
-#[derive(Debug, Clone)]
-enum Name {
-    Simple(SimpleName),
-    Composite(CompositeName),
-}
-
-#[derive(Debug, Clone)]
-struct NameWithField {
-    name: Box<Name>,
-    field: Ident,
-    is_multi: bool,
-    config_name: Option<Ident>,
-}
-
-impl ParseEntryExt {
-    fn extract_name(&self, field: Ident, is_multi: bool) -> Result<NameWithField> {
-        let config_name = self.config.name.clone();
-        match &self.entry {
-            ParseEntry::Basic(basic) => match basic {
-                BasicParseEntry::CharLit(ch) => resolve_token(&ch.value().to_string(), ch.span())
-                    .map(|token| NameWithField {
-                        name: Box::new(Name::Simple(SimpleName::Token {
-                            token,
-                            span: ch.span(),
-                        })),
-                        field,
-                        is_multi,
-                        config_name,
-                    }),
-                BasicParseEntry::StrLit(st) => resolve_token(&st.value().to_string(), st.span())
-                    .map(|token| NameWithField {
-                        name: Box::new(Name::Simple(SimpleName::Token {
-                            token,
-                            span: st.span(),
-                        })),
-                        field,
-                        is_multi,
-                        config_name,
-                    }),
-                BasicParseEntry::Ident(id) => {
-                    if id.to_string().starts_with(char::is_lowercase) {
-                        Ok(NameWithField {
-                            name: Box::new(Name::Simple(SimpleName::Ident(id.clone()))),
-                            field,
-                            is_multi,
-                            config_name,
-                        })
-                    } else {
-                        Ok(NameWithField {
-                            name: Box::new(Name::Simple(SimpleName::TokenIdent(id.clone()))),
-                            field,
-                            is_multi,
-                            config_name,
-                        })
-                    }
-                }
-
-                BasicParseEntry::Repeated { entries, .. } if entries.len() == 1 => {
-                    entries[0].extract_name(field, true)
-                }
-                BasicParseEntry::Group { entries, .. }
-                | BasicParseEntry::Optional { entries, .. }
-                    if entries.len() == 1 =>
-                {
-                    entries[0].extract_name(field, is_multi)
-                }
-
-                BasicParseEntry::Group { entries, .. } => {
-                    Ok(NameWithField {
-                        name: Box::new(Name::Composite(CompositeName::Group(
-                            NonEmpty::from_vec(
-                                entries
-                                    .iter()
-                                    .map(|e| e.extract_name(field.clone(), is_multi))
-                                    .collect::<Result<Vec<_>>>()?,
-                            )
-                            // safe to unwrap here
-                            .unwrap(),
-                        ))),
-                        field,
-                        is_multi,
-                        config_name,
-                    })
-                }
-                // Equivalent of Group where each entry is multi
-                BasicParseEntry::Repeated { entries, .. } => {
-                    Ok(NameWithField {
-                        name: Box::new(Name::Composite(CompositeName::Group(
-                            NonEmpty::from_vec(
-                                entries
-                                    .iter()
-                                    .map(|e| e.extract_name(field.clone(), true))
-                                    .collect::<Result<Vec<_>>>()?,
-                            )
-                            // safe to unwrap here
-                            .unwrap(),
-                        ))),
-                        field,
-                        is_multi,
-                        config_name,
-                    })
-                }
-                BasicParseEntry::Optional { entries, .. } => {
-                    Ok(NameWithField {
-                        name: Box::new(Name::Composite(CompositeName::Optional(
-                            NonEmpty::from_vec(
-                                entries
-                                    .iter()
-                                    .map(|e| e.extract_name(field.clone(), is_multi))
-                                    .collect::<Result<Vec<_>>>()?,
-                            )
-                            // safe to unwrap here
-                            .unwrap(),
-                        ))),
-                        field,
-                        is_multi,
-                        config_name,
-                    })
-                }
-            },
-            // This should not happen in practice cos we handled this already in the parsing logic
-            ParseEntry::Choice { entries } if entries.len() == 1 => {
-                entries[0].extract_name(field, is_multi)
-            }
-            ParseEntry::Choice { entries } => Ok(NameWithField {
-                name: Box::new(Name::Composite(CompositeName::Choice(
-                    NonEmpty::from_vec(
-                        entries
-                            .iter()
-                            .map(|e| e.extract_name(field.clone(), is_multi))
-                            .collect::<Result<Vec<_>>>()?,
-                    )
-                    // safe to unwrap here
-                    .unwrap(),
-                ))),
-                field,
-                is_multi,
-                config_name,
-            }),
-        }
-    }
-}
-
-impl NameWithField {
-    fn name(&self) -> String {
-        match &*self.name {
-            Name::Simple(simple_name) => simple_name.name(),
-            Name::Composite(composite_name) => match composite_name {
-                // for ("=" "||") or ["=" "||"] we get equalsAndConjuction
-                CompositeName::Group(non_empty) | CompositeName::Optional(non_empty) => non_empty
-                    .iter()
-                    .map(|n| n.name())
-                    .collect::<Vec<_>>()
-                    .join("And"),
-                // for `"=" | "||"` we get equalsOrConjuction
-                CompositeName::Choice(non_empty) => non_empty
-                    .iter()
-                    .map(|n| n.name())
-                    .collect::<Vec<_>>()
-                    .join("Or"),
-                // this is same as group really
-            },
-        }
-    }
-    fn iter_fn(&self) -> Ident {
-        if self.is_multi {
-            format_ident!("filter_map")
-        } else {
-            format_ident!("filter_map")
-        }
-    }
-
-    fn method_name(&self, entry: &ParseEntryExt) -> Ident {
-        let name = match &*self.name {
-            Name::Simple(simple_name) => simple_name.method_name(),
-            Name::Composite(_) => self.name().to_snake_case(),
-        };
-
-        if self.is_multi {
-            format_ident!("{}", name.to_plural())
-        } else {
-            format_ident!("{}", name)
-        }
-    }
-
-    fn return_type(&self, entry: &ParseEntryExt) -> TokenStream {
-        let type_name = format_ident!("{}", self.type_name());
-        if !self.is_multi {
-            quote!(Option<#type_name>)
-        } else {
-            quote!(impl Iterator<Item = #type_name> + '_)
-        }
-    }
-
-    fn span(&self) -> Span {
-        match &*self.name {
-            Name::Simple(simple) => simple.span(),
-            Name::Composite(box_comp) => match box_comp {
-                CompositeName::Group(non_empty) => non_empty.first().name.span(),
-                CompositeName::Choice(non_empty) => non_empty.first().name.span(),
-                CompositeName::Optional(non_empty) => non_empty.first().name.span(),
-            },
-        }
-    }
-
-    fn type_name(&self) -> String {
-        match &*self.name {
-            Name::Simple(simple) => simple.type_name(),
-            Name::Composite(_) => self.name().to_pascal_case(),
-        }
-    }
-
-    fn variant_name(&self) -> String {
-        match &*self.name {
-            Name::Simple(simple) => simple.variant_name(),
-            Name::Composite(_) => self.type_name(),
-        }
-    }
-
-    fn cast_closure(&self) -> TokenStream {
-        match &*self.name {
-            Name::Simple(simple) => simple.cast_closure(),
-            Name::Composite(ret_type_g) => todo!(),
-        }
-    }
-}
-
-trait Named {
-    fn name(&self) -> String;
-    fn span(&self) -> Span;
-    fn type_name(&self) -> String;
-    fn variant_name(&self) -> String;
-    fn cast_closure(&self) -> TokenStream;
-    fn method_name(&self) -> String;
-}
-
-impl Name {
-    fn name(&self) -> String {
-        match self {
-            Name::Simple(simple) => simple.name(),
-            Name::Composite(ret_type_g) => todo!(),
-        }
-    }
-
-    fn span(&self) -> Span {
-        match self {
-            Name::Simple(simple) => simple.span(),
-            Name::Composite(box_comp) => match box_comp {
-                CompositeName::Group(non_empty) => non_empty.first().name.span(),
-                CompositeName::Choice(non_empty) => non_empty.first().name.span(),
-                CompositeName::Optional(non_empty) => non_empty.first().name.span(),
-            },
-        }
-    }
-
-    fn type_name(&self) -> String {
-        match self {
-            Name::Simple(simple) => simple.type_name(),
-            Name::Composite(ret_type_g) => todo!(),
-        }
-    }
-
-    fn variant_name(&self) -> String {
-        match self {
-            Name::Simple(simple) => simple.variant_name(),
-            Name::Composite(ret_type_g) => todo!(),
-        }
-    }
-
-    fn cast_closure(&self) -> TokenStream {
-        match self {
-            Name::Simple(simple) => simple.cast_closure(),
-            Name::Composite(ret_type_g) => todo!(),
-        }
-    }
-
-    fn method_name(&self) -> String {
-        match self {
-            Name::Simple(simple) => simple.method_name(),
-            Name::Composite(_) => {
-                format!("{}", self.name().to_snake_case())
-            }
-        }
-    }
-}
-
-impl Named for SimpleName {
-    fn name(&self) -> String {
-        match self {
-            SimpleName::Token { token, .. } => format!("{token:?}"),
-            SimpleName::Ident(id) | SimpleName::TokenIdent(id) => id.to_string(),
-        }
-    }
-
-    fn span(&self) -> Span {
-        match self {
-            SimpleName::Token { span, .. } => span.clone(),
-            SimpleName::Ident(id) | SimpleName::TokenIdent(id) => id.span(),
-        }
-    }
-
-    fn type_name(&self) -> String {
-        match self {
-            SimpleName::Token { .. } | SimpleName::TokenIdent(_) => "SyntaxNode".into(),
-            SimpleName::Ident(id) => id.to_string().to_pascal_case(),
-        }
-    }
-
-    fn variant_name(&self) -> String {
-        match self {
-            SimpleName::Token { .. } | SimpleName::TokenIdent(_) => {
-                self.name().to_screaming_snake_case()
-            }
-            SimpleName::Ident(id) => self.type_name(),
-        }
-    }
-
-    fn cast_closure(&self) -> TokenStream {
-        let variant = format_ident!("{}", self.variant_name());
-        match self {
-            SimpleName::Token { .. } | SimpleName::TokenIdent(_) => {
-                quote!(::syntax::cast_syntax_kind(::syntax::SyntaxKind::#variant))
-            }
-            SimpleName::Ident(_) => quote!(#variant::cast),
-        }
-    }
-
-    fn method_name(&self) -> String {
-        match self {
-            SimpleName::Token { .. } | SimpleName::TokenIdent(_) => {
-                format!("get_{}", self.name().to_snake_case())
-            }
-            SimpleName::Ident(_) => {
-                format!("{}", self.name().to_snake_case())
-            }
-        }
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -404,7 +51,7 @@ impl RetType {
     }
 
     fn method_name(&self, entry: &ParseEntryExt) -> Result<Ident> {
-        let name = entry.method_name()?;
+        let name = entry.simple_name()?.method_name();
         let ident = match self {
             RetType::Optional => format_ident!("{}", name),
             RetType::Many => format_ident!("{}", name.to_plural()),
@@ -413,7 +60,8 @@ impl RetType {
     }
 
     fn return_type(&self, entry: &ParseEntryExt) -> Result<TokenStream> {
-        let type_name = format_ident!("{}", entry.type_name()?);
+        let simple_name = entry.simple_name()?;
+        let type_name = format_ident!("{}", simple_name.type_name());
         let ident = match self {
             RetType::Optional => quote!(Option<#type_name>),
             RetType::Many => quote!(impl Iterator<Item = #type_name> + '_),
@@ -696,21 +344,6 @@ impl ParseEntryExt {
         }
     }
 
-    fn method_name(&self) -> Result<String> {
-        self.simple_name().map(|name| match name {
-            SimpleName::Token { .. } | SimpleName::TokenIdent(_) => {
-                format!("get_{}", name.name().to_snake_case())
-            }
-            SimpleName::Ident(_) => {
-                format!("{}", name.name().to_snake_case())
-            }
-        })
-    }
-
-    fn type_name(&self) -> Result<String> {
-        self.simple_name().map(|name| name.type_name())
-    }
-
     // TODO: check if we really need context
     fn process(
         &self,
@@ -858,12 +491,64 @@ struct Context {
     env: HashSet<String>,
 }
 
-trait ToTokenStream {
-    fn to_stream(&self) -> Result<TokenStream>;
+struct Named1<'a, 'b> {
+    parent: Option<&'b Ident>,
+    position: usize,
+    entry: &'a ParseEntryExt,
 }
 
-impl ToTokenStream for TopLevelParseEntry {
-    fn to_stream(&self) -> Result<TokenStream> {
+struct MethodName<'a, 'b>(Named1<'a, 'b>);
+struct VariantName<'a, 'b>(Named1<'a, 'b>);
+struct TypeName<'a, 'b>(Named1<'a, 'b>);
+
+struct GenContext {
+    parent: Ident,
+    position: usize,
+}
+
+trait Generate {
+    fn generate(&self, ctx: Option<GenContext>) -> Result<TokenStream>;
+}
+
+impl Generate for TopLevelParseEntry {
+    fn generate(&self, ctx: Option<GenContext>) -> Result<TokenStream> {
         todo!()
+    }
+}
+
+impl Generate for ParseEntryExt {
+    fn generate(&self, ctx: Option<GenContext>) -> Result<TokenStream> {
+        todo!()
+    }
+}
+
+impl Generate for ParseEntry {
+    fn generate(&self, ctx: Option<GenContext>) -> Result<TokenStream> {
+        todo!()
+    }
+}
+
+impl Generate for BasicParseEntry {
+    fn generate(&self, ctx: Option<GenContext>) -> Result<TokenStream> {
+        match self {
+            BasicParseEntry::CharLit(..)
+            | BasicParseEntry::StrLit(..)
+            | BasicParseEntry::Ident(..) => {
+                // let name = self.get
+                todo!()
+            }
+            BasicParseEntry::Optional {
+                bracket_token,
+                entries,
+            } => todo!(),
+            BasicParseEntry::Repeated {
+                brace_token,
+                entries,
+            } => todo!(),
+            BasicParseEntry::Group {
+                paren_token,
+                entries,
+            } => todo!(),
+        }
     }
 }

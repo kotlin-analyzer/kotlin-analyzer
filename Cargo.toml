@@ -7,7 +7,7 @@ version = "0.0.1"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 authors = ["Ikechukwu Eze"]
-rust-version = "1.82.0"
+rust-version = "1.85"
 
 
 [workspace.dependencies]
@@ -23,10 +23,10 @@ parser = { path = "./crates/parser" }
 pest = "2.7.13"
 pest_derive = "2.7.13"
 pretty_assertions = "1.4.1"
-prettyplease = "0.2.22"
-proc-macro2 = "1.0.87"
+prettyplease = "0.2.25"
+proc-macro2 = "1.0.92"
 quote = "1.0.37"
 rstest = "0.23.0"
-syn = "2.0.79"
+syn = "2.0.90"
 syntax = { path = "./crates/syntax" }
 tokens = { path = "./libs/tokens" }
