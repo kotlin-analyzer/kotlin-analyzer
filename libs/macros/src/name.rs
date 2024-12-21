@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 use inflector::Inflector;
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::{format_ident, quote};
