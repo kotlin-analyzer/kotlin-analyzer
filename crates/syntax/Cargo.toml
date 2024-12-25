@@ -9,10 +9,11 @@ license.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-tokens = { workspace = true }
-rowan = "0.15.15"
+tokens.workspace = true
+rowan.workspace = true
 lexer.workspace = true
 itertools.workspace = true
+macros.workspace = true
 
 [dev-dependencies]
 rstest.workspace = true

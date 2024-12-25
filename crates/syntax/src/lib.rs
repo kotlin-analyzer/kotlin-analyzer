@@ -1,10 +1,11 @@
+use macros::SyntaxKindType;
 use tokens::Token;
 
 mod cast;
 
 pub use cast::*;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(SyntaxKindType, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[allow(non_camel_case_types)]
 #[repr(u16)]
 /// This represents tokens and composite nodes

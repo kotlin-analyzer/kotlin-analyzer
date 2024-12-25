@@ -319,6 +319,30 @@ impl ParseEntry {
             }
         }
     }
+
+    pub fn is_composite(&self) -> bool {
+        match self {
+            ParseEntry::Basic(basic) => match basic {
+                BasicParseEntry::Optional { .. }
+                | BasicParseEntry::Repeated { .. }
+                | BasicParseEntry::Group { .. } => true,
+                _ => false,
+            },
+            ParseEntry::Choice { .. } => true,
+        }
+    }
+}
+
+impl ParseEntryExt {
+    pub fn is_enum(&self) -> bool {
+        matches!(
+            self,
+            Self {
+                entry: ParseEntry::Choice { .. },
+                ..
+            }
+        )
+    }
 }
 
 #[cfg(test)]

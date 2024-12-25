@@ -1,554 +1,335 @@
-#![allow(unused)]
-
-use std::collections::{HashMap, HashSet};
-
 use inflector::Inflector;
-use itertools::Itertools;
-use nonempty::NonEmpty;
-use proc_macro2::{extra::DelimSpan, Span, TokenStream};
-use quote::{format_ident, quote};
-use syn::{spanned::Spanned, token::Paren, Error, Ident, ItemFn, LitStr, Result};
-use tokens::Token;
+use proc_macro2::TokenStream;
+use quote::{format_ident, quote, quote_spanned};
+use syn::{Error, Ident, Result};
 
 use crate::{
-    name::{CompositeName, Name, Named, SimpleName},
-    parse::{
-        BasicParseEntry, Config, Field, GenAst, ParseEntry, ParseEntryExt, TopLevelParseEntry,
-    },
+    name::{IntoName, NameCtx},
+    parse::{BasicParseEntry, GenAst, ParseEntry, ParseEntryExt, TopLevelParseEntry},
 };
 
-macro_rules! err {
-    ($span: expr, $message: literal) => {{
-        let span: Span = $span.clone();
-        let message: &'static str = $message;
-        Err(Error::new(span, message))
-    }};
-    ($message: literal) => {{
-        let message: &'static str = $message;
-        Err(Error::new(Span::call_site(), message))
-    }};
+trait Generate {
+    fn generate(&self, ctx: &NameCtx, is_nested: bool) -> Result<TokenStream>;
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum RetTypeG<T> {
-    Optional(T),
-    Many(T),
+trait GenerateWithConfig {
+    fn generate(&self, parent: &Ident, pos: usize, is_nested: bool) -> Result<TokenStream>;
 }
 
-// Get rid of this by making simple name represent this
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum RetType {
-    Optional,
-    Many,
-}
+impl GenAst {
+    pub fn generate(&self) -> Result<TokenStream> {
+        let entries = self
+            .entries
+            .iter()
+            .map(|tp| tp.generate())
+            .collect::<Result<Vec<_>>>()?;
 
-impl RetType {
-    fn iter_fn(&self) -> Ident {
-        match self {
-            RetType::Optional => format_ident!("find_map"),
-            RetType::Many => format_ident!("filter_map"),
-        }
-    }
-
-    fn method_name(&self, entry: &ParseEntryExt) -> Result<Ident> {
-        let name = entry.simple_name()?.method_name();
-        let ident = match self {
-            RetType::Optional => format_ident!("{}", name),
-            RetType::Many => format_ident!("{}", name.to_plural()),
-        };
-        Ok(ident)
-    }
-
-    fn return_type(&self, entry: &ParseEntryExt) -> Result<TokenStream> {
-        let simple_name = entry.simple_name()?;
-        let type_name = format_ident!("{}", simple_name.type_name());
-        let ident = match self {
-            RetType::Optional => quote!(Option<#type_name>),
-            RetType::Many => quote!(impl Iterator<Item = #type_name> + '_),
-        };
-        Ok(ident)
+        Ok(quote! {
+            #(#entries)*
+        })
     }
 }
 
-#[derive(Debug, Clone)]
-enum GenInterface {
-    None,
-    Single {
-        simple_name: SimpleName,
-        method: Ident,
-        iter_fn: Ident,
-        return_type: TokenStream,
-        cast: TokenStream,
-    },
-    NestedMany {
-        entry: ParseEntryExt,
-        ident: Ident,
-        span: Span,
-    },
-    Many {
-        entries: Vec<GenInterface>,
-        simple_name: Option<SimpleName>,
-        span: Span,
-    },
-    Enum {
-        variants: Vec<GenInterface>,
-        name: Option<Ident>,
-        span: Span,
-        is_nested: bool,
-    },
-}
+impl TopLevelParseEntry {
+    pub fn generate(&self) -> Result<TokenStream> {
+        let typename = Ident::new(
+            &self.field.name.to_string().to_pascal_case(),
+            self.field.name.span(),
+        );
 
-struct Generated {
-    impls: TokenStream,
-    new_types: TokenStream,
-}
+        let entry_gen = self.ast.generate(&typename, 0, false)?;
 
-impl Default for Generated {
-    fn default() -> Self {
-        Self {
-            impls: quote!(),
-            new_types: quote!(),
-        }
-    }
-}
+        let syntax_name =
+            format_ident!("{}", self.field.name.to_string().to_screaming_snake_case());
 
-impl GenInterface {
-    fn generate(self, field_ident: &Ident, is_nested: bool) -> Result<Generated> {
-        match self {
-            GenInterface::Single {
-                method,
-                iter_fn,
-                return_type,
-                cast,
-                ..
-            } => {
-                let method_body = quote! {
-                    fn #method(&self) -> #return_type {
-                        self.0.children().#iter_fn(#cast)
-                    }
-                };
-                Ok(Generated {
-                    impls: method_body,
-                    ..Default::default()
-                })
-            }
-            // We make the following assumptions
-            // That enums can not contain other enums
-            // Note that if an enum is nested within another entry,
-            // that if it doesn't provide a name,
-            // the top level field would be used. This is not what we want
-            // We enforce that logic here
-            GenInterface::Enum {
-                variants,
-                name,
-                span,
-                is_nested,
-            } => {
-                if is_nested && name.is_none() {
-                    return Err(Error::new(
-                        span,
-                        "Nested enums are expected to provide a name. Try adding @Name at the end",
-                    ));
-                }
-
-                let casts = variants
-                    .iter()
-                    .flat_map(|v| v.simple_name())
-                    .map(|v| v.cast_closure());
-
-                let kind_name = if let Some(name) = &name {
-                    format_ident!("{}Kind", name)
-                } else {
-                    format_ident!("{}Kind", field_ident)
-                };
-
-                let casts_for_kind = variants
-                    .iter()
-                    .map(|v| v.simple_name())
-                    .collect::<Result<Vec<_>>>()?;
-
-                let mut casts_for_kind = casts_for_kind.into_iter().map(|v| {
-                    let variant_name = format_ident!("{}", v.name().to_pascal_case());
-                    let cast = v.cast_closure();
-                    quote!(#cast(self.0.clone()).map(#kind_name::#variant_name))
-                });
-
-                let first_cast = casts_for_kind.next().ok_or_else(|| {
-                    Error::new(span, "choice variant expected to have at least one entry")
-                })?;
-
-                let mut enum_variants = variants.iter().flat_map(|v| v.simple_name()).map(|v| {
-                    let ident = format_ident!("{}", v.name().to_pascal_case());
-                    let ty = format_ident!("{}", v.type_name());
-                    quote!(#ident(#ty))
-                });
-
-                let impls = quote! {
+        let field_cast = if !self.ast.is_enum() {
+            quote! {
+                impl Cast for #typename {
                     pub fn cast(node: SyntaxNode) -> Option<Self> {
-                        if #(#casts(node.clone()).is_some())||* {
+                        if node.kind() == ::syntax::SyntaxKind::#syntax_name {
                             Some(Self(node))
                         } else {
                             None
                         }
                     }
-
-                    pub fn kind(&self) -> #kind_name {
-                            #first_cast
-                            #(.or(#casts_for_kind))*
-                            .unwrap()
-                    }
-                };
-
-                let (nested_enum, impls) = if let Some(name) = name {
-                    let method_name = format_ident!("{}", name.to_string().to_snake_case());
-
-                    (
-                        quote! {
-                            #[derive(PartialEq, Eq, Hash, Clone)]
-                            #[repr(transparent)]
-                            pub struct #name(::syntax::SyntaxNode);
-
-                            impl #name {
-                                #impls
-                            }
-
-                        },
-                        quote! {
-                            fn #method_name(&self) -> Option<#name> {
-                                self.0.children().find_map(#name::cast)
-                            }
-                        },
-                    )
-                } else {
-                    (quote!(), impls)
-                };
-
-                // if it is nested
-                // impls would got into the new type and would not be returned
-                // for the top level field
-
-                let new_types_from_variants = variants
-                    .iter()
-                    .filter(|v| matches!(v, GenInterface::NestedMany { .. }))
-                    // Refactor: fields passed to generate here are not needed
-                    .map(|v| v.clone().generate(field_ident, is_nested))
-                    .collect::<Result<Vec<_>>>()?
-                    .into_iter()
-                    .map(|gen| gen.new_types);
-
-                let new_types = quote! {
-                    pub enum #kind_name {
-                        #(#enum_variants),*
-                    }
-                    #nested_enum
-                    #(#new_types_from_variants)*
-                };
-
-                Ok(Generated { impls, new_types })
+                }
             }
-            GenInterface::Many { entries, .. } => {
-                let collected = entries
-                    .into_iter()
-                    .flat_map(|e| e.generate(field_ident, true))
-                    .fold(Generated::default(), |acc, next| {
-                        let next_impls = next.impls;
-                        let next_new_types = next.new_types;
-                        let acc_impls = acc.impls;
-                        let acc_new_types = acc.new_types;
-                        Generated {
-                            impls: quote! {
-                                #acc_impls
-                                #next_impls
-                            },
-                            new_types: quote! {
-                                #acc_new_types
+        } else {
+            quote!()
+        };
 
-                                #next_new_types
-                            },
-                        }
-                    });
-                Ok(collected)
-            }
-            // Here we would create a new type for this
-            GenInterface::NestedMany { entry, ident, .. } => Ok(Generated {
-                new_types: gen_top_level(TopLevelParseEntry {
-                    field: Field { name: ident },
-                    ast: entry,
-                })?,
-                ..Default::default()
-            }),
-            GenInterface::None => Ok(Default::default()),
-        }
+        Ok(quote! {
+            #field_cast
+            #entry_gen
+        })
     }
+}
 
-    fn simple_name(&self) -> Result<SimpleName> {
+impl GenerateWithConfig for ParseEntryExt {
+    fn generate(&self, parent: &Ident, pos: usize, is_nested: bool) -> Result<TokenStream> {
+        let config_name = self.get_config_name();
+        self.entry
+            .generate(&NameCtx::new(parent, pos, &config_name), is_nested)
+    }
+}
+
+impl Generate for ParseEntry {
+    fn generate(&self, ctx: &NameCtx, is_nested: bool) -> Result<TokenStream> {
         match self {
-            GenInterface::None => err!("Unexpected error. None variants does not have simple name"),
-            GenInterface::Single { simple_name, .. } => Ok(simple_name.clone()),
-            GenInterface::Many { simple_name, span, .. } => simple_name.clone().ok_or_else(|| Error::new(span.clone(), "Expected complex variant within a choice entry to have a name.\nTry adding @Name")),
-            GenInterface::Enum { name, span, .. } => name.clone().map(SimpleName::Ident).ok_or_else(|| Error::new(span.clone(), "Unexpected nested choice entry")),
-            GenInterface::NestedMany { ident, span, .. } => Ok(SimpleName::Ident(ident.clone())),
-        }
-    }
-}
-
-fn resolve_token(name: &str, span: Span) -> Result<Token> {
-    tokens::resolve_token(name).ok_or_else(|| Error::new(span, "No matching Token variant"))
-}
-
-impl ParseEntryExt {
-    fn simple_name(&self) -> Result<SimpleName> {
-        let config_name = self
-            .config
-            .name
-            .clone()
-            .map(SimpleName::Ident)
-            .ok_or_else(|| {
-                Error::new(
-                    self.entry.span(),
-                    "Missing name for entries. Try adding @Name at the end",
-                )
-            });
-
-        match &self.entry {
-            ParseEntry::Basic(basic) => match basic {
-                BasicParseEntry::CharLit(ch) => config_name.or_else(|_| {
-                    resolve_token(&ch.value().to_string(), ch.span()).map(|token| {
-                        SimpleName::Token {
-                            token,
-                            span: ch.span(),
-                        }
-                    })
-                }),
-                BasicParseEntry::StrLit(st) => config_name.or_else(|_| {
-                    resolve_token(&st.value().to_string(), st.span()).map(|token| {
-                        SimpleName::Token {
-                            token,
-                            span: st.span(),
-                        }
-                    })
-                }),
-                BasicParseEntry::Ident(id) => config_name.or_else(|_| {
-                    if id.to_string().starts_with(char::is_lowercase) {
-                        Ok(SimpleName::Ident(id.clone()))
-                    } else {
-                        Ok(SimpleName::TokenIdent(id.clone()))
-                    }
-                }),
-
-                BasicParseEntry::Optional { .. }
-                | BasicParseEntry::Repeated { .. }
-                | BasicParseEntry::Group { .. } => config_name,
-            },
-            ParseEntry::Choice { .. } => config_name,
-        }
-    }
-
-    // TODO: check if we really need context
-    fn process(
-        &self,
-        ret_type: RetType,
-        ctx: &mut Context,
-        is_nested: bool,
-    ) -> Result<GenInterface> {
-        if self.config.ignore {
-            return Ok(GenInterface::None);
-        }
-        match &self.entry {
-            ParseEntry::Basic(basic) => match basic {
-                BasicParseEntry::CharLit(..)
-                | BasicParseEntry::StrLit(..)
-                | BasicParseEntry::Ident(..) => {
-                    let simple_name = self.simple_name()?;
-                    if let Some(prev_ret) = ctx.env.get(&simple_name.name()) {
-                        return Ok(GenInterface::None);
-                    }
-                    ctx.env.insert(simple_name.name());
-
-                    Ok(GenInterface::Single {
-                        method: ret_type.method_name(self)?,
-                        iter_fn: ret_type.iter_fn(),
-                        return_type: ret_type.return_type(self)?,
-                        cast: simple_name.cast_closure(),
-                        simple_name,
-                    })
-                }
-                BasicParseEntry::Optional { entries, .. }
-                | BasicParseEntry::Group { entries, .. }
-                    if is_nested =>
-                {
-                    Ok(GenInterface::NestedMany {
-                        entry: self.clone(),
-                        ident: self.config.name.clone().ok_or_else(|| {
-                            Error::new(
-                                self.entry.span(),
-                                "Expected nested complex variant be named.\nTry adding @Name",
-                            )
-                        })?,
-                        span: self.entry.span(),
-                    })
-                }
-                BasicParseEntry::Optional { entries, .. }
-                | BasicParseEntry::Group { entries, .. } => Ok(GenInterface::Many {
-                    entries: entries
-                        .iter()
-                        .map(|e| e.process(ret_type, ctx, true))
-                        .collect::<Result<Vec<_>>>()?,
-                    simple_name: self.simple_name().ok(),
-                    span: self.entry.span(),
-                }),
-                BasicParseEntry::Repeated { entries, .. } if is_nested => {
-                    Ok(GenInterface::NestedMany {
-                        entry: self.clone(),
-                        ident: self.config.name.clone().ok_or_else(|| {
-                            Error::new(
-                                self.entry.span(),
-                                "Expected nested complex variant be named.\nTry adding @Name",
-                            )
-                        })?,
-                        span: self.entry.span(),
-                    })
-                }
-                BasicParseEntry::Repeated { entries, .. } => Ok(GenInterface::Many {
-                    entries: entries
-                        .iter()
-                        .map(|e| e.process(RetType::Many, ctx, true))
-                        .collect::<Result<Vec<_>>>()?,
-                    simple_name: self.simple_name().ok(),
-                    span: self.entry.span(),
-                }),
-            },
+            ParseEntry::Basic(basic) => basic.generate_multi(ctx, true),
             ParseEntry::Choice { entries, .. } => {
-                let variants = entries
+                // Generating for Choice is a bit tricky
+                let span = self.span();
+                let name = self.into_name(&ctx)?;
+
+                // We need to know what the target is.
+                // If it is nested, then it is the name of the
+
+                // TODO: it might be best to always use parent here, check generated code
+                // This is because nested enum always tend to be inside a group
+                let node = if is_nested {
+                    name.type_name()
+                } else {
+                    ctx.parent.clone()
+                };
+
+                let kind_name = Ident::new(&format!("{}Kind", node.to_string()), node.span());
+
+                let children: Vec<_> = entries.iter().enumerate().collect();
+
+                let children_names = self.get_children_names(&node)?;
+
+                let impl_block = {
+                    let casts = children_names.iter().map(|v| v.cast_closure());
+
+                    let mut casts_for_kind = children_names.iter().map(|v| {
+                        let variant_name = v.type_name();
+                        let cast = v.cast_closure();
+                        quote!(#cast(self.0.clone()).map(#kind_name::#variant_name))
+                    });
+
+                    let first_cast = casts_for_kind.next().ok_or_else(|| {
+                        Error::new(span, "choice variant expected to have at least one entry")
+                    })?;
+
+                    quote_spanned! {span=>
+                        impl Cast for #node {
+                            fn cast(node: SyntaxNode) -> Option<Self> {
+                                if #(#casts(node.clone()).is_some())||* {
+                                    Some(Self(node))
+                                } else {
+                                    None
+                                }
+                            }
+                        }
+
+                        impl #node {
+                            pub fn kind(&self) -> #kind_name {
+                                #first_cast
+                                #(.or(#casts_for_kind))*
+                                .unwrap()
+                            }
+                        }
+                    }
+                };
+
+                let new_types = if is_nested {
+                    let parent = &ctx.parent;
+                    let method_name = name.method_name();
+
+                    quote! {
+                        #[derive(PartialEq, Eq, Hash, Clone)]
+                        #[repr(transparent)]
+                        pub struct #node(::syntax::SyntaxNode);
+
+                        impl #node {
+                            #impl_block
+                        }
+
+                        impl #parent {
+                            pub fn #method_name(&self) -> Option<#node> {
+                                self.0.children().find_map(#node::cast)
+                            }
+                        }
+                    }
+                } else {
+                    quote!()
+                };
+
+                let children_gen = children
                     .iter()
-                    .map(|e| e.process(ret_type, ctx, true))
+                    .filter(|&&(_, e)| e.entry.is_composite())
+                    .map(|&(pos, e)| e.generate(&node, pos, true))
                     .collect::<Result<Vec<_>>>()?;
 
-                Ok(GenInterface::Enum {
-                    variants,
-                    name: self.config.name.clone(),
-                    span: self.entry.span(),
-                    is_nested,
+                // if top level, like `fieldName: a | b | c`
+                // define new enum type `parentName{Kind}`
+                // impl for parent kind cast and kind
+                // if nested, like `fieldName: a b (c | d) e`
+                // defined new type and kind for choice
+                // impl for new type kind cast and kind
+                // impl for type a method for getting the kind
+                Ok(quote! {
+                    #impl_block
+
+                    #new_types
+
+                    #(#children_gen)*
                 })
             }
         }
     }
 }
 
-pub fn generate_ast(ast: GenAst) -> Result<TokenStream> {
-    let entries = ast
-        .entries
-        .into_iter()
-        .map(gen_top_level)
-        .collect::<Result<Vec<_>>>()?;
-    Ok(quote! {
-        #(#entries)*
-    })
-}
+impl BasicParseEntry {
+    fn inner_cast_type(&self, parent: &Ident) -> Result<TokenStream> {
+        match self {
+            BasicParseEntry::Optional { .. }
+            | BasicParseEntry::Repeated { .. }
+            | BasicParseEntry::Group { .. } => {
+                let node_children = self
+                    .get_children_names(parent)?
+                    .into_iter()
+                    .map(|n| n.type_name())
+                    .collect::<Vec<_>>();
 
-pub fn gen_top_level(top: TopLevelParseEntry) -> Result<TokenStream> {
-    let typename = format_ident!("{}", top.field.name.to_string().to_pascal_case());
-    let mut context = Context::default();
-
-    let Generated { impls, new_types } = top
-        .ast
-        .process(RetType::Optional, &mut context, false)?
-        .generate(&typename, false)?;
-
-    let syntax_name = format_ident!("{}", top.field.name.to_string().to_screaming_snake_case());
-    let field_cast = if new_types.is_empty() {
-        quote! {
-            pub fn cast(node: SyntaxNode) -> Option<Self> {
-                if node.kind() == ::syntax::SyntaxKind::#syntax_name {
-                    Some(Self(node))
-                } else {
-                    None
+                match self {
+                    BasicParseEntry::Optional { .. } => Ok(quote!(Option<(#(#node_children),*)>)),
+                    BasicParseEntry::Repeated { .. } => {
+                        Ok(quote!(ZeroOrMore<(#(#node_children),*)>))
+                    }
+                    BasicParseEntry::Group { .. } => Ok(quote!((#(#node_children),*))),
+                    _ => unreachable!(),
                 }
             }
+            _ => unreachable!("inner cast type should only be called on composite nodes"),
         }
-    } else {
-        quote!()
-    };
+    }
+    fn generate_multi(&self, ctx: &NameCtx, is_nested: bool) -> Result<TokenStream> {
+        assert!(matches!(
+            self,
+            BasicParseEntry::Optional { .. }
+                | BasicParseEntry::Repeated { .. }
+                | BasicParseEntry::Group { .. }
+        ));
 
-    Ok(quote! {
-        #[derive(PartialEq, Eq, Hash, Clone)]
-        #[repr(transparent)]
-        // todo add doc
-        pub struct #typename(::syntax::SyntaxNode);
+        match self {
+            BasicParseEntry::Optional { entries, .. }
+            | BasicParseEntry::Repeated { entries, .. }
+            | BasicParseEntry::Group { entries, .. } => {
+                let name = self.into_name(ctx)?;
+                let span = self.span();
 
-        #new_types
+                // generate impl for current parent
+                let impl_parent = {
+                    let method = name.method_name();
+                    let return_type = name.return_type();
+                    let iter_fn = name.iter_fn();
+                    let cast = name.cast_closure();
+                    let parent = &ctx.parent;
 
-        impl #typename {
-            #field_cast
+                    quote_spanned! {span=>
+                        impl #parent {
+                            pub fn #method(&self) -> #return_type {
+                                self.0.children().#iter_fn(#cast)
+                            }
+                        }
+                    }
+                };
 
-            #impls
+                // TODO: Consider opmitizing when it is just one item
+
+                let node_name = name.type_name();
+
+                let node = {
+                    let span = self.span();
+                    let inner_cast_type = self.inner_cast_type(&node_name)?;
+
+                    let node = quote_spanned! {span=>
+                        pub struct #node_name(SyntaxNode);
+                    };
+
+                    quote! {
+                        #node
+
+                        impl Cast for #node_name {
+                            // we use inner cast here since it is a composite node
+                            fn cast(node: SyntaxNode) -> Option<Self> {
+                                let mut children = node.children().peekable();
+
+                                #inner_cast_type::inner_cast(&mut children)
+                                    .map(|(node)| {
+                                        Self(node)
+                                })
+                            }
+                        }
+                    }
+                };
+
+                let node = if is_nested {
+                    node
+                } else {
+                    quote! {}
+                };
+
+                let impl_children = entries
+                    .iter()
+                    .enumerate()
+                    .map(|(pos, e)| e.generate(&node_name, pos, true))
+                    .collect::<Result<Vec<_>>>()?;
+                // generate impl for sub type and children
+                Ok(quote! {
+                    #impl_parent
+                    #node
+                    #(#impl_children)*
+                })
+            }
+            _ => unreachable!(),
         }
-
-    })
-}
-#[derive(Debug, Default)]
-struct Context {
-    env: HashSet<String>,
-}
-
-struct Named1<'a, 'b> {
-    parent: Option<&'b Ident>,
-    position: usize,
-    entry: &'a ParseEntryExt,
-}
-
-struct MethodName<'a, 'b>(Named1<'a, 'b>);
-struct VariantName<'a, 'b>(Named1<'a, 'b>);
-struct TypeName<'a, 'b>(Named1<'a, 'b>);
-
-struct GenContext {
-    parent: Ident,
-    position: usize,
-}
-
-trait Generate {
-    fn generate(&self, ctx: Option<GenContext>) -> Result<TokenStream>;
-}
-
-impl Generate for TopLevelParseEntry {
-    fn generate(&self, ctx: Option<GenContext>) -> Result<TokenStream> {
-        todo!()
     }
-}
 
-impl Generate for ParseEntryExt {
-    fn generate(&self, ctx: Option<GenContext>) -> Result<TokenStream> {
-        todo!()
-    }
-}
+    fn generate_for_simple_type(&self, ctx: &NameCtx) -> Result<TokenStream> {
+        assert!(matches!(
+            self,
+            BasicParseEntry::CharLit(..) | BasicParseEntry::StrLit(..) | BasicParseEntry::Ident(..)
+        ));
 
-impl Generate for ParseEntry {
-    fn generate(&self, ctx: Option<GenContext>) -> Result<TokenStream> {
-        todo!()
-    }
-}
-
-impl Generate for BasicParseEntry {
-    fn generate(&self, ctx: Option<GenContext>) -> Result<TokenStream> {
         match self {
             BasicParseEntry::CharLit(..)
             | BasicParseEntry::StrLit(..)
             | BasicParseEntry::Ident(..) => {
-                // let name = self.get
-                todo!()
+                let name = self.into_name(ctx)?;
+                let span = self.span();
+
+                let method = name.method_name();
+                let return_type = name.return_type();
+                let iter_fn = name.iter_fn();
+                let cast = name.cast_closure();
+                let parent = &ctx.parent;
+
+                Ok(quote_spanned! {span=>
+                    impl #parent {
+                        pub fn #method(&self) -> #return_type {
+                            self.0.children().#iter_fn(#cast)
+                        }
+                    }
+                })
             }
-            BasicParseEntry::Optional {
-                bracket_token,
-                entries,
-            } => todo!(),
-            BasicParseEntry::Repeated {
-                brace_token,
-                entries,
-            } => todo!(),
-            BasicParseEntry::Group {
-                paren_token,
-                entries,
-            } => todo!(),
+            _ => unreachable!(),
+        }
+    }
+}
+
+impl Generate for BasicParseEntry {
+    fn generate(&self, ctx: &NameCtx, is_nested: bool) -> Result<TokenStream> {
+        match self {
+            BasicParseEntry::CharLit(..)
+            | BasicParseEntry::StrLit(..)
+            | BasicParseEntry::Ident(..) => self.generate_for_simple_type(ctx),
+
+            BasicParseEntry::Optional { .. }
+            | BasicParseEntry::Repeated { .. }
+            | BasicParseEntry::Group { .. } => self.generate_multi(ctx, is_nested),
         }
     }
 }
