@@ -162,13 +162,6 @@ impl Generate for ParseEntry {
                     .map(|&(pos, e)| e.generate(&node, pos, true))
                     .collect::<Result<Vec<_>>>()?;
 
-                // if top level, like `fieldName: a | b | c`
-                // define new enum type `parentName{Kind}`
-                // impl for parent kind cast and kind
-                // if nested, like `fieldName: a b (c | d) e`
-                // defined new type and kind for choice
-                // impl for new type kind cast and kind
-                // impl for type a method for getting the kind
                 Ok(quote! {
                     #impl_block
 
