@@ -17,10 +17,10 @@ trait GenerateWithConfig {
 }
 
 impl GenAst {
-    pub fn generate(&self) -> Result<TokenStream> {
+    pub fn generate(self) -> Result<TokenStream> {
         let entries = self
             .entries
-            .iter()
+            .into_iter()
             .map(|tp| tp.generate())
             .collect::<Result<Vec<_>>>()?;
 
@@ -31,18 +31,29 @@ impl GenAst {
 }
 
 impl TopLevelParseEntry {
-    pub fn generate(&self) -> Result<TokenStream> {
-        let typename = Ident::new(
-            &self.field.name.to_string().to_pascal_case(),
-            self.field.name.span(),
-        );
+    pub fn generate(self) -> Result<TokenStream> {
+        let Self { field, asts } = self;
+        let typename = Ident::new(&field.name.to_string().to_pascal_case(), field.name.span());
 
-        let entry_gen = self.ast.generate(&typename, 0, false)?;
+        let is_enum = asts.len() == 1 && asts.first().map(|e| e.is_enum()).unwrap_or_default();
 
-        let syntax_name =
-            format_ident!("{}", self.field.name.to_string().to_screaming_snake_case());
+        let entry_gen = asts
+            .into_iter()
+            .map(|e| e.prepare_for_generation())
+            .enumerate()
+            .map(|(pos, e)| e.generate(&typename, pos, false))
+            .collect::<Result<Vec<_>>>()?;
 
-        let field_cast = if !self.ast.is_enum() {
+        let entry_gen = entry_gen.into_iter().reduce(|acc, next| {
+            quote! {
+                #acc
+                #next
+            }
+        });
+
+        let syntax_name = format_ident!("{}", field.name.to_string().to_screaming_snake_case());
+
+        let field_cast = if !is_enum {
             quote! {
                 impl Cast for #typename {
                     pub fn cast(node: SyntaxNode) -> Option<Self> {
@@ -73,10 +84,122 @@ impl GenerateWithConfig for ParseEntryExt {
     }
 }
 
+impl ParseEntry {
+    fn prepare_for_generation(self) -> Self {
+        match &self {
+            ParseEntry::Basic(basic) => match basic {
+                BasicParseEntry::CharLit(..)
+                | BasicParseEntry::StrLit(..)
+                | BasicParseEntry::Ident(..) => self,
+                BasicParseEntry::Optional {
+                    entries,
+                    bracket_token,
+                } => Self::Basic(BasicParseEntry::Optional {
+                    bracket_token: *bracket_token,
+                    entries: entries
+                        .into_iter()
+                        .map(|e| e.clone().prepare_for_generation())
+                        .collect(),
+                }),
+                BasicParseEntry::Repeated {
+                    entries,
+                    brace_token,
+                } => Self::Basic(BasicParseEntry::Repeated {
+                    brace_token: *brace_token,
+                    entries: entries
+                        .into_iter()
+                        .map(|e| e.clone().prepare_for_generation())
+                        .collect(),
+                }),
+                BasicParseEntry::Group { entries, .. } => {
+                    if entries.len() == 1 {
+                        entries[0].entry.clone()
+                    } else {
+                        self
+                    }
+                }
+            },
+            ParseEntry::Choice { .. } => self,
+        }
+    }
+}
+
+impl ParseEntryExt {
+    fn prepare_for_generation(self) -> Self {
+        let Self { entry, .. } = &self;
+
+        if matches!(
+            entry,
+            ParseEntry::Basic(basic)
+                if matches!(
+                    basic,
+                    BasicParseEntry::CharLit(..)
+                    | BasicParseEntry::StrLit(..)
+                    | BasicParseEntry::Ident(..)
+                )
+        ) {
+            return self;
+        }
+
+        if matches!(
+            entry,
+            ParseEntry::Basic(BasicParseEntry::Group {entries, ..}) if entries.len() > 1
+        ) {
+            return self;
+        }
+
+        let Self { config, entry } = self;
+
+        match entry {
+            ParseEntry::Basic(BasicParseEntry::Optional {
+                entries,
+                bracket_token,
+            }) => Self {
+                config,
+                entry: ParseEntry::Basic(BasicParseEntry::Optional {
+                    bracket_token,
+                    entries: entries
+                        .into_iter()
+                        .map(|e| e.clone().prepare_for_generation())
+                        .collect(),
+                }),
+            },
+            ParseEntry::Basic(BasicParseEntry::Repeated {
+                entries,
+                brace_token,
+            }) => Self {
+                config,
+                entry: ParseEntry::Basic(BasicParseEntry::Repeated {
+                    brace_token,
+                    entries: entries
+                        .into_iter()
+                        .map(|e| e.clone().prepare_for_generation())
+                        .collect(),
+                }),
+            },
+            ParseEntry::Basic(BasicParseEntry::Group { entries, .. }) => {
+                let first = entries.into_iter().next().unwrap();
+                let Self { entry, .. } = first.prepare_for_generation();
+                Self { config, entry }
+            }
+            ParseEntry::Choice { entries } => Self {
+                config,
+                entry: ParseEntry::Choice {
+                    entries: entries
+                        .into_iter()
+                        .map(|e| e.clone().prepare_for_generation())
+                        .collect(),
+                },
+            },
+            _ => unreachable!(),
+        }
+    }
+}
+
 impl Generate for ParseEntry {
     fn generate(&self, ctx: &NameCtx, is_nested: bool) -> Result<TokenStream> {
         match self {
-            ParseEntry::Basic(basic) => basic.generate_multi(ctx, true),
+            ParseEntry::Basic(basic) => basic.generate(ctx, is_nested),
             ParseEntry::Choice { entries, .. } => {
                 // Generating for Choice is a bit tricky
                 let span = self.span();
@@ -112,9 +235,11 @@ impl Generate for ParseEntry {
                         Error::new(span, "choice variant expected to have at least one entry")
                     })?;
 
+                    // TODO: implement Innercast for nested
+
                     quote_spanned! {span=>
                         impl Cast for #node {
-                            fn cast(node: SyntaxNode) -> Option<Self> {
+                            fn cast(node: ::syntax::SyntaxNode) -> Option<Self> {
                                 if #(#casts(node.clone()).is_some())||* {
                                     Some(Self(node))
                                 } else {
@@ -133,6 +258,20 @@ impl Generate for ParseEntry {
                     }
                 };
 
+                let enum_type = {
+                    let variants = children_names.iter().map(|e| {
+                        let ty = e.type_name();
+                        quote!(#ty(::syntax::#ty))
+                    });
+
+                    quote! {
+                        #[derive(PartialEq, Eq, Hash, Clone)]
+                        pub enum #kind_name {
+                            #(#variants),*
+                        }
+                    }
+                };
+
                 let new_types = if is_nested {
                     let parent = &ctx.parent;
                     let method_name = name.method_name();
@@ -141,10 +280,6 @@ impl Generate for ParseEntry {
                         #[derive(PartialEq, Eq, Hash, Clone)]
                         #[repr(transparent)]
                         pub struct #node(::syntax::SyntaxNode);
-
-                        impl #node {
-                            #impl_block
-                        }
 
                         impl #parent {
                             pub fn #method_name(&self) -> Option<#node> {
@@ -163,6 +298,8 @@ impl Generate for ParseEntry {
                     .collect::<Result<Vec<_>>>()?;
 
                 Ok(quote! {
+                    #enum_type
+
                     #impl_block
 
                     #new_types
@@ -187,11 +324,27 @@ impl BasicParseEntry {
                     .collect::<Vec<_>>();
 
                 match self {
-                    BasicParseEntry::Optional { .. } => Ok(quote!(Option<(#(#node_children),*)>)),
-                    BasicParseEntry::Repeated { .. } => {
-                        Ok(quote!(ZeroOrMore<(#(#node_children),*)>))
+                    BasicParseEntry::Optional { .. } => {
+                        if node_children.len() == 1 {
+                            Ok(quote!(Option::<#(#node_children),*>))
+                        } else {
+                            Ok(quote!(Option::<(#(#node_children),*)>))
+                        }
                     }
-                    BasicParseEntry::Group { .. } => Ok(quote!((#(#node_children),*))),
+                    BasicParseEntry::Repeated { .. } => {
+                        if node_children.len() == 1 {
+                            Ok(quote!(ZeroOrMore::<#(#node_children),*>))
+                        } else {
+                            Ok(quote!(ZeroOrMore::<(#(#node_children),*)>))
+                        }
+                    }
+                    BasicParseEntry::Group { .. } => {
+                        if node_children.len() == 1 {
+                            Ok(quote!(#(#node_children),*))
+                        } else {
+                            Ok(quote!(<(#(#node_children),*)>))
+                        }
+                    }
                     _ => unreachable!(),
                 }
             }
@@ -239,9 +392,11 @@ impl BasicParseEntry {
                     let inner_cast_type = self.inner_cast_type(&node_name)?;
 
                     let node = quote_spanned! {span=>
+                        #[derive(PartialEq, Eq, Hash, Clone)]
                         pub struct #node_name(SyntaxNode);
                     };
 
+                    // TODO: implement InnerCast for nested type
                     quote! {
                         #node
 
@@ -273,7 +428,9 @@ impl BasicParseEntry {
                 // generate impl for sub type and children
                 Ok(quote! {
                     #impl_parent
+
                     #node
+
                     #(#impl_children)*
                 })
             }
@@ -282,10 +439,12 @@ impl BasicParseEntry {
     }
 
     fn generate_for_simple_type(&self, ctx: &NameCtx) -> Result<TokenStream> {
-        assert!(matches!(
+        if !matches!(
             self,
             BasicParseEntry::CharLit(..) | BasicParseEntry::StrLit(..) | BasicParseEntry::Ident(..)
-        ));
+        ) {
+            panic!("Expect simple type, got: {:?}", self);
+        };
 
         match self {
             BasicParseEntry::CharLit(..)
@@ -324,5 +483,97 @@ impl Generate for BasicParseEntry {
             | BasicParseEntry::Repeated { .. }
             | BasicParseEntry::Group { .. } => self.generate_multi(ctx, is_nested),
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use proc_macro2::TokenStream;
+
+    fn pretty_print(stream: TokenStream) -> String {
+        match syn::parse_file(&stream.to_string()) {
+            Ok(tree) => prettyplease::unparse(&tree),
+            Err(err) => format!("{}\n{}", &stream.to_string(), err),
+        }
+    }
+
+    macro_rules! tt {
+        ($($tokens: tt)*) => {
+            stringify!($($tokens)*).parse::<proc_macro2::TokenStream>()?
+        };
+    }
+
+    #[test]
+    fn gen_top_level_entry_with_choice() -> Result<()> {
+        let stream: TokenStream = tt! {
+            expression:
+                disjunction
+                | another
+        };
+        let top = syn::parse2::<TopLevelParseEntry>(stream)?;
+
+        let generated = top.generate()?;
+
+        println!("{}", pretty_print(generated));
+        Ok(())
+    }
+
+    #[test]
+    fn gen_from_assignments() -> Result<()> {
+        let stream: TokenStream = tt! {
+            assignmentAndOperator:
+            "+="
+            | "-="
+            | "*="
+            | "/="
+            | "%="
+        };
+        let top = syn::parse2::<TopLevelParseEntry>(stream)?;
+
+        let generated = top.generate()?;
+
+        println!("{}", pretty_print(generated));
+        Ok(())
+    }
+
+    #[test]
+    fn gen_from_complex_unnmamed() -> Result<()> {
+        let stream: TokenStream = tt! {
+            fileAnnotation:
+            (AT_NO_WS | AT_PRE_WS)
+            "file"
+            {NL}
+            ":"
+            {NL}
+            (("[" (unescapedAnnotation {unescapedAnnotation}) "]") | unescapedAnnotation)
+            {NL}
+        };
+        let top = syn::parse2::<TopLevelParseEntry>(stream)?;
+
+        let generated = top.generate()?;
+
+        println!("{}", pretty_print(generated));
+        Ok(())
+    }
+
+    #[test]
+    fn gen_from_complex_named() -> Result<()> {
+        let stream: TokenStream = tt! {
+            fileAnnotation:
+            (AT_NO_WS | AT_PRE_WS)@FileAnnotationAt
+            "file"
+            {NL}
+            ":"
+            {NL}
+            (("[" (unescapedAnnotation {unescapedAnnotation}) "]")@BoxedUnescapedAnnotation | unescapedAnnotation)@FileUnescapedAnnotation
+            {NL}
+        };
+        let top = syn::parse2::<TopLevelParseEntry>(stream)?;
+
+        let generated = top.generate()?;
+
+        println!("{}", pretty_print(generated));
+        Ok(())
     }
 }

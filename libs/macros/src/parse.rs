@@ -80,17 +80,16 @@ impl fmt::Debug for ParseEntry {
 /// multiplicativeExpression:
 ///     asExpression {multiplicativeOperator {NL} asExpression}
 /// ```
-/// NB: For TopLevelParseEntry with non-singular entry, we will wrap it in a Group
 pub(crate) struct TopLevelParseEntry {
     pub field: Field,
-    pub ast: ParseEntryExt,
+    pub asts: Vec<ParseEntryExt>,
 }
 
 impl fmt::Debug for TopLevelParseEntry {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("TopLevelParseEntry")
             .field("field", &self.field)
-            .field("asts", &self.ast)
+            .field("asts", &self.asts)
             .finish()
     }
 }
@@ -224,29 +223,32 @@ impl Parse for ParseEntryExt {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let Configured { config, parsed } = Configured::<ParseEntry>::parse(input)?;
 
-        // Note: If entry is a Group/Choice with one element, we would want to unwrap that
-        let res = match parsed {
-            ParseEntry::Choice { entries }
-            | ParseEntry::Basic(BasicParseEntry::Group { entries, .. })
-                if entries.len() == 1 =>
-            {
-                let entry = &entries[0];
-                ParseEntryExt {
-                    config: Config {
-                        name: (entry.config.name.clone()).or(config.name),
-                        ignore: config.ignore || entry.config.ignore,
-                    },
-                    entry: entry.entry.clone(),
-                }
-            }
+        // // Note: If entry is a Group/Choice with one element, we would want to unwrap that
+        // let res = match parsed {
+        //     ParseEntry::Choice { entries }
+        //     | ParseEntry::Basic(BasicParseEntry::Group { entries, .. })
+        //         if entries.len() == 1 =>
+        //     {
+        //         let entry = &entries[0];
+        //         ParseEntryExt {
+        //             config: Config {
+        //                 name: (entry.config.name.clone()).or(config.name),
+        //                 ignore: config.ignore || entry.config.ignore,
+        //             },
+        //             entry: entry.entry.clone(),
+        //         }
+        //     }
 
-            _ => ParseEntryExt {
-                config,
-                entry: parsed,
-            },
-        };
+        //     _ => ParseEntryExt {
+        //         config,
+        //         entry: parsed,
+        //     },
+        // };
 
-        Ok(res)
+        Ok(ParseEntryExt {
+            config,
+            entry: parsed,
+        })
     }
 }
 
@@ -271,17 +273,7 @@ impl Parse for TopLevelParseEntry {
 
         Ok(TopLevelParseEntry {
             field,
-            ast: if result.len() == 1 {
-                result[0].clone()
-            } else {
-                ParseEntryExt {
-                    config: Config::default(),
-                    entry: ParseEntry::Basic(BasicParseEntry::Group {
-                        paren_token: Paren::default(),
-                        entries: result,
-                    }),
-                }
-            },
+            asts: result,
         })
     }
 }
@@ -408,11 +400,11 @@ mod test {
         };
         let top = syn::parse2::<TopLevelParseEntry>(stream)?;
         assert!(matches!(
-            &top.ast,
-            ParseEntryExt {
+            &top.asts[..],
+            &[ParseEntryExt {
                 entry: ParseEntry::Basic(BasicParseEntry::Ident(..)),
                 ..
-            }
+            }]
         ));
 
         let stream: TokenStream = tt! {
@@ -421,11 +413,11 @@ mod test {
         };
         let top = syn::parse2::<TopLevelParseEntry>(stream)?;
         assert!(matches!(
-            &top.ast,
-            ParseEntryExt {
+            &top.asts[..],
+            &[ParseEntryExt {
                 entry: ParseEntry::Basic(BasicParseEntry::StrLit(..)),
                 ..
-            }
+            }]
         ));
         Ok(())
     }
@@ -438,9 +430,13 @@ mod test {
                 | another
         };
         let top = syn::parse2::<TopLevelParseEntry>(stream)?;
-        assert!(
-            matches!(&top.ast, ParseEntryExt {entry, ..} if matches!(entry, ParseEntry::Choice { .. }))
-        );
+        assert!(matches!(
+            &top.asts[..],
+            &[ParseEntryExt {
+                entry: ParseEntry::Choice { .. },
+                ..
+            }]
+        ));
         Ok(())
     }
 

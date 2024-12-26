@@ -66,7 +66,7 @@ impl SimpleName {
 
     fn cast_closure(&self) -> TokenStream {
         let variant = format_ident!("{}", self.type_name());
-        quote!(#variant::cast)
+        quote!(::syntax::#variant::cast)
     }
 
     fn method_name_inner(&self) -> String {
@@ -136,7 +136,11 @@ impl Name {
     pub fn cast_closure(&self) -> TokenStream {
         match self {
             Self::Simple(simple, _) => simple.cast_closure(),
-            Self::Composite(comp, _) => comp.to_simple().cast_closure(),
+            Self::Composite(..) => {
+                let variant = format_ident!("{}", self.type_name());
+                // the variant real type would be defined in the same module and not in ::syntax
+                quote!(#variant::cast)
+            }
         }
     }
 
