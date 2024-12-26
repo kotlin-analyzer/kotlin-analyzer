@@ -16,6 +16,7 @@ use crate::combinators::{InOrder, Optional, Seq};
 #[derive(Debug, Default, Clone)]
 pub(crate) struct Config {
     pub(crate) name: Option<Ident>,
+    // TODO: fix parser not picking up ignored nodes
     pub(crate) ignore: bool,
 }
 
@@ -59,12 +60,6 @@ pub enum ParseEntry {
         entries: Vec<BasicParseEntry>,
         config: Config,
     },
-}
-
-#[derive(Clone, Debug)]
-pub struct ParseEntryExt {
-    pub config: Config,
-    pub entry: ParseEntry,
 }
 
 impl fmt::Debug for BasicParseEntry {
@@ -145,6 +140,7 @@ impl ParseEntry {
                 ..
             }) if entries.len() == 1 => {
                 let first = entries.into_iter().next().unwrap();
+                dbg!(&p_config);
                 match first {
                     Basic(basic) => match basic {
                         CharLit(lit_char, config) => Basic(CharLit(lit_char, p_config + config)),
@@ -269,15 +265,15 @@ fn parse_basic_entry(input: ParseStream) -> syn::Result<BasicParseEntry> {
             let ignore = input.parse::<Token![_]>().is_ok();
 
             let rule;
-            let bracket_token = bracketed!(rule in input);
+            let paren_token = parenthesized!(rule in input);
             let seq = rule.parse::<Seq<ParseEntry>>()?;
 
             let name_config: Optional<InOrder<Token![@], Ident>> = input.parse()?;
             let name_config = name_config.0.map(|e| e.second);
 
-            Ok(BasicParseEntry::Optional {
-                bracket_token,
+            Ok(BasicParseEntry::Group {
                 entries: seq.0,
+                paren_token,
                 config: Config {
                     name: name_config,
                     ignore,
@@ -288,15 +284,15 @@ fn parse_basic_entry(input: ParseStream) -> syn::Result<BasicParseEntry> {
             let ignore = input.parse::<Token![_]>().is_ok();
 
             let rule;
-            let paren_token = parenthesized!(rule in input);
+            let bracket_token = bracketed!(rule in input);
             let seq = rule.parse::<Seq<ParseEntry>>()?;
 
             let name_config: Optional<InOrder<Token![@], Ident>> = input.parse()?;
             let name_config = name_config.0.map(|e| e.second);
 
-            Ok(BasicParseEntry::Group {
+            Ok(BasicParseEntry::Optional {
+                bracket_token,
                 entries: seq.0,
-                paren_token,
                 config: Config {
                     name: name_config,
                     ignore,
@@ -365,7 +361,14 @@ where
     P: Parse,
 {
     fn parse(input: ParseStream) -> syn::Result<Configured<P>> {
-        let ignore = input.parse::<Token![_]>().is_ok();
+        let lookahead = input.lookahead1();
+
+        let ignore = if lookahead.peek(Token![_]) {
+            input.parse::<Token![_]>().is_ok()
+        } else {
+            false
+        };
+
         let parsed = input.parse::<P>()?;
         let name_config: Optional<InOrder<Token![@], Ident>> = input.parse()?;
         let name_config = name_config.0.map(|e| e.second);
@@ -374,6 +377,8 @@ where
             name: name_config,
             ignore,
         };
+
+        dbg!(&config);
 
         Ok(Configured { config, parsed })
     }
@@ -423,6 +428,26 @@ impl BasicParseEntry {
             Self::Group { paren_token, .. } => paren_token.span.span(),
         }
     }
+
+    pub fn config(&self) -> &Config {
+        match self {
+            BasicParseEntry::CharLit(_, config) => config,
+            BasicParseEntry::StrLit(_, config) => config,
+            BasicParseEntry::Ident(_, config) => config,
+            BasicParseEntry::Optional { config, .. } => config,
+            BasicParseEntry::Repeated { config, .. } => config,
+            BasicParseEntry::Group { config, .. } => config,
+        }
+    }
+
+    pub fn is_composite(&self) -> bool {
+        match self {
+            BasicParseEntry::Optional { .. }
+            | BasicParseEntry::Repeated { .. }
+            | BasicParseEntry::Group { .. } => true,
+            _ => false,
+        }
+    }
 }
 
 impl ParseEntry {
@@ -441,42 +466,15 @@ impl ParseEntry {
         }
     }
 
-    pub fn is_composite(&self) -> bool {
-        match self {
-            ParseEntry::Basic(basic) => match basic {
-                BasicParseEntry::Optional { .. }
-                | BasicParseEntry::Repeated { .. }
-                | BasicParseEntry::Group { .. } => true,
-                _ => false,
-            },
-            ParseEntry::Choice { .. } => true,
-        }
-    }
-
     pub fn config(&self) -> &Config {
         match self {
-            ParseEntry::Basic(basic) => match basic {
-                BasicParseEntry::CharLit(_, config) => config,
-                BasicParseEntry::StrLit(_, config) => config,
-                BasicParseEntry::Ident(_, config) => config,
-                BasicParseEntry::Optional { config, .. } => config,
-                BasicParseEntry::Repeated { config, .. } => config,
-                BasicParseEntry::Group { config, .. } => config,
-            },
+            ParseEntry::Basic(basic) => basic.config(),
             ParseEntry::Choice { config, .. } => config,
         }
     }
-}
 
-impl ParseEntryExt {
     pub fn is_enum(&self) -> bool {
-        matches!(
-            self,
-            Self {
-                entry: ParseEntry::Choice { .. },
-                ..
-            }
-        )
+        matches!(self, Self::Choice { .. })
     }
 }
 
@@ -544,10 +542,7 @@ mod test {
         let top = syn::parse2::<TopLevelParseEntry>(stream)?;
         assert!(matches!(
             &top.asts[..],
-            &[ParseEntryExt {
-                entry: ParseEntry::Basic(BasicParseEntry::Ident(..)),
-                ..
-            }]
+            &[ParseEntry::Basic(BasicParseEntry::Ident(..))]
         ));
 
         let stream: TokenStream = tt! {
@@ -557,10 +552,7 @@ mod test {
         let top = syn::parse2::<TopLevelParseEntry>(stream)?;
         assert!(matches!(
             &top.asts[..],
-            &[ParseEntryExt {
-                entry: ParseEntry::Basic(BasicParseEntry::StrLit(..)),
-                ..
-            }]
+            &[ParseEntry::Basic(BasicParseEntry::StrLit(..))]
         ));
         Ok(())
     }
@@ -573,13 +565,7 @@ mod test {
                 | another
         };
         let top = syn::parse2::<TopLevelParseEntry>(stream)?;
-        assert!(matches!(
-            &top.asts[..],
-            &[ParseEntryExt {
-                entry: ParseEntry::Choice { .. },
-                ..
-            }]
-        ));
+        assert!(matches!(&top.asts[..], &[ParseEntry::Choice { .. }]));
         Ok(())
     }
 
@@ -587,9 +573,9 @@ mod test {
     fn test_with_config() -> Result<(), Box<dyn Error>> {
         let stream: TokenStream = tt! {
             annotationUseSiteTarget:
-                (AT_NO_WS | AT_PRE_WS)@AnnotationUseSiteTargetAt
+                _(AT_NO_WS | AT_PRE_WS)@AnnotationUseSiteTargetAt
                 ("field" | "property" | "get" | "set" | "receiver" | "param" | "setparam" | "delegate")@AnnotationTarget
-                {NL} ':'
+                _{NL} ':'
         };
         let top = syn::parse2::<TopLevelParseEntry>(stream)?;
         dbg!(top);

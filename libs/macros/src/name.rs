@@ -4,7 +4,7 @@ use quote::{format_ident, quote};
 use syn::{Error, Ident, Result};
 use tokens::Token;
 
-use crate::parse::{BasicParseEntry, ParseEntry, ParseEntryExt};
+use crate::parse::{BasicParseEntry, ParseEntry};
 
 #[derive(Debug, Clone)]
 pub enum SimpleName {
@@ -165,19 +165,17 @@ impl Name {
         }
     }
 }
-#[derive(Debug, Clone)]
-pub struct NameCtx {
-    pub parent: Ident,
+#[derive(Debug, Clone, Copy)]
+pub struct NameCtx<'a> {
+    pub parent: &'a Ident,
     pub position: usize,
-    pub config_name: Result<Name>,
 }
 
-impl NameCtx {
-    pub fn new(parent: &Ident, position: usize, config_name: &Result<Name>) -> Self {
-        Self {
-            parent: parent.clone(),
+impl NameCtx<'_> {
+    pub fn new<'a>(parent: &'a Ident, position: usize) -> NameCtx<'a> {
+        NameCtx {
+            parent: parent,
             position,
-            config_name: config_name.clone(),
         }
     }
 }
@@ -187,33 +185,31 @@ fn resolve_token(name: &str, span: Span) -> Result<Token> {
 }
 
 pub trait IntoName {
-    fn into_name(&self, ctx: &NameCtx) -> Result<Name>;
-}
-
-pub trait IntoNameWithConfig {
-    fn into_name(&self, parent: &Ident, pos: usize) -> Result<Name>;
+    fn into_name(&self, ctx: NameCtx) -> Result<Name>;
 }
 
 impl IntoName for BasicParseEntry {
-    fn into_name(&self, ctx: &NameCtx) -> Result<Name> {
-        ctx.config_name.clone().or_else(|_| match self {
-            BasicParseEntry::CharLit(ch) => {
-                resolve_token(&ch.value().to_string(), ch.span()).map(|token| {
+    fn into_name(&self, ctx: NameCtx) -> Result<Name> {
+        if let Some(name) = self.config().name.clone() {
+            return Ok(Name::simple(SimpleName::Ident(name)));
+        }
+
+        match self {
+            BasicParseEntry::CharLit(ch, ..) => resolve_token(&ch.value().to_string(), ch.span())
+                .map(|token| {
                     Name::simple(SimpleName::Token {
                         token,
                         span: ch.span(),
                     })
-                })
-            }
-            BasicParseEntry::StrLit(st) => {
-                resolve_token(&st.value().to_string(), st.span()).map(|token| {
+                }),
+            BasicParseEntry::StrLit(st, ..) => resolve_token(&st.value().to_string(), st.span())
+                .map(|token| {
                     Name::simple(SimpleName::Token {
                         token,
                         span: st.span(),
                     })
-                })
-            }
-            BasicParseEntry::Ident(id) => {
+                }),
+            BasicParseEntry::Ident(id, ..) => {
                 if id.to_string().starts_with(char::is_lowercase) {
                     Ok(Name::simple(SimpleName::Ident(id.clone())))
                 } else {
@@ -227,29 +223,23 @@ impl IntoName for BasicParseEntry {
             BasicParseEntry::Optional { .. } | BasicParseEntry::Group { .. } => Ok(
                 Name::composite(CompositeName::new(&ctx.parent, ctx.position, self.span())),
             ),
-        })
+        }
     }
 }
 
 impl IntoName for ParseEntry {
-    fn into_name(&self, ctx: &NameCtx) -> Result<Name> {
-        ctx.config_name.clone().or_else(|_| match self {
+    fn into_name(&self, ctx: NameCtx) -> Result<Name> {
+        if let Some(name) = self.config().name.clone() {
+            return Ok(Name::simple(SimpleName::Ident(name)));
+        }
+        match self {
             ParseEntry::Basic(basic_parse_entry) => basic_parse_entry.into_name(ctx),
             ParseEntry::Choice { .. } => {
                 let name =
                     Name::composite(CompositeName::new(&ctx.parent, ctx.position, self.span()));
                 Ok(name)
             }
-        })
-    }
-}
-
-impl IntoNameWithConfig for ParseEntryExt {
-    fn into_name(&self, parent: &Ident, pos: usize) -> Result<Name> {
-        let config_name = self.get_config_name();
-
-        self.entry
-            .into_name(&NameCtx::new(parent, pos, &config_name))
+        }
     }
 }
 
@@ -264,7 +254,7 @@ impl BasicParseEntry {
             | BasicParseEntry::Group { entries, .. } => entries
                 .iter()
                 .enumerate()
-                .map(|(pos, s)| s.into_name(parent, pos))
+                .map(|(pos, s)| s.into_name(NameCtx::new(parent, pos)))
                 .collect(),
         }
     }
@@ -274,26 +264,11 @@ impl ParseEntry {
     pub fn get_children_names(&self, parent: &Ident) -> Result<Vec<Name>> {
         match self {
             ParseEntry::Basic(basic_parse_entry) => basic_parse_entry.get_children_names(parent),
-            ParseEntry::Choice { entries } => entries
+            ParseEntry::Choice { entries, .. } => entries
                 .iter()
                 .enumerate()
-                .map(|(pos, s)| s.into_name(parent, pos))
+                .map(|(pos, s)| s.into_name(NameCtx::new(parent, pos)))
                 .collect(),
         }
-    }
-}
-
-impl ParseEntryExt {
-    pub fn get_config_name(&self) -> Result<Name> {
-        self.config
-            .name
-            .clone()
-            .map(|name| Name::Simple(SimpleName::Ident(name), RetType::Single))
-            .ok_or_else(|| {
-                Error::new(
-                    self.entry.span(),
-                    "Missing name for entries. Try adding @Name at the end",
-                )
-            })
     }
 }

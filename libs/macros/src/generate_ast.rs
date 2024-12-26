@@ -5,15 +5,11 @@ use syn::{Error, Ident, Result};
 
 use crate::{
     name::{IntoName, NameCtx},
-    parse::{BasicParseEntry, GenAst, ParseEntry, ParseEntryExt, TopLevelParseEntry},
+    parse::{BasicParseEntry, GenAst, ParseEntry, TopLevelParseEntry},
 };
 
 trait Generate {
-    fn generate(&self, ctx: &NameCtx, is_nested: bool) -> Result<TokenStream>;
-}
-
-trait GenerateWithConfig {
-    fn generate(&self, parent: &Ident, pos: usize, is_nested: bool) -> Result<TokenStream>;
+    fn generate(&self, ctx: NameCtx, is_nested: bool) -> Result<TokenStream>;
 }
 
 impl GenAst {
@@ -34,14 +30,14 @@ impl TopLevelParseEntry {
     pub fn generate(self) -> Result<TokenStream> {
         let Self { field, asts } = self;
         let typename = Ident::new(&field.name.to_string().to_pascal_case(), field.name.span());
+        let asts_len = asts.len();
 
-        let is_enum = asts.len() == 1 && asts.first().map(|e| e.is_enum()).unwrap_or_default();
+        let is_enum = asts_len == 1 && asts.first().map(|e| e.is_enum()).unwrap_or_default();
 
         let entry_gen = asts
             .into_iter()
-            .map(|e| e.prepare_for_generation())
             .enumerate()
-            .map(|(pos, e)| e.generate(&typename, pos, false))
+            .map(|(pos, e)| e.generate(NameCtx::new(&typename, pos), false || asts_len > 1))
             .collect::<Result<Vec<_>>>()?;
 
         let entry_gen = entry_gen.into_iter().reduce(|acc, next| {
@@ -76,134 +72,14 @@ impl TopLevelParseEntry {
     }
 }
 
-impl GenerateWithConfig for ParseEntryExt {
-    fn generate(&self, parent: &Ident, pos: usize, is_nested: bool) -> Result<TokenStream> {
-        let config_name = self.get_config_name();
-        self.entry
-            .generate(&NameCtx::new(parent, pos, &config_name), is_nested)
-    }
-}
-
-impl ParseEntry {
-    fn prepare_for_generation(self) -> Self {
-        match &self {
-            ParseEntry::Basic(basic) => match basic {
-                BasicParseEntry::CharLit(..)
-                | BasicParseEntry::StrLit(..)
-                | BasicParseEntry::Ident(..) => self,
-                BasicParseEntry::Optional {
-                    entries,
-                    bracket_token,
-                } => Self::Basic(BasicParseEntry::Optional {
-                    bracket_token: *bracket_token,
-                    entries: entries
-                        .into_iter()
-                        .map(|e| e.clone().prepare_for_generation())
-                        .collect(),
-                }),
-                BasicParseEntry::Repeated {
-                    entries,
-                    brace_token,
-                } => Self::Basic(BasicParseEntry::Repeated {
-                    brace_token: *brace_token,
-                    entries: entries
-                        .into_iter()
-                        .map(|e| e.clone().prepare_for_generation())
-                        .collect(),
-                }),
-                BasicParseEntry::Group { entries, .. } => {
-                    if entries.len() == 1 {
-                        entries[0].entry.clone()
-                    } else {
-                        self
-                    }
-                }
-            },
-            ParseEntry::Choice { .. } => self,
-        }
-    }
-}
-
-impl ParseEntryExt {
-    fn prepare_for_generation(self) -> Self {
-        let Self { entry, .. } = &self;
-
-        if matches!(
-            entry,
-            ParseEntry::Basic(basic)
-                if matches!(
-                    basic,
-                    BasicParseEntry::CharLit(..)
-                    | BasicParseEntry::StrLit(..)
-                    | BasicParseEntry::Ident(..)
-                )
-        ) {
-            return self;
-        }
-
-        if matches!(
-            entry,
-            ParseEntry::Basic(BasicParseEntry::Group {entries, ..}) if entries.len() > 1
-        ) {
-            return self;
-        }
-
-        let Self { config, entry } = self;
-
-        match entry {
-            ParseEntry::Basic(BasicParseEntry::Optional {
-                entries,
-                bracket_token,
-            }) => Self {
-                config,
-                entry: ParseEntry::Basic(BasicParseEntry::Optional {
-                    bracket_token,
-                    entries: entries
-                        .into_iter()
-                        .map(|e| e.clone().prepare_for_generation())
-                        .collect(),
-                }),
-            },
-            ParseEntry::Basic(BasicParseEntry::Repeated {
-                entries,
-                brace_token,
-            }) => Self {
-                config,
-                entry: ParseEntry::Basic(BasicParseEntry::Repeated {
-                    brace_token,
-                    entries: entries
-                        .into_iter()
-                        .map(|e| e.clone().prepare_for_generation())
-                        .collect(),
-                }),
-            },
-            ParseEntry::Basic(BasicParseEntry::Group { entries, .. }) => {
-                let first = entries.into_iter().next().unwrap();
-                let Self { entry, .. } = first.prepare_for_generation();
-                Self { config, entry }
-            }
-            ParseEntry::Choice { entries } => Self {
-                config,
-                entry: ParseEntry::Choice {
-                    entries: entries
-                        .into_iter()
-                        .map(|e| e.clone().prepare_for_generation())
-                        .collect(),
-                },
-            },
-            _ => unreachable!(),
-        }
-    }
-}
-
 impl Generate for ParseEntry {
-    fn generate(&self, ctx: &NameCtx, is_nested: bool) -> Result<TokenStream> {
+    fn generate(&self, ctx: NameCtx, is_nested: bool) -> Result<TokenStream> {
         match self {
             ParseEntry::Basic(basic) => basic.generate(ctx, is_nested),
             ParseEntry::Choice { entries, .. } => {
                 // Generating for Choice is a bit tricky
                 let span = self.span();
-                let name = self.into_name(&ctx)?;
+                let name = self.into_name(ctx)?;
 
                 // We need to know what the target is.
                 // If it is nested, then it is the name of the
@@ -293,8 +169,8 @@ impl Generate for ParseEntry {
 
                 let children_gen = children
                     .iter()
-                    .filter(|&&(_, e)| e.entry.is_composite())
-                    .map(|&(pos, e)| e.generate(&node, pos, true))
+                    .filter(|&&(_, e)| e.is_composite())
+                    .map(|&(pos, e)| e.generate(NameCtx::new(&node, pos), true))
                     .collect::<Result<Vec<_>>>()?;
 
                 Ok(quote! {
@@ -351,7 +227,7 @@ impl BasicParseEntry {
             _ => unreachable!("inner cast type should only be called on composite nodes"),
         }
     }
-    fn generate_multi(&self, ctx: &NameCtx, is_nested: bool) -> Result<TokenStream> {
+    fn generate_multi(&self, ctx: NameCtx, is_nested: bool) -> Result<TokenStream> {
         assert!(matches!(
             self,
             BasicParseEntry::Optional { .. }
@@ -423,7 +299,7 @@ impl BasicParseEntry {
                 let impl_children = entries
                     .iter()
                     .enumerate()
-                    .map(|(pos, e)| e.generate(&node_name, pos, true))
+                    .map(|(pos, e)| e.generate(NameCtx::new(&node_name, pos), true))
                     .collect::<Result<Vec<_>>>()?;
                 // generate impl for sub type and children
                 Ok(quote! {
@@ -438,7 +314,7 @@ impl BasicParseEntry {
         }
     }
 
-    fn generate_for_simple_type(&self, ctx: &NameCtx) -> Result<TokenStream> {
+    fn generate_for_simple_type(&self, ctx: NameCtx) -> Result<TokenStream> {
         if !matches!(
             self,
             BasicParseEntry::CharLit(..) | BasicParseEntry::StrLit(..) | BasicParseEntry::Ident(..)
@@ -473,7 +349,7 @@ impl BasicParseEntry {
 }
 
 impl Generate for BasicParseEntry {
-    fn generate(&self, ctx: &NameCtx, is_nested: bool) -> Result<TokenStream> {
+    fn generate(&self, ctx: NameCtx, is_nested: bool) -> Result<TokenStream> {
         match self {
             BasicParseEntry::CharLit(..)
             | BasicParseEntry::StrLit(..)
@@ -530,6 +406,23 @@ mod test {
             | "%="
         };
         let top = syn::parse2::<TopLevelParseEntry>(stream)?;
+
+        let generated = top.generate()?;
+
+        println!("{}", pretty_print(generated));
+        Ok(())
+    }
+
+    #[test]
+    fn gen_test_prepare() -> Result<()> {
+        let stream: TokenStream = tt! {
+            fileAnnotation:
+            _(AT_NO_WS | AT_PRE_WS)@FileAnnotationAt
+            "file"@File
+        };
+        let top = syn::parse2::<TopLevelParseEntry>(stream)?;
+
+        dbg!(&top);
 
         let generated = top.generate()?;
 
