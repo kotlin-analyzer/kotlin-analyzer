@@ -65,12 +65,34 @@ pub enum ParseEntry {
 impl fmt::Debug for BasicParseEntry {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::CharLit(lit, ..) => lit.value().fmt(f),
-            Self::StrLit(lit, ..) => lit.value().fmt(f),
-            Self::Ident(id, ..) => id.fmt(f),
-            Self::Optional { entries, .. } => f.debug_tuple("Optional").field(entries).finish(),
-            Self::Repeated { entries, .. } => f.debug_tuple("Repeated").field(entries).finish(),
-            Self::Group { entries, .. } => f.debug_tuple("Group").field(entries).finish(),
+            Self::CharLit(lit, config) => f
+                .debug_struct("CharLit")
+                .field("value", &lit.value())
+                .field("config", config)
+                .finish(),
+            Self::StrLit(lit, config) => f
+                .debug_struct("StrLit")
+                .field("value", &lit.value())
+                .field("config", &config)
+                .finish(),
+            Self::Ident(id, config) => f.debug_tuple("Ident").field(id).field(config).finish(),
+            Self::Optional {
+                entries, config, ..
+            } => f
+                .debug_tuple("Optional")
+                .field(entries)
+                .field(config)
+                .finish(),
+            Self::Repeated {
+                entries, config, ..
+            } => f
+                .debug_tuple("Repeated")
+                .field(entries)
+                .field(config)
+                .finish(),
+            Self::Group {
+                entries, config, ..
+            } => f.debug_tuple("Group").field(entries).field(config).finish(),
         }
     }
 }
@@ -140,7 +162,6 @@ impl ParseEntry {
                 ..
             }) if entries.len() == 1 => {
                 let first = entries.into_iter().next().unwrap();
-                dbg!(&p_config);
                 match first {
                     Basic(basic) => match basic {
                         CharLit(lit_char, config) => Basic(CharLit(lit_char, p_config + config)),
@@ -378,8 +399,6 @@ where
             ignore,
         };
 
-        dbg!(&config);
-
         Ok(Configured { config, parsed })
     }
 }
@@ -471,10 +490,6 @@ impl ParseEntry {
             ParseEntry::Basic(basic) => basic.config(),
             ParseEntry::Choice { config, .. } => config,
         }
-    }
-
-    pub fn is_enum(&self) -> bool {
-        matches!(self, Self::Choice { .. })
     }
 }
 
@@ -578,7 +593,6 @@ mod test {
                 _{NL} ':'
         };
         let top = syn::parse2::<TopLevelParseEntry>(stream)?;
-        dbg!(top);
         // assert!(
         //     matches!(&top.asts[..], [ParseEntryExt {entry, ..} ] if matches!(entry, ParseEntry::Choice { .. }))
         // );
@@ -617,7 +631,6 @@ mod test {
             | "actual"
         };
         let gen = syn::parse2::<GenAst>(stream)?;
-        dbg!(gen);
         // assert!(
         //     matches!(&gen., [ParseEntryExt {entry, ..} ]
         //         if matches!(entry, ParseEntry::Basic(BasicParseEntry::StrLit(..))))

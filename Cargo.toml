@@ -13,6 +13,7 @@ rust-version = "1.85"
 [workspace.dependencies]
 assert-panic = "1.0.1"
 ast = { path = "./crates/ast" }
+casey = "0.4.0"
 classpath_resolver = { path = "./libs/classpath_resolver" }
 inflector-plus = "0.11.7"
 itertools = "0.13.0"

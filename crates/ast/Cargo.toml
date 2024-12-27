@@ -9,13 +9,15 @@ license.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-syntax.workspace = true
+casey.workspace = true
 ron = "0.8"
 serde = { version = "1", features = ["derive"] }
 macros.workspace = true
+tokens.workspace = true
+rowan.workspace = true
+inflector-plus.workspace = true
 
 [build-dependencies]
 pest.workspace = true
 pest_derive.workspace = true
 tokens.workspace = true
-inflector-plus.workspace = true

@@ -1,10 +1,6 @@
 use macros::SyntaxKindType;
 use tokens::Token;
 
-mod cast;
-
-pub use cast::*;
-
 #[derive(SyntaxKindType, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[allow(non_camel_case_types)]
 #[repr(u16)]
@@ -343,6 +339,10 @@ pub enum SyntaxKind {
     SCRIPT,
     KOTLIN_FILE,
     ROOT,
+}
+
+pub trait SyntaxId {
+    fn syntax() -> SyntaxKind;
 }
 
 impl From<Token> for SyntaxKind {

@@ -1,6 +1,6 @@
 #![allow(unused)]
 use super::*;
-use crate::SyntaxKind::{self, *};
+use crate::syntax::SyntaxKind::{self, *};
 
 #[derive(Debug)]
 struct Root(SyntaxNode);

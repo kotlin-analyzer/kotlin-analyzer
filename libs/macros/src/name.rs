@@ -66,7 +66,7 @@ impl SimpleName {
 
     fn cast_closure(&self) -> TokenStream {
         let variant = format_ident!("{}", self.type_name());
-        quote!(::syntax::#variant::cast)
+        quote!(#variant::cast)
     }
 
     fn method_name_inner(&self) -> String {

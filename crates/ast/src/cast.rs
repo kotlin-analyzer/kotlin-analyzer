@@ -1,6 +1,8 @@
 use std::iter::Peekable;
 
-use crate::SyntaxNode;
+use crate::syntax::SyntaxNode;
+
+use crate::nodes::{Cast, InnerCast};
 
 #[cfg(test)]
 mod tests;
@@ -12,20 +14,6 @@ impl<T> ZeroOrMore<T> {
     pub fn items(&self) -> &[T] {
         &self.0
     }
-}
-
-pub trait Cast {
-    fn cast(node: SyntaxNode) -> Option<Self>
-    where
-        Self: Sized;
-}
-
-pub trait InnerCast {
-    fn inner_cast(
-        children: &mut Peekable<impl Iterator<Item = SyntaxNode> + Clone>,
-    ) -> Option<Self>
-    where
-        Self: Sized;
 }
 
 impl<T> InnerCast for Option<T>
