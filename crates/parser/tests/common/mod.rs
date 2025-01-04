@@ -1,8 +1,9 @@
+use ast::syntax::{SyntaxKind, SyntaxNode};
+use ast::{nodes::Cast, syntax::Root};
 use itertools::{peek_nth, PeekNth};
 use lexer::{Lexer, SpannedWithSource};
 use parser::{ParseError, TokenSource, TreeSink};
 use rowan::{GreenNode, GreenNodeBuilder};
-use syntax::{Syntax, SyntaxKind, SyntaxNode};
 use tokens::Token;
 
 struct TestTreeSink {
@@ -20,10 +21,10 @@ where
 impl TreeSink for TestTreeSink {
     fn token(&mut self, token: Token, substring: &str) {
         self.builder
-            .token(SyntaxKind::Token(token).into(), substring);
+            .token(SyntaxKind::from(token).into(), substring);
     }
 
-    fn start_node(&mut self, kind: Syntax) {
+    fn start_node(&mut self, kind: SyntaxKind) {
         self.builder.start_node(kind.into());
     }
 
@@ -59,7 +60,7 @@ where
 
 pub struct Parse {
     green_node: GreenNode,
-    #[allow(unused)]
+    #[allow(dead_code)]
     pub errors: Vec<ParseError>,
 }
 
@@ -84,5 +85,9 @@ pub fn parse(text: &str) -> Parse {
 impl Parse {
     pub fn syntax(&self) -> SyntaxNode {
         SyntaxNode::new_root(self.green_node.clone())
+    }
+
+    pub fn root(&self) -> Root {
+        Root::cast(self.syntax()).unwrap()
     }
 }

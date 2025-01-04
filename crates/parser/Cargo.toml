@@ -10,12 +10,13 @@ rust-version.workspace = true
 
 [dependencies]
 tokens = { workspace = true }
-syntax.workspace = true
+ast.workspace = true
 # todo: remove dependency on lexer: move to dev dependencies
 lexer.workspace = true
 
 [dev-dependencies]
 itertools.workspace = true
-rowan = "0.15.15"
-rstest = "0.19.0"
+ast.workspace = true
+rowan.workspace = true
+rstest.workspace = true
 pretty_assertions.workspace = true

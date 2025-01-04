@@ -1,4 +1,6 @@
-use macros::{dbg_lexer, lexer_matches, trim_idents};
+#[macro_use]
+mod utils;
+
 use tokens::Token::*;
 
 #[test]
@@ -99,8 +101,6 @@ fn nested_multi_str_test() {
 
 #[test]
 fn keyword_start() {
-    use lexer::Lexer;
-
     let source = trim_idents!(
         r#"package dev.ikeze.kotlinsyntax
 
@@ -146,7 +146,7 @@ fn keyword_start() {
         WS => 82..83, // " ",
         IDENTIFIER => 83..86, // "Int",
         WS => 86..87, // " ",
-        ASSIGNMENT => 87..88, // "=",
+        ASSIGNMENT_TOKEN => 87..88, // "=",
         WS => 88..89, // " ",
         THIS => 89..93, // "this",
         DOT => 93..94, // ".",
@@ -173,7 +173,7 @@ fn keyword_start() {
         WS => 133..134, // " ",
         IDENTIFIER => 134..137, // "len",
         WS => 137..138, // " ",
-        ASSIGNMENT => 138..139, // "=",
+        ASSIGNMENT_TOKEN => 138..139, // "=",
         WS => 139..140, // " ",
         QUOTE_OPEN => 140..141, // "\"",
         LINE_STR_TEXT => 141..147, // "simple",
@@ -191,4 +191,55 @@ fn keyword_start() {
         R_CURL => 171..172, // "}",
         EOF => 172..172
     ]);
+}
+
+#[test]
+#[ignore]
+fn simple() {
+    let source = trim_idents!(
+        r#"
+        0444.10_99e+4f
+        [],--
+        /* comments */
+        //line comment
+        #! sh echo "hey"
+        hey
+        0b101_010
+        0xff_ff
+        true
+        false
+        null
+        'A'
+        '\uffac'
+        '\n'
+        this
+        this@me
+        super
+        !in//comment
+        /* pre */@man
+        name@ // post
+          @  // both
+        !is/* comment */
+        var name: String?/*ddjjd*/ = null;
+        var name2: String? /*ddjjd*/ // = null;
+        super@me
+        continue
+        continue@where
+        return
+        return@here
+        break
+        break@now
+        `backticks baby`
+        fun hello() = "Hello"
+        var funvar = 3
+        """
+        simple multi line
+        """
+        """
+        complex "multi line"
+        """"""
+        "#
+    );
+
+    dbg_lexer_src!(&source);
 }

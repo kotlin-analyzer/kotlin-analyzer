@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
+use ast::syntax::SyntaxKind::{self, *};
 use lexer::SpannedWithSource;
-use syntax::Syntax::{self, *};
 use tokens::Token;
 
 pub trait TokenSource<'a> {
@@ -15,7 +15,7 @@ pub trait TokenSource<'a> {
 pub trait TreeSink {
     fn token(&mut self, token: Token, substring: &str);
 
-    fn start_node(&mut self, kind: Syntax);
+    fn start_node(&mut self, kind: SyntaxKind);
     fn finish_node(&mut self);
 
     fn error(&mut self, error: ParseError);
@@ -73,7 +73,7 @@ pub fn parse<'a>(token_source: &'a mut dyn TokenSource<'_>, tree_sink: &'a mut d
             };
 
             match t {
-                Token::SHEBANG_LINE => self.shebang_line(),
+                Token::SHEBANG_LINE_TOKEN => self.shebang_line(),
                 Token::ERR => self.bump(),
                 _ => unimplemented!(),
             }
@@ -83,7 +83,7 @@ pub fn parse<'a>(token_source: &'a mut dyn TokenSource<'_>, tree_sink: &'a mut d
         fn kotlin_script(&mut self) {}
 
         fn shebang_line(&mut self) {
-            assert_eq!(self.current_token(), Some(&Token::SHEBANG_LINE));
+            assert_eq!(self.current_token(), Some(&Token::SHEBANG_LINE_TOKEN));
 
             self.sink.start_node(SHEBANG_LINE);
             self.bump();

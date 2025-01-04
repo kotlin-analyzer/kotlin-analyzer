@@ -1,0 +1,58 @@
+TopLevelParseEntry {
+    field: Field {
+        name: Ident {
+            ident: "assignmentAndOperator",
+            span: #0 bytes(11895..11916),
+        },
+    },
+    asts: [
+        Choice {
+            entries: [
+                Token {
+                    token: ADD_ASSIGNMENT,
+                    span: #0 bytes(11920..11924),
+                    config: Config {
+                        name: None,
+                        ignore: false,
+                    },
+                },
+                Token {
+                    token: SUB_ASSIGNMENT,
+                    span: #0 bytes(11929..11933),
+                    config: Config {
+                        name: None,
+                        ignore: false,
+                    },
+                },
+                Token {
+                    token: MULT_ASSIGNMENT,
+                    span: #0 bytes(11938..11942),
+                    config: Config {
+                        name: None,
+                        ignore: false,
+                    },
+                },
+                Token {
+                    token: DIV_ASSIGNMENT,
+                    span: #0 bytes(11947..11951),
+                    config: Config {
+                        name: None,
+                        ignore: false,
+                    },
+                },
+                Token {
+                    token: MOD_ASSIGNMENT,
+                    span: #0 bytes(11956..11960),
+                    config: Config {
+                        name: None,
+                        ignore: false,
+                    },
+                },
+            ],
+            config: Config {
+                name: None,
+                ignore: false,
+            },
+        },
+    ],
+}

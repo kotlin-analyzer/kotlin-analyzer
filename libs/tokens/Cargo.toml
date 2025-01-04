@@ -7,3 +7,9 @@ authors.workspace = true
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
+
+[dependencies]
+phf = { version = "0.11", features = ["macros"] }
+
+[dev-dependencies]
+assert-panic.workspace = true
