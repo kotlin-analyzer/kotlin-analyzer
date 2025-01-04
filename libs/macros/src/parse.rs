@@ -188,13 +188,13 @@ impl ParseEntry {
 }
 
 /// Of the form:
-/// ```
+/// ```ignore
 /// syntaxName:
 ///     <Token>
 ///     [otherSyntax]
 /// ```
 /// Example
-/// ```
+/// ```ignore
 /// multiplicativeExpression:
 ///     asExpression {multiplicativeOperator {NL} asExpression}
 /// ```
