@@ -16,8 +16,3 @@ macros.workspace = true
 tokens.workspace = true
 rowan.workspace = true
 inflector-plus.workspace = true
-
-[build-dependencies]
-pest.workspace = true
-pest_derive.workspace = true
-tokens.workspace = true

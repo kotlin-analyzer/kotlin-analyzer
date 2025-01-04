@@ -4,12 +4,12 @@ use std::{
 };
 
 use proc_macro2::Span;
-use syn::parse::discouraged::Speculative;
 use syn::parse::{Parse, ParseStream};
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::token::{Brace, Bracket, Paren};
-use syn::{braced, bracketed, parenthesized, Ident, Lit, LitChar, LitStr, Token};
+use syn::{braced, bracketed, parenthesized, Ident, Lit, Result, Token};
+use syn::{parse::discouraged::Speculative, Error};
 
 use crate::combinators::{InOrder, Optional, Seq};
 
@@ -31,10 +31,13 @@ impl ops::Add for Config {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, derive_more::Debug)]
 pub(crate) enum BasicParseEntry {
-    CharLit(LitChar, Config),
-    StrLit(LitStr, Config),
+    Token {
+        token: tokens::Token,
+        span: Span,
+        config: Config,
+    },
     Ident(Ident, Config),
     Optional {
         bracket_token: Bracket,
@@ -42,11 +45,13 @@ pub(crate) enum BasicParseEntry {
         config: Config,
     },
     Repeated {
+        #[debug(skip)]
         brace_token: Brace,
         entries: Vec<ParseEntry>,
         config: Config,
     },
     Group {
+        #[debug(skip)]
         paren_token: Paren,
         entries: Vec<ParseEntry>,
         config: Config,
@@ -60,41 +65,6 @@ pub enum ParseEntry {
         entries: Vec<BasicParseEntry>,
         config: Config,
     },
-}
-
-impl fmt::Debug for BasicParseEntry {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::CharLit(lit, config) => f
-                .debug_struct("CharLit")
-                .field("value", &lit.value())
-                .field("config", config)
-                .finish(),
-            Self::StrLit(lit, config) => f
-                .debug_struct("StrLit")
-                .field("value", &lit.value())
-                .field("config", &config)
-                .finish(),
-            Self::Ident(id, config) => f.debug_tuple("Ident").field(id).field(config).finish(),
-            Self::Optional {
-                entries, config, ..
-            } => f
-                .debug_tuple("Optional")
-                .field(entries)
-                .field(config)
-                .finish(),
-            Self::Repeated {
-                entries, config, ..
-            } => f
-                .debug_tuple("Repeated")
-                .field(entries)
-                .field(config)
-                .finish(),
-            Self::Group {
-                entries, config, ..
-            } => f.debug_tuple("Group").field(entries).field(config).finish(),
-        }
-    }
 }
 
 impl BasicParseEntry {
@@ -164,8 +134,15 @@ impl ParseEntry {
                 let first = entries.into_iter().next().unwrap();
                 match first {
                     Basic(basic) => match basic {
-                        CharLit(lit_char, config) => Basic(CharLit(lit_char, p_config + config)),
-                        StrLit(lit_str, config) => Basic(StrLit(lit_str, p_config + config)),
+                        Token {
+                            token,
+                            span,
+                            config,
+                        } => Basic(Token {
+                            token,
+                            span,
+                            config: p_config + config,
+                        }),
                         Ident(ident, config) => Basic(Ident(ident, p_config + config)),
                         Optional {
                             bracket_token,
@@ -258,17 +235,37 @@ impl fmt::Debug for Field {
 }
 
 impl Parse for Field {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
+    fn parse(input: ParseStream) -> Result<Self> {
         let name: Ident = input.parse()?;
         input.parse::<Token![:]>()?;
         Ok(Field { name })
     }
 }
 
-fn parse_lits(input: ParseStream) -> syn::Result<BasicParseEntry> {
+fn resolve_token(name: &str, span: Span) -> Result<tokens::Token> {
+    tokens::resolve_token(name).ok_or_else(|| Error::new(span, "No matching Token variant"))
+}
+
+fn parse_lits(input: ParseStream) -> Result<BasicParseEntry> {
     Configured::<Lit>::parse(input).and_then(|Configured { config, parsed: x }| match x {
-        Lit::Str(y) => Ok(BasicParseEntry::StrLit(y, config)),
-        Lit::Char(y) => Ok(BasicParseEntry::CharLit(y, config)),
+        Lit::Str(literal) => {
+            resolve_token(&literal.value().to_string(), literal.span()).map(|token| {
+                BasicParseEntry::Token {
+                    token,
+                    span: literal.span(),
+                    config,
+                }
+            })
+        }
+        Lit::Char(literal) => {
+            resolve_token(&literal.value().to_string(), literal.span()).map(|token| {
+                BasicParseEntry::Token {
+                    token,
+                    span: literal.span(),
+                    config,
+                }
+            })
+        }
         _ => Err(syn::Error::new(
             x.span(),
             "expected a string or char literal",
@@ -276,7 +273,7 @@ fn parse_lits(input: ParseStream) -> syn::Result<BasicParseEntry> {
     })
 }
 
-fn parse_basic_entry(input: ParseStream) -> syn::Result<BasicParseEntry> {
+fn parse_basic_entry(input: ParseStream) -> Result<BasicParseEntry> {
     parse_lits(input)
         .or_else(|_| {
             Configured::<Ident>::parse(input)
@@ -342,7 +339,7 @@ fn parse_basic_entry(input: ParseStream) -> syn::Result<BasicParseEntry> {
 }
 
 impl Parse for BasicParseEntry {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
+    fn parse(input: ParseStream) -> Result<Self> {
         parse_basic_entry(input)
     }
 }
@@ -354,7 +351,7 @@ impl From<BasicParseEntry> for ParseEntry {
 }
 
 impl Parse for ParseEntry {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
+    fn parse(input: ParseStream) -> Result<Self> {
         let result = Punctuated::<BasicParseEntry, Token![|]>::parse_separated_nonempty(input)?;
 
         // Note that this means that every ParseEntry is wrapped in choice which is incorrect,
@@ -381,7 +378,7 @@ impl<P> Parse for Configured<P>
 where
     P: Parse,
 {
-    fn parse(input: ParseStream) -> syn::Result<Configured<P>> {
+    fn parse(input: ParseStream) -> Result<Configured<P>> {
         let lookahead = input.lookahead1();
 
         let ignore = if lookahead.peek(Token![_]) {
@@ -404,7 +401,7 @@ where
 }
 
 impl Parse for TopLevelParseEntry {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
+    fn parse(input: ParseStream) -> Result<Self> {
         let fork = input.fork();
         let mut result: Vec<ParseEntry> = Vec::new();
 
@@ -430,7 +427,7 @@ impl Parse for TopLevelParseEntry {
 }
 
 impl Parse for GenAst {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
+    fn parse(input: ParseStream) -> Result<Self> {
         let result: Seq<TopLevelParseEntry> = input.parse()?;
         Ok(GenAst { entries: result.0 })
     }
@@ -439,8 +436,7 @@ impl Parse for GenAst {
 impl BasicParseEntry {
     pub fn span(&self) -> Span {
         match &self {
-            Self::CharLit(ch, ..) => ch.span(),
-            Self::StrLit(st, ..) => st.span(),
+            Self::Token { span, .. } => *span,
             Self::Ident(id, ..) => id.span(),
             Self::Optional { bracket_token, .. } => bracket_token.span.span(),
             Self::Repeated { brace_token, .. } => brace_token.span.span(),
@@ -450,8 +446,7 @@ impl BasicParseEntry {
 
     pub fn config(&self) -> &Config {
         match self {
-            BasicParseEntry::CharLit(_, config) => config,
-            BasicParseEntry::StrLit(_, config) => config,
+            BasicParseEntry::Token { config, .. } => config,
             BasicParseEntry::Ident(_, config) => config,
             BasicParseEntry::Optional { config, .. } => config,
             BasicParseEntry::Repeated { config, .. } => config,
@@ -461,9 +456,18 @@ impl BasicParseEntry {
 
     pub fn is_composite(&self) -> bool {
         match self {
+            BasicParseEntry::Optional { entries, .. }
+            | BasicParseEntry::Repeated { entries, .. }
+            | BasicParseEntry::Group { entries, .. }
+                if entries.len() == 1 =>
+            {
+                false
+            }
+
             BasicParseEntry::Optional { .. }
             | BasicParseEntry::Repeated { .. }
             | BasicParseEntry::Group { .. } => true,
+
             _ => false,
         }
     }
@@ -491,11 +495,18 @@ impl ParseEntry {
             ParseEntry::Choice { config, .. } => config,
         }
     }
+
+    pub fn is_composite(&self) -> bool {
+        match self {
+            ParseEntry::Basic(basic) => basic.is_composite(),
+            ParseEntry::Choice { entries, .. } if entries.len() == 1 => false,
+            ParseEntry::Choice { .. } => true,
+        }
+    }
 }
 
 #[cfg(test)]
 mod test {
-    use std::error::Error;
 
     use super::*;
     use proc_macro2::{TokenStream, TokenTree};
@@ -517,7 +528,7 @@ mod test {
     where
         P: Parse,
     {
-        fn parse(input: ParseStream) -> syn::Result<Self> {
+        fn parse(input: ParseStream) -> Result<Self> {
             Ok(ParseTillEnd {
                 main: input.parse()?,
                 rest: input.parse()?,
@@ -526,7 +537,7 @@ mod test {
     }
 
     #[test]
-    fn basic_entry_test() -> Result<(), Box<dyn Error>> {
+    fn basic_entry_test() -> Result<()> {
         let stream: TokenStream = tt! {
             expression:
                 disjunction
@@ -539,7 +550,7 @@ mod test {
     }
 
     #[test]
-    fn simple_top_level_entry_without_config() -> Result<(), Box<dyn Error>> {
+    fn simple_top_level_entry_without_config() -> Result<()> {
         let stream: TokenStream = tt! {
             expression:
                 disjunction
@@ -549,7 +560,7 @@ mod test {
     }
 
     #[test]
-    fn simple_top_level_entry() -> Result<(), Box<dyn Error>> {
+    fn simple_top_level_entry() -> Result<()> {
         let stream: TokenStream = tt! {
             expression:
                 disjunction
@@ -567,13 +578,13 @@ mod test {
         let top = syn::parse2::<TopLevelParseEntry>(stream)?;
         assert!(matches!(
             &top.asts[..],
-            &[ParseEntry::Basic(BasicParseEntry::StrLit(..))]
+            &[ParseEntry::Basic(BasicParseEntry::Token { .. })]
         ));
         Ok(())
     }
 
     #[test]
-    fn top_level_entry_with_choice() -> Result<(), Box<dyn Error>> {
+    fn top_level_entry_with_choice() -> Result<()> {
         let stream: TokenStream = tt! {
             expression:
                 disjunction
@@ -585,7 +596,7 @@ mod test {
     }
 
     #[test]
-    fn test_with_config() -> Result<(), Box<dyn Error>> {
+    fn test_with_config() -> Result<()> {
         let stream: TokenStream = tt! {
             annotationUseSiteTarget:
                 _(AT_NO_WS | AT_PRE_WS)@AnnotationUseSiteTargetAt
@@ -593,6 +604,7 @@ mod test {
                 _{NL} ':'
         };
         let top = syn::parse2::<TopLevelParseEntry>(stream)?;
+        dbg!(top);
         // assert!(
         //     matches!(&top.asts[..], [ParseEntryExt {entry, ..} ] if matches!(entry, ParseEntry::Choice { .. }))
         // );
@@ -600,7 +612,7 @@ mod test {
     }
 
     #[test]
-    fn gen_ast_test() -> Result<(), Box<dyn Error>> {
+    fn gen_ast_test() -> Result<()> {
         let stream: TokenStream = tt! {
             functionModifier:
             "tailrec"
@@ -631,6 +643,7 @@ mod test {
             | "actual"
         };
         let gen = syn::parse2::<GenAst>(stream)?;
+        dbg!(gen);
         // assert!(
         //     matches!(&gen., [ParseEntryExt {entry, ..} ]
         //         if matches!(entry, ParseEntry::Basic(BasicParseEntry::StrLit(..))))

@@ -1,14 +1,14 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[allow(non_camel_case_types)]
 pub enum Token {
-    ///! White Space and Comments    
+    // ! White Space and Comments
     SHEBANG_LINE_TOKEN,
     DELIMITED_COMMENT,
     LINE_COMMENT,
     WS,
     NL,
 
-    //# REGION KEYWORDS AND OPERATORS
+    // ! KEYWORDS AND OPERATORS
     RESERVED,
     DOT,
     COMMA,
@@ -141,8 +141,7 @@ pub enum Token {
     ACTUAL,
     VALUE,
 
-    //# ENDREGION
-    /// LITERALS
+    // ! LITERALS
     INTEGER_LITERAL,
     REAL_LITERAL,
 

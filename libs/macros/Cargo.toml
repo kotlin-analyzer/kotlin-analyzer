@@ -12,6 +12,7 @@ rust-version.workspace = true
 proc-macro = true
 
 [dependencies]
+derive_more.workspace = true
 inflector-plus.workspace = true
 itertools.workspace = true
 nonempty.workspace = true

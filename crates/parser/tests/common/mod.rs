@@ -1,9 +1,9 @@
-// use ast::Root;
+use ast::syntax::{SyntaxKind, SyntaxNode};
+use ast::{nodes::Cast, syntax::Root};
 use itertools::{peek_nth, PeekNth};
 use lexer::{Lexer, SpannedWithSource};
 use parser::{ParseError, TokenSource, TreeSink};
 use rowan::{GreenNode, GreenNodeBuilder};
-use syntax::{SyntaxKind, SyntaxNode};
 use tokens::Token;
 
 struct TestTreeSink {
@@ -60,7 +60,7 @@ where
 
 pub struct Parse {
     green_node: GreenNode,
-    #[allow(unused)]
+    #[allow(dead_code)]
     pub errors: Vec<ParseError>,
 }
 
@@ -87,7 +87,7 @@ impl Parse {
         SyntaxNode::new_root(self.green_node.clone())
     }
 
-    // pub fn root(&self) -> Root {
-    //     Root::cast(self.syntax()).unwrap()
-    // }
+    pub fn root(&self) -> Root {
+        Root::cast(self.syntax()).unwrap()
+    }
 }

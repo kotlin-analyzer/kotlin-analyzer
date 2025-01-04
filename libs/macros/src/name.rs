@@ -1,254 +1,289 @@
 use inflector::Inflector;
 use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote};
-use syn::{Error, Ident, Result};
+use syn::{parse_quote, ExprPath, Ident, Result};
 use tokens::Token;
 
 use crate::parse::{BasicParseEntry, ParseEntry};
 
 #[derive(Debug, Clone)]
-pub enum SimpleName {
+enum CompositeKind {
+    Segment,
+    Variant,
+}
+
+impl CompositeKind {
+    fn new(parent: &Name) -> Self {
+        if parent.is_choice() {
+            Self::Variant
+        } else {
+            Self::Segment
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct CompositeName<'a> {
+    parent: &'a Name<'a>,
+    position: usize,
+    span: Span,
+    kind: CompositeKind,
+}
+
+#[derive(Debug, Clone)]
+pub enum NameForm<'a> {
     /// The form of symbols like `==`, `+=`, etc.
     Token { token: Token, span: Span },
     /// The form of an identitifier like name, functionName
-    Ident(Ident),
+    Ident(&'a Ident),
     /// Explicit token name like AT_NO_WS, EQUAL
-    TokenIdent(Ident),
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum RetType {
-    Single,
-    Many,
-}
-
-#[derive(Debug, Clone)]
-pub struct CompositeName {
-    parent: Ident,
-    position: usize,
-    span: Span,
+    TokenIdent(&'a Ident),
+    /// Explicitly named nodes with @ as in @Name
+    FromConfig(&'a Ident),
+    /// Unamed complex tokens, like {...} or [...] or (...)
+    Composite(CompositeName<'a>),
 }
 
 #[derive(Debug, Clone)]
-pub enum Name {
-    Simple(SimpleName, RetType),
-    Composite(CompositeName, RetType),
+pub enum Name<'a> {
+    Single(NameForm<'a>),
+    Many(NameForm<'a>),
+    Optional(NameForm<'a>),
+    Choice(NameForm<'a>),
 }
 
-impl Name {
-    fn simple(name: SimpleName) -> Self {
-        Self::Simple(name, RetType::Single)
-    }
-
-    fn composite(name: CompositeName) -> Self {
-        Self::Composite(name, RetType::Single)
-    }
-}
-
-impl SimpleName {
+impl<'a> NameForm<'a> {
     fn name(&self) -> String {
         match self {
-            SimpleName::Token { token, .. } => format!("{token:?}"),
-            SimpleName::Ident(id) | SimpleName::TokenIdent(id) => id.to_string(),
+            NameForm::Token { token, .. } => format!("{token:?}"),
+            NameForm::Ident(ident) | NameForm::TokenIdent(ident) | NameForm::FromConfig(ident) => {
+                ident.to_string()
+            }
+            NameForm::Composite(CompositeName {
+                parent,
+                position,
+                kind,
+                ..
+            }) => {
+                let kind = match kind {
+                    CompositeKind::Segment => "Segment",
+                    CompositeKind::Variant => "Variant",
+                };
+                format!("{}{kind}{position}", parent.type_name().to_string())
+            }
         }
     }
 
     fn span(&self) -> Span {
         match self {
-            SimpleName::Token { span, .. } => span.clone(),
-            SimpleName::Ident(id) | SimpleName::TokenIdent(id) => id.span(),
+            NameForm::Token { span, .. } => *span,
+            NameForm::Ident(ident) | NameForm::TokenIdent(ident) | NameForm::FromConfig(ident) => {
+                ident.span()
+            }
+            NameForm::Composite(CompositeName { span, .. }) => *span,
         }
     }
 
-    fn type_name(&self) -> Ident {
+    fn is_unknown(&self) -> bool {
+        matches!(self, Self::Composite(..) | Self::FromConfig(..))
+    }
+}
+
+impl Name<'_> {
+    fn form(&self) -> &NameForm {
+        match self {
+            Name::Single(form) | Name::Many(form) | Name::Optional(form) | Name::Choice(form) => {
+                form
+            }
+        }
+    }
+
+    fn name(&self) -> String {
+        self.form().name()
+    }
+
+    pub fn span(&self) -> Span {
+        self.form().span()
+    }
+
+    pub fn is_unknown(&self) -> bool {
+        self.form().is_unknown()
+    }
+
+    pub fn is_choice(&self) -> bool {
+        matches!(self, Self::Choice(..))
+    }
+
+    pub fn type_name(&self) -> Ident {
         Ident::new(&self.name().to_pascal_case(), self.span())
     }
 
-    fn cast_closure(&self) -> TokenStream {
-        let variant = format_ident!("{}", self.type_name());
-        quote!(#variant::cast)
+    pub fn cast_closure(&self) -> ExprPath {
+        let type_name = self.type_name();
+        parse_quote!(#type_name::cast)
     }
 
     fn method_name_inner(&self) -> String {
-        match self {
-            SimpleName::Token { .. } | SimpleName::TokenIdent(_) => {
-                format!("get_{}", self.name().to_snake_case())
+        match self.form() {
+            NameForm::Token { .. } | NameForm::TokenIdent(..) => {
+                if self.name().to_snake_case().ends_with("_token") {
+                    self.name().to_snake_case()
+                } else {
+                    format!("{}_token", self.name().to_snake_case())
+                }
             }
-            SimpleName::Ident(_) => {
-                format!("{}", self.name().to_snake_case())
-            }
-        }
-    }
-
-    fn iter_fn(&self, ret_type: &RetType) -> Ident {
-        match ret_type {
-            RetType::Single => format_ident!("find_map"),
-            RetType::Many => format_ident!("filter_map"),
-        }
-    }
-
-    fn method_name(&self, ret_type: &RetType) -> Ident {
-        let name = self.method_name_inner();
-        match ret_type {
-            RetType::Single => format_ident!("{}", name),
-            RetType::Many => format_ident!("{}", name.to_plural()),
-        }
-    }
-
-    fn return_type(&self, ret_type: &RetType) -> TokenStream {
-        let type_name = format_ident!("{}", self.type_name());
-        match ret_type {
-            RetType::Single => quote!(Option<#type_name>),
-            RetType::Many => quote!(impl Iterator<Item = #type_name> + '_),
-        }
-    }
-}
-
-impl CompositeName {
-    pub fn new(parent: &Ident, position: usize, span: Span) -> Self {
-        Self {
-            parent: parent.clone(),
-            position,
-            span,
-        }
-    }
-    pub fn to_simple(&self) -> SimpleName {
-        let Self {
-            parent,
-            position,
-            span,
-        } = self;
-        SimpleName::Ident(Ident::new(
-            &format!("{}Segment{position}", parent.to_string()),
-            span.clone(),
-        ))
-    }
-}
-
-impl Name {
-    pub fn type_name(&self) -> Ident {
-        match self {
-            Self::Simple(simple, _) => simple.type_name(),
-            Self::Composite(comp, _) => comp.to_simple().type_name(),
-        }
-    }
-
-    pub fn cast_closure(&self) -> TokenStream {
-        match self {
-            Self::Simple(simple, _) => simple.cast_closure(),
-            Self::Composite(..) => {
-                let variant = format_ident!("{}", self.type_name());
-                // the variant real type would be defined in the same module and not in ::syntax
-                quote!(#variant::cast)
-            }
-        }
-    }
-
-    pub fn method_name(&self) -> Ident {
-        match self {
-            Self::Simple(simple, ret_type) => simple.method_name(ret_type),
-            Self::Composite(comp, ret_type) => comp.to_simple().method_name(ret_type),
+            _ => format!("{}", self.name().to_snake_case()),
         }
     }
 
     pub fn iter_fn(&self) -> Ident {
         match self {
-            Self::Simple(simple, ret_type) => simple.iter_fn(ret_type),
-            Self::Composite(comp, ret_type) => comp.to_simple().iter_fn(ret_type),
+            Self::Optional(..) | Self::Single(..) | Self::Choice(..) => format_ident!("find_map"),
+            Self::Many(..) => format_ident!("filter_map"),
+        }
+    }
+
+    pub fn method_name(&self) -> Ident {
+        let name = self.method_name_inner();
+        match self {
+            Self::Optional(..) | Self::Single(..) | Self::Choice(..) => {
+                Ident::new(&name, self.span())
+            }
+            Self::Many(..) => Ident::new(&name.to_plural(), self.span()),
         }
     }
 
     pub fn return_type(&self) -> TokenStream {
+        let type_name = self.type_name();
         match self {
-            Self::Simple(simple, ret_type) => simple.return_type(ret_type),
-            Self::Composite(comp, ret_type) => comp.to_simple().return_type(ret_type),
+            Self::Optional(..) | Self::Single(..) | Self::Choice(..) => quote!(Option<#type_name>),
+            Self::Many(..) => quote!(impl Iterator<Item = #type_name> + '_),
         }
     }
 }
+
 #[derive(Debug, Clone, Copy)]
 pub struct NameCtx<'a> {
-    pub parent: &'a Ident,
+    pub parent: &'a Name<'a>,
     pub position: usize,
 }
 
 impl NameCtx<'_> {
-    pub fn new<'a>(parent: &'a Ident, position: usize) -> NameCtx<'a> {
-        NameCtx {
-            parent: parent,
-            position,
-        }
+    pub fn new<'a>(parent: &'a Name<'a>, position: usize) -> NameCtx<'a> {
+        NameCtx { parent, position }
     }
 }
 
-fn resolve_token(name: &str, span: Span) -> Result<Token> {
-    tokens::resolve_token(name).ok_or_else(|| Error::new(span, "No matching Token variant"))
-}
-
 pub trait IntoName {
-    fn into_name(&self, ctx: NameCtx) -> Result<Name>;
+    fn into_name<'a, 'b: 'a>(&'a self, ctx: NameCtx<'b>) -> Result<Name<'a>>;
 }
 
 impl IntoName for BasicParseEntry {
-    fn into_name(&self, ctx: NameCtx) -> Result<Name> {
-        if let Some(name) = self.config().name.clone() {
-            return Ok(Name::simple(SimpleName::Ident(name)));
-        }
-
+    fn into_name<'a, 'b: 'a>(&'a self, ctx: NameCtx<'b>) -> Result<Name<'a>> {
         match self {
-            BasicParseEntry::CharLit(ch, ..) => resolve_token(&ch.value().to_string(), ch.span())
-                .map(|token| {
-                    Name::simple(SimpleName::Token {
-                        token,
-                        span: ch.span(),
-                    })
-                }),
-            BasicParseEntry::StrLit(st, ..) => resolve_token(&st.value().to_string(), st.span())
-                .map(|token| {
-                    Name::simple(SimpleName::Token {
-                        token,
-                        span: st.span(),
-                    })
-                }),
+            BasicParseEntry::Token { token, span, .. } => Ok(Name::Single(NameForm::Token {
+                token: *token,
+                span: *span,
+            })),
             BasicParseEntry::Ident(id, ..) => {
                 if id.to_string().starts_with(char::is_lowercase) {
-                    Ok(Name::simple(SimpleName::Ident(id.clone())))
+                    Ok(Name::Single(NameForm::Ident(id)))
                 } else {
-                    Ok(Name::simple(SimpleName::TokenIdent(id.clone())))
+                    Ok(Name::Single(NameForm::TokenIdent(id)))
                 }
             }
-            BasicParseEntry::Repeated { .. } => Ok(Name::Composite(
-                CompositeName::new(&ctx.parent, ctx.position, self.span()),
-                RetType::Many,
-            )),
-            BasicParseEntry::Optional { .. } | BasicParseEntry::Group { .. } => Ok(
-                Name::composite(CompositeName::new(&ctx.parent, ctx.position, self.span())),
-            ),
+            // For {T} and [T], we unwrap them
+            BasicParseEntry::Repeated { entries, .. } if entries.len() == 1 => {
+                match entries.first().unwrap().into_name(ctx)? {
+                    Name::Single(form) | Name::Choice(form) => Ok(Name::Many(form)),
+                    Name::Optional(form) => Err(syn::Error::new(
+                        form.span(),
+                        "Unexpected optional nested inside a repeatition",
+                    )),
+                    Name::Many(form) => Err(syn::Error::new(
+                        form.span(),
+                        "Unexpected nested repeatition",
+                    )),
+                }
+            }
+            BasicParseEntry::Optional { entries, .. } if entries.len() == 1 => {
+                match entries.first().unwrap().into_name(ctx)? {
+                    Name::Single(form) | Name::Choice(form) => Ok(Name::Optional(form)),
+                    Name::Optional(form) => {
+                        Err(syn::Error::new(form.span(), "Unexpected nested optional"))
+                    }
+                    Name::Many(form) => Err(syn::Error::new(
+                        form.span(),
+                        "Unexpected repeatition inside an optional",
+                    )),
+                }
+            }
+
+            BasicParseEntry::Repeated { .. } => {
+                if let Some(name) = self.config().name.as_ref() {
+                    return Ok(Name::Many(NameForm::FromConfig(name)));
+                }
+
+                Ok(Name::Many(NameForm::Composite(CompositeName {
+                    parent: ctx.parent,
+                    position: ctx.position,
+                    span: self.span(),
+                    kind: CompositeKind::new(ctx.parent),
+                })))
+            }
+            BasicParseEntry::Optional { .. } => {
+                if let Some(name) = self.config().name.as_ref() {
+                    return Ok(Name::Optional(NameForm::FromConfig(name)));
+                }
+
+                Ok(Name::Optional(NameForm::Composite(CompositeName {
+                    parent: ctx.parent,
+                    position: ctx.position,
+                    span: self.span(),
+                    kind: CompositeKind::new(ctx.parent),
+                })))
+            }
+            BasicParseEntry::Group { .. } => {
+                if let Some(name) = self.config().name.as_ref() {
+                    return Ok(Name::Optional(NameForm::FromConfig(name)));
+                }
+
+                Ok(Name::Single(NameForm::Composite(CompositeName {
+                    parent: ctx.parent,
+                    position: ctx.position,
+                    span: self.span(),
+                    kind: CompositeKind::new(ctx.parent),
+                })))
+            }
         }
     }
 }
 
 impl IntoName for ParseEntry {
-    fn into_name(&self, ctx: NameCtx) -> Result<Name> {
-        if let Some(name) = self.config().name.clone() {
-            return Ok(Name::simple(SimpleName::Ident(name)));
-        }
+    fn into_name<'a, 'b: 'a>(&'a self, ctx: NameCtx<'b>) -> Result<Name<'a>> {
         match self {
             ParseEntry::Basic(basic_parse_entry) => basic_parse_entry.into_name(ctx),
             ParseEntry::Choice { .. } => {
-                let name =
-                    Name::composite(CompositeName::new(&ctx.parent, ctx.position, self.span()));
-                Ok(name)
+                if let Some(name) = self.config().name.as_ref() {
+                    return Ok(Name::Choice(NameForm::FromConfig(name)));
+                }
+                Ok(Name::Choice(NameForm::Composite(CompositeName {
+                    parent: ctx.parent,
+                    position: ctx.position,
+                    span: self.span(),
+                    kind: CompositeKind::new(ctx.parent),
+                })))
             }
         }
     }
 }
 
 impl BasicParseEntry {
-    pub fn get_children_names(&self, parent: &Ident) -> Result<Vec<Name>> {
+    pub fn get_children_names<'a, 'b: 'a>(&'a self, parent: &'b Name) -> Result<Vec<Name<'a>>> {
+        if !self.is_composite() {
+            return Ok(Vec::with_capacity(0));
+        }
         match self {
-            BasicParseEntry::CharLit(..)
-            | BasicParseEntry::StrLit(..)
-            | BasicParseEntry::Ident(..) => Ok(Vec::with_capacity(0)),
             BasicParseEntry::Optional { entries, .. }
             | BasicParseEntry::Repeated { entries, .. }
             | BasicParseEntry::Group { entries, .. } => entries
@@ -256,12 +291,17 @@ impl BasicParseEntry {
                 .enumerate()
                 .map(|(pos, s)| s.into_name(NameCtx::new(parent, pos)))
                 .collect(),
+            _ => unreachable!(),
         }
     }
 }
 
 impl ParseEntry {
-    pub fn get_children_names(&self, parent: &Ident) -> Result<Vec<Name>> {
+    pub fn get_children_names<'a, 'b: 'a>(&'a self, parent: &'b Name) -> Result<Vec<Name<'a>>> {
+        if !self.is_composite() {
+            return Ok(Vec::with_capacity(0));
+        }
+
         match self {
             ParseEntry::Basic(basic_parse_entry) => basic_parse_entry.get_children_names(parent),
             ParseEntry::Choice { entries, .. } => entries

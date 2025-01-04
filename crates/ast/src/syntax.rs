@@ -29,7 +29,7 @@ macro_rules! define_syntax {
     };
     ($id:ident in $name:ident) => {
         pascal!{
-            #[derive(PartialEq, Eq, Hash, Clone)]
+            #[derive(PartialEq, Eq, Hash, Clone, Debug)]
             #[repr(transparent)]
             pub struct $id(pub SyntaxNode);
         }

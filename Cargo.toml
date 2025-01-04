@@ -15,20 +15,18 @@ assert-panic = "1.0.1"
 ast = { path = "./crates/ast" }
 casey = "0.4.0"
 classpath_resolver = { path = "./libs/classpath_resolver" }
+derive_more = { version = "1.0.0", features = ["debug"] }
 inflector-plus = "0.11.7"
-itertools = "0.13.0"
+itertools = "0.14.0"
 lexer = { path = "./crates/lexer" }
 macros = { path = "./libs/macros" }
 nonempty = "0.11.0"
 parser = { path = "./crates/parser" }
-pest = "2.7.13"
-pest_derive = "2.7.13"
 pretty_assertions = "1.4.1"
 prettyplease = "0.2.25"
 proc-macro2 = "1.0.92"
 quote = "1.0.37"
 rowan = "0.16.1"
-rstest = "0.23.0"
+rstest = "0.24.0"
 syn = "2.0.90"
-syntax = { path = "./crates/syntax" }
 tokens = { path = "./libs/tokens" }

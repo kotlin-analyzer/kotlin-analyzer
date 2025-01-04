@@ -1,79 +1,9 @@
 #![allow(unused)]
 use super::*;
-use crate::syntax::SyntaxKind::{self, *};
-
-#[derive(Debug)]
-struct Root(SyntaxNode);
-#[derive(Debug)]
-struct KotlinFile(SyntaxNode);
-#[derive(Debug)]
-struct ShebangLine(SyntaxNode);
-#[derive(Debug)]
-struct Nl(SyntaxNode);
-#[derive(Debug)]
-struct PackageHeader(SyntaxNode);
-
-#[derive(Debug)]
-struct FileAnnotation(SyntaxNode);
-
-impl Cast for Root {
-    fn cast(node: SyntaxNode) -> Option<Self> {
-        if node.kind() == ROOT {
-            Some(Self(node))
-        } else {
-            None
-        }
-    }
-}
-impl Cast for KotlinFile {
-    fn cast(node: SyntaxNode) -> Option<Self> {
-        if node.kind() == KOTLIN_FILE {
-            Some(Self(node))
-        } else {
-            None
-        }
-    }
-}
-
-impl Cast for ShebangLine {
-    fn cast(node: SyntaxNode) -> Option<Self> {
-        if node.kind() == SHEBANG_LINE {
-            Some(Self(node))
-        } else {
-            None
-        }
-    }
-}
-
-impl Cast for Nl {
-    fn cast(node: SyntaxNode) -> Option<Self> {
-        if node.kind() == NL {
-            Some(Self(node))
-        } else {
-            None
-        }
-    }
-}
-
-impl Cast for PackageHeader {
-    fn cast(node: SyntaxNode) -> Option<Self> {
-        if node.kind() == PACKAGE_HEADER {
-            Some(Self(node))
-        } else {
-            None
-        }
-    }
-}
-
-impl Cast for FileAnnotation {
-    fn cast(node: SyntaxNode) -> Option<Self> {
-        if node.kind() == FILE_ANNOTATION {
-            Some(Self(node))
-        } else {
-            None
-        }
-    }
-}
+use crate::syntax::{
+    FileAnnotation, KotlinFile, Nl, PackageHeader, Root, ShebangLine,
+    SyntaxKind::{self, *},
+};
 
 fn make_green() -> SyntaxNode {
     let mut builder = rowan::GreenNodeBuilder::new();

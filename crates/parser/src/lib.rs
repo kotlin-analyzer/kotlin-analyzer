@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
+use ast::syntax::SyntaxKind::{self, *};
 use lexer::SpannedWithSource;
-use syntax::SyntaxKind::{self, *};
 use tokens::Token;
 
 pub trait TokenSource<'a> {

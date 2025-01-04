@@ -1,15 +1,50 @@
+use std::collections::HashMap;
+
 use inflector::Inflector;
+use itertools::Itertools;
 use proc_macro2::TokenStream;
 use quote::{quote, quote_spanned};
-use syn::{Error, Ident, Result};
+use syn::{parse_quote, Error, Ident, Result, Type};
 
 use crate::{
-    name::{IntoName, NameCtx},
+    name::{IntoName, Name, NameCtx, NameForm},
     parse::{BasicParseEntry, GenAst, ParseEntry, TopLevelParseEntry},
 };
 
+const IGNORED: &[&'static str] = &["nl_token", "nl_tokens"];
+
+// TODO: Add documenation on generated functions
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+struct ImplKey {
+    target: Ident,
+    name: String,
+}
+
+impl ImplKey {
+    fn new(target: Ident, name: String) -> Self {
+        Self { target, name }
+    }
+}
+
+#[derive(Debug, Default)]
+struct GeneratedSink {
+    impls: HashMap<ImplKey, TokenStream>,
+    top_level_items: Vec<TokenStream>,
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+struct GenContext {
+    is_nested: bool,
+}
+
 trait Generate {
-    fn generate(self, ctx: NameCtx, is_nested: bool) -> Result<TokenStream>;
+    fn generate(
+        &self,
+        sink: &mut GeneratedSink,
+        name_ctx: NameCtx,
+        gen_ctx: GenContext,
+    ) -> Result<()>;
 }
 
 impl GenAst {
@@ -32,49 +67,77 @@ impl TopLevelParseEntry {
         let typename = Ident::new(&field.name.to_string().to_pascal_case(), field.name.span());
         let asts_len = asts.len();
 
-        // let is_enum = asts_len == 1 && asts.first().map(|e| e.is_enum()).unwrap_or_default();
+        let name = Name::Single(NameForm::Ident(&typename));
 
-        let entry_gen = asts
+        let mut sink = GeneratedSink::default();
+
+        for (pos, e) in asts.into_iter().enumerate() {
+            e.generate(
+                &mut sink,
+                NameCtx::new(&name, pos),
+                GenContext {
+                    is_nested: false || asts_len > 1,
+                },
+            )?;
+        }
+
+        let GeneratedSink {
+            impls,
+            top_level_items: new_types,
+        } = sink;
+
+        let groups = impls
             .into_iter()
-            .enumerate()
-            .map(|(pos, e)| e.generate(NameCtx::new(&typename, pos), false || asts_len > 1))
-            .collect::<Result<Vec<_>>>()?;
+            .filter(|entry| !IGNORED.contains(&entry.0.name.as_str()))
+            .into_group_map_by(|entry| entry.0.target.to_string());
 
-        let entry_gen = entry_gen.into_iter().reduce(|acc, next| {
+        let impls = groups.into_values().into_iter().map(|group| {
+            let (targets, impls): (Vec<_>, Vec<_>) = group.into_iter().collect();
+            let target = targets.into_iter().next().unwrap().target;
+
             quote! {
-                #acc
-                #next
+                impl #target {
+                    #(#impls)*
+                }
             }
         });
 
         Ok(quote! {
-            #entry_gen
+            #(#new_types)*
+            #(#impls)*
         })
     }
 }
 
 impl Generate for ParseEntry {
-    fn generate(self, ctx: NameCtx, is_nested: bool) -> Result<TokenStream> {
+    fn generate(
+        &self,
+        sink: &mut GeneratedSink,
+        name_ctx: NameCtx,
+        gen_ctx: GenContext,
+    ) -> Result<()> {
         let span = self.span();
-        let name = self.into_name(ctx)?;
+        let name = self.into_name(name_ctx)?;
 
         // In case of choice, we need to know what the target is.
         // If it is nested, then it is the name of the
         // TODO: it might be best to always use parent here, check generated code
         // This is because nested enum always tend to be inside a group
-        let node = if is_nested {
-            name.type_name()
+        let node = if gen_ctx.is_nested {
+            &name
         } else {
-            ctx.parent.clone()
+            name_ctx.parent
         };
+
         let children_names = self.get_children_names(&node)?;
 
         match self {
-            ParseEntry::Basic(basic) => basic.generate(ctx, is_nested),
+            ParseEntry::Basic(basic) => basic.generate(sink, name_ctx, gen_ctx),
             ParseEntry::Choice { entries, .. } => {
-                let kind_name = Ident::new(&format!("{}Kind", node.to_string()), node.span());
+                let node_name = node.type_name();
+                let kind_name = Ident::new(&format!("{}Kind", node_name.to_string()), node.span());
 
-                let impl_block = {
+                {
                     let casts = children_names.iter().map(|v| v.cast_closure());
 
                     let mut casts_for_kind = children_names.iter().map(|v| {
@@ -89,190 +152,180 @@ impl Generate for ParseEntry {
 
                     // TODO: implement Innercast for nested
 
-                    let cast_stream = quote_spanned! {span=>
-                        impl Cast for #node {
-                            fn cast(node: SyntaxNode) -> Option<Self> {
-                                if #(#casts(node.clone()).is_some())||* {
-                                    Some(Self(node))
-                                } else {
-                                    None
+                    if gen_ctx.is_nested {
+                        let node = name.type_name();
+
+                        sink.top_level_items.push(quote! {
+                            impl Cast for #node {
+                                fn cast(node: SyntaxNode) -> Option<Self> {
+                                    if #(#casts(node.clone()).is_some())||* {
+                                        Some(Self(node))
+                                    } else {
+                                        None
+                                    }
                                 }
                             }
-                        }
-                    };
-
-                    let kind_stream = quote_spanned! {span=>
-                        impl #node {
+                        });
+                    }
+                    sink.impls.insert(
+                        ImplKey::new(node.type_name(), "kind".to_string()),
+                        quote! {
                             pub fn kind(&self) -> #kind_name {
                                 #first_cast
                                 #(.or(#casts_for_kind))*
                                 .unwrap()
                             }
-                        }
-                    };
-
-                    if is_nested {
-                        quote! {
-                            #cast_stream
-                            #kind_stream
-                        }
-                    } else {
-                        kind_stream
-                    }
+                        },
+                    )
                 };
 
-                let enum_type = {
+                {
                     let variants = children_names.iter().map(|e| {
                         let ty = e.type_name();
                         quote!(#ty(#ty))
                     });
 
-                    quote! {
+                    sink.top_level_items.push(quote! {
                         #[derive(PartialEq, Eq, Hash, Clone)]
                         pub enum #kind_name {
                             #(#variants),*
                         }
-                    }
+                    });
                 };
 
-                let new_types = if is_nested {
-                    let parent = &ctx.parent;
+                if gen_ctx.is_nested {
+                    let parent_ident = name_ctx.parent.type_name();
                     let method_name = name.method_name();
 
-                    quote! {
+                    sink.top_level_items.push(quote! {
                         #[derive(PartialEq, Eq, Hash, Clone)]
                         #[repr(transparent)]
-                        pub struct #node(SyntaxNode);
+                        pub struct #node_name(SyntaxNode);
+                    });
 
-                        impl #parent {
-                            pub fn #method_name(&self) -> Option<#node> {
-                                self.0.children().find_map(#node::cast)
+                    sink.impls.insert(
+                        ImplKey::new(parent_ident, method_name.to_string()),
+                        quote! {
+                            pub fn #method_name(&self) -> Option<#node_name> {
+                                self.0.children().find_map(#node_name::cast)
                             }
-                        }
-                    }
-                } else {
-                    quote!()
-                };
+                        },
+                    );
+                }
 
-                let children_gen = entries
+                entries
                     .into_iter()
                     .enumerate()
                     .filter(|(_, e)| e.is_composite())
-                    .map(|(pos, e)| e.generate(NameCtx::new(&node, pos), true))
+                    .map(|(pos, e)| {
+                        e.generate(
+                            sink,
+                            NameCtx::new(&node, pos),
+                            GenContext { is_nested: true },
+                        )
+                    })
                     .collect::<Result<Vec<_>>>()?;
 
-                Ok(quote! {
-                    #enum_type
-
-                    #impl_block
-
-                    #new_types
-
-                    #(#children_gen)*
-                })
+                Ok(())
             }
         }
     }
 }
 
 impl BasicParseEntry {
-    fn inner_cast_type(&self, parent: &Ident) -> Result<TokenStream> {
+    fn inner_cast_type(&self, name_ctx: NameCtx) -> Result<Type> {
+        let name = self.into_name(name_ctx)?;
+        let type_name = name.type_name();
+
         match self {
-            BasicParseEntry::Optional { .. }
-            | BasicParseEntry::Repeated { .. }
-            | BasicParseEntry::Group { .. } => {
-                let node_children = self
-                    .get_children_names(parent)?
+            BasicParseEntry::Token { .. } | BasicParseEntry::Ident(..) => {
+                Ok(parse_quote!(#type_name))
+            }
+            BasicParseEntry::Group { entries, .. }
+            | BasicParseEntry::Repeated { entries, .. }
+            | BasicParseEntry::Optional { entries, .. } => {
+                let node_children = entries
                     .into_iter()
-                    .map(|n| n.type_name())
-                    .collect::<Vec<_>>();
+                    .enumerate()
+                    .map(|(pos, n)| n.inner_cast_type(NameCtx::new(&name, pos)))
+                    .collect::<Result<Vec<_>>>()?;
+
+                let children_type: Type = if node_children.len() == 1 {
+                    node_children.into_iter().next().unwrap()
+                } else {
+                    parse_quote!((#(#node_children),*))
+                };
 
                 match self {
-                    BasicParseEntry::Optional { .. } => {
-                        if node_children.len() == 1 {
-                            Ok(quote!(Option::<#(#node_children),*>))
-                        } else {
-                            Ok(quote!(Option::<(#(#node_children),*)>))
-                        }
-                    }
+                    BasicParseEntry::Optional { .. } => Ok(parse_quote!(Option<#children_type>)),
                     BasicParseEntry::Repeated { .. } => {
-                        if node_children.len() == 1 {
-                            Ok(quote!(ZeroOrMore::<#(#node_children),*>))
-                        } else {
-                            Ok(quote!(ZeroOrMore::<(#(#node_children),*)>))
-                        }
+                        Ok(parse_quote!(ZeroOrMore<#children_type>))
                     }
-                    BasicParseEntry::Group { .. } => {
-                        if node_children.len() == 1 {
-                            Ok(quote!(#(#node_children),*))
-                        } else {
-                            Ok(quote!(<(#(#node_children),*)>))
-                        }
-                    }
+                    BasicParseEntry::Group { .. } => Ok(children_type),
                     _ => unreachable!(),
                 }
             }
-            _ => unreachable!("inner cast type should only be called on composite nodes"),
         }
     }
-    fn generate_multi(self, ctx: NameCtx, is_nested: bool) -> Result<TokenStream> {
-        assert!(self.is_composite());
+    fn generate_multi(&self, sink: &mut GeneratedSink, name_ctx: NameCtx) -> Result<()> {
+        match &self {
+            BasicParseEntry::Optional { entries, .. }
+            | BasicParseEntry::Repeated { entries, .. }
+                if entries.len() == 1 && !entries[0].is_composite() =>
+            {
+                return self.generate_for_simple_type(sink, name_ctx);
+            }
+            _ => {}
+        }
 
-        let name = self.into_name(ctx)?;
+        let name = self.into_name(name_ctx)?;
         let span = self.span();
 
-        // generate impl for current parent
-        let impl_parent = {
+        // generate impl for current parent, if it is not an enum
+        if !name_ctx.parent.is_choice() {
             let method = name.method_name();
             let return_type = name.return_type();
             let iter_fn = name.iter_fn();
             let cast = name.cast_closure();
-            let parent = &ctx.parent;
 
-            quote_spanned! {span=>
-                impl #parent {
+            sink.impls.insert(
+                ImplKey::new(name_ctx.parent.type_name(), method.to_string()),
+                quote! {
                     pub fn #method(&self) -> #return_type {
                         self.0.children().#iter_fn(#cast)
                     }
-                }
-            }
+                },
+            );
         };
-
-        // TODO: Consider opmitizing when it is just one item
 
         let node_name = name.type_name();
 
-        let node = {
-            let inner_cast_type = self.inner_cast_type(&node_name)?;
+        // Todo: use name.is_unknown() instead
+        if name.is_unknown() {
+            let inner_cast_type = self.inner_cast_type(name_ctx)?;
+            let inner_cast_call = utils::type_to_inner_cast(inner_cast_type)?;
 
-            let node = quote_spanned! {span=>
+            sink.top_level_items.push(quote_spanned! {span=>
                 #[derive(PartialEq, Eq, Hash, Clone)]
                 pub struct #node_name(SyntaxNode);
-            };
+            });
 
             // TODO: implement InnerCast for nested type
-            quote! {
-                #node
 
+            sink.top_level_items.push(quote! {
                 impl Cast for #node_name {
                     // we use inner cast here since it is a composite node
                     fn cast(node: SyntaxNode) -> Option<Self> {
                         let mut children = node.children().peekable();
 
-                        #inner_cast_type::inner_cast(&mut children)
+                        #inner_cast_call(&mut children)
                             .map(|(_)| {
                                 Self(node)
                         })
                     }
                 }
-            }
-        };
-
-        let node = if is_nested {
-            node
-        } else {
-            quote! {}
-        };
+            });
+        }
 
         let (BasicParseEntry::Optional { entries, .. }
         | BasicParseEntry::Repeated { entries, .. }
@@ -281,65 +334,104 @@ impl BasicParseEntry {
             unreachable!()
         };
 
-        let impl_children = entries
+        entries
             .into_iter()
             .enumerate()
-            .map(|(pos, e)| e.generate(NameCtx::new(&node_name, pos), true))
+            .map(|(pos, e)| {
+                e.generate(
+                    sink,
+                    NameCtx::new(&name, pos),
+                    GenContext { is_nested: true },
+                )
+            })
             .collect::<Result<Vec<_>>>()?;
-        // generate impl for sub type and children
-        Ok(quote! {
-            #impl_parent
 
-            #node
-
-            #(#impl_children)*
-        })
+        Ok(())
     }
 
-    fn generate_for_simple_type(&self, ctx: NameCtx) -> Result<TokenStream> {
-        if !matches!(
-            self,
-            BasicParseEntry::CharLit(..) | BasicParseEntry::StrLit(..) | BasicParseEntry::Ident(..)
-        ) {
-            panic!("Expect simple type, got: {:?}", self);
-        };
+    fn generate_for_simple_type(&self, sink: &mut GeneratedSink, name_ctx: NameCtx) -> Result<()> {
+        let name = self.into_name(name_ctx)?;
 
+        let method = name.method_name();
+        let return_type = name.return_type();
+        let iter_fn = name.iter_fn();
+        let cast = name.cast_closure();
+
+        sink.impls.insert(
+            ImplKey::new(name_ctx.parent.type_name(), method.to_string()),
+            quote! {
+                pub fn #method(&self) -> #return_type {
+                    self.0.children().#iter_fn(#cast)
+                }
+            },
+        );
+
+        Ok(())
+    }
+}
+
+impl ParseEntry {
+    fn inner_cast_type(&self, name_ctx: NameCtx) -> Result<Type> {
         match self {
-            BasicParseEntry::CharLit(..)
-            | BasicParseEntry::StrLit(..)
-            | BasicParseEntry::Ident(..) => {
-                let name = self.into_name(ctx)?;
-                let span = self.span();
-
-                let method = name.method_name();
-                let return_type = name.return_type();
-                let iter_fn = name.iter_fn();
-                let cast = name.cast_closure();
-                let parent = &ctx.parent;
-
-                Ok(quote_spanned! {span=>
-                    impl #parent {
-                        pub fn #method(&self) -> #return_type {
-                            self.0.children().#iter_fn(#cast)
-                        }
-                    }
-                })
+            ParseEntry::Basic(basic) => basic.inner_cast_type(name_ctx),
+            ParseEntry::Choice { .. } => {
+                let name = self.into_name(name_ctx)?;
+                let type_name = name.type_name();
+                Ok(parse_quote!(#type_name))
             }
-            _ => unreachable!(),
         }
     }
 }
 
 impl Generate for BasicParseEntry {
-    fn generate(self, ctx: NameCtx, is_nested: bool) -> Result<TokenStream> {
+    fn generate(
+        &self,
+        sink: &mut GeneratedSink,
+        name_ctx: NameCtx,
+        _gen_ctx: GenContext,
+    ) -> Result<()> {
         match self {
-            BasicParseEntry::CharLit(..)
-            | BasicParseEntry::StrLit(..)
-            | BasicParseEntry::Ident(..) => self.generate_for_simple_type(ctx),
+            BasicParseEntry::Token { .. } | BasicParseEntry::Ident(..) => {
+                self.generate_for_simple_type(sink, name_ctx)
+            }
 
             BasicParseEntry::Optional { .. }
             | BasicParseEntry::Repeated { .. }
-            | BasicParseEntry::Group { .. } => self.generate_multi(ctx, is_nested),
+            | BasicParseEntry::Group { .. } => self.generate_multi(sink, name_ctx),
+        }
+    }
+}
+
+mod utils {
+    use proc_macro2::Span;
+    use syn::{parse_quote, ExprPath, PathArguments, PathSegment, Result, Type};
+
+    pub(super) fn type_to_inner_cast(ty: Type) -> Result<ExprPath> {
+        match ty {
+            Type::Path(type_path) => {
+                // we only care about first here, since we have sth like ZeroOrMore<(T1, T2)> or T
+                let PathSegment { ident, arguments } =
+                    type_path.path.segments.into_iter().next().ok_or_else(|| {
+                        syn::Error::new(Span::call_site(), "path should contain a segment")
+                    })?;
+
+                if let PathArguments::None = arguments {
+                    // TODO: return error here as we cannot have Option::inner_cast
+                    Ok(parse_quote!(#ident::inner_cast))
+                } else {
+                    // All call we want is sth like <(T1, T2)>::inner_cast
+                    // This is cos, this expression is only used inside the impl of Cast for a Composite
+                    // So for {T} => Cast will be impl'ed for T, so <T>::inner_cast is correct
+                    // Same [T] and (T, T2)
+                    // TODO: handle when it is a standalone type inisde the angular brackets
+                    Ok(parse_quote!(#arguments::inner_cast))
+                }
+            }
+            Type::Tuple(type_tuple) => Ok(parse_quote!(<#type_tuple>::inner_cast)),
+            _ => Err(syn::Error::new(
+                Span::call_site(),
+                "inner cast can only be converted from path and tuple variants",
+            )),
         }
     }
 }
@@ -360,6 +452,19 @@ mod test {
         ($($tokens: tt)*) => {
             stringify!($($tokens)*).parse::<proc_macro2::TokenStream>()?
         };
+    }
+
+    #[test]
+    fn temp_test() -> Result<()> {
+        let tree: Type = syn::parse_quote! {
+            (T, T2)
+        };
+
+        let expr: syn::ExprPath = utils::type_to_inner_cast(tree)?;
+
+        dbg!(expr);
+
+        Ok(())
     }
 
     #[test]
@@ -400,7 +505,25 @@ mod test {
         let stream: TokenStream = tt! {
             fileAnnotation:
             _(AT_NO_WS | AT_PRE_WS)@FileAnnotationAt
-            "file"@File
+            "file"
+            {simpleIdentifier}
+            {NL}
+        };
+        let top = syn::parse2::<TopLevelParseEntry>(stream)?;
+
+        let generated = top.generate()?;
+
+        println!("{}", pretty_print(generated));
+        Ok(())
+    }
+
+    #[test]
+    fn gen_test_prepare2() -> Result<()> {
+        let stream: TokenStream = tt! {
+              memberAccessOperator:
+                ({NL} ".")
+                | ({NL} safeNav)
+                | "::"
         };
         let top = syn::parse2::<TopLevelParseEntry>(stream)?;
 
@@ -426,7 +549,7 @@ mod test {
 
         let generated = top.generate()?;
 
-        println!("{}", pretty_print(generated));
+        println!("{:#}", pretty_print(generated));
         Ok(())
     }
 
