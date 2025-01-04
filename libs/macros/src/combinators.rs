@@ -35,7 +35,7 @@ pub struct SeparatedNoTrailing<T, S> {
 impl<T, S> Separated<T, S> {
     pub fn items(self) -> impl Iterator<Item = T> {
         let items = self.items.into_iter().map(|e| e.0);
-        items.chain(self.last.into_iter())
+        items.chain(self.last)
     }
     // pub fn separators(self) -> impl Iterator<Item = S> {
     //     self.items.into_iter().map(|e| e.1)
@@ -101,18 +101,16 @@ where
                     items: result,
                     last: Some(last),
                 })
+            } else if result.is_empty() {
+                Err(syn::Error::new(
+                    input.span(),
+                    "Separated expectes at least one match",
+                ))
             } else {
-                if result.is_empty() {
-                    Err(syn::Error::new(
-                        input.span(),
-                        "Separated expectes at least one match",
-                    ))
-                } else {
-                    Ok(Separated {
-                        items: result,
-                        last: None,
-                    })
-                }
+                Ok(Separated {
+                    items: result,
+                    last: None,
+                })
             }
         }
         TrailingOpt::Enforced => {
@@ -122,13 +120,13 @@ where
                     "Separated expectes at least one match",
                 ));
             }
-            return Ok(Separated {
+            Ok(Separated {
                 items: result,
                 last: None,
-            });
+            })
         }
         TrailingOpt::Deny => {
-            return input
+            input
                 .parse::<T>()
                 .map_err(|_| {
                     syn::Error::new(
@@ -208,7 +206,7 @@ mod test {
         };
 
         assert_eq!(no_trailing.items.len(), 2);
-        assert!(matches!(no_trailing.last, Some(_)));
+        assert!(no_trailing.last.is_some());
         assert_eq!(no_trailing.items().count(), 3);
 
         let trailing: Separated<Ident, Token![,]> = parse_quote! {
@@ -216,7 +214,7 @@ mod test {
         };
 
         assert_eq!(trailing.items.len(), 3);
-        assert!(matches!(trailing.last, None));
+        assert!(trailing.last.is_none());
         assert_eq!(trailing.items().count(), 3);
     }
 

@@ -92,7 +92,7 @@ fn optional_simple() {
 
     let res = Option::<FileAnnotation>::inner_cast(&mut kt_file.children().peekable());
 
-    assert!(matches!(res.unwrap(), None));
+    assert!(res.unwrap().is_none());
 
     let res =
         <(Option<ShebangLine>, ZeroOrMore<Nl>)>::inner_cast(&mut kt_file.children().peekable());

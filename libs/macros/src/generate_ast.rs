@@ -7,11 +7,11 @@ use quote::{quote, quote_spanned};
 use syn::{parse_quote, Error, Ident, Result, Type};
 
 use crate::{
-    name::{IntoName, Name, NameCtx, NameForm},
+    name::{Name, NameCtx, NameForm, ToName},
     parse::{BasicParseEntry, GenAst, ParseEntry, TopLevelParseEntry},
 };
 
-const IGNORED: &[&'static str] = &["nl_token", "nl_tokens"];
+const IGNORED: &[&str] = &["nl_token", "nl_tokens"];
 
 // TODO: Add documenation on generated functions
 
@@ -76,7 +76,7 @@ impl TopLevelParseEntry {
                 &mut sink,
                 NameCtx::new(&name, pos),
                 GenContext {
-                    is_nested: false || asts_len > 1,
+                    is_nested: asts_len > 1,
                 },
             )?;
         }
@@ -91,7 +91,7 @@ impl TopLevelParseEntry {
             .filter(|entry| !IGNORED.contains(&entry.0.name.as_str()))
             .into_group_map_by(|entry| entry.0.target.to_string());
 
-        let impls = groups.into_values().into_iter().map(|group| {
+        let impls = groups.into_values().map(|group| {
             let (targets, impls): (Vec<_>, Vec<_>) = group.into_iter().collect();
             let target = targets.into_iter().next().unwrap().target;
 
@@ -117,7 +117,7 @@ impl Generate for ParseEntry {
         gen_ctx: GenContext,
     ) -> Result<()> {
         let span = self.span();
-        let name = self.into_name(name_ctx)?;
+        let name = self.to_name(name_ctx)?;
 
         // In case of choice, we need to know what the target is.
         // If it is nested, then it is the name of the
@@ -129,13 +129,13 @@ impl Generate for ParseEntry {
             name_ctx.parent
         };
 
-        let children_names = self.get_children_names(&node)?;
+        let children_names = self.get_children_names(node)?;
 
         match self {
             ParseEntry::Basic(basic) => basic.generate(sink, name_ctx, gen_ctx),
             ParseEntry::Choice { entries, .. } => {
                 let node_name = node.type_name();
-                let kind_name = Ident::new(&format!("{}Kind", node_name.to_string()), node.span());
+                let kind_name = Ident::new(&format!("{}Kind", node_name), node.span());
 
                 {
                     let casts = children_names.iter().map(|v| v.cast_closure());
@@ -214,13 +214,13 @@ impl Generate for ParseEntry {
                 }
 
                 entries
-                    .into_iter()
+                    .iter()
                     .enumerate()
                     .filter(|(_, e)| e.is_composite())
                     .map(|(pos, e)| {
                         e.generate(
                             sink,
-                            NameCtx::new(&node, pos),
+                            NameCtx::new(node, pos),
                             GenContext { is_nested: true },
                         )
                     })
@@ -234,7 +234,7 @@ impl Generate for ParseEntry {
 
 impl BasicParseEntry {
     fn inner_cast_type(&self, name_ctx: NameCtx) -> Result<Type> {
-        let name = self.into_name(name_ctx)?;
+        let name = self.to_name(name_ctx)?;
         let type_name = name.type_name();
 
         match self {
@@ -245,7 +245,7 @@ impl BasicParseEntry {
             | BasicParseEntry::Repeated { entries, .. }
             | BasicParseEntry::Optional { entries, .. } => {
                 let node_children = entries
-                    .into_iter()
+                    .iter()
                     .enumerate()
                     .map(|(pos, n)| n.inner_cast_type(NameCtx::new(&name, pos)))
                     .collect::<Result<Vec<_>>>()?;
@@ -278,7 +278,7 @@ impl BasicParseEntry {
             _ => {}
         }
 
-        let name = self.into_name(name_ctx)?;
+        let name = self.to_name(name_ctx)?;
         let span = self.span();
 
         // generate impl for current parent, if it is not an enum
@@ -335,7 +335,7 @@ impl BasicParseEntry {
         };
 
         entries
-            .into_iter()
+            .iter()
             .enumerate()
             .map(|(pos, e)| {
                 e.generate(
@@ -350,7 +350,7 @@ impl BasicParseEntry {
     }
 
     fn generate_for_simple_type(&self, sink: &mut GeneratedSink, name_ctx: NameCtx) -> Result<()> {
-        let name = self.into_name(name_ctx)?;
+        let name = self.to_name(name_ctx)?;
 
         let method = name.method_name();
         let return_type = name.return_type();
@@ -375,7 +375,7 @@ impl ParseEntry {
         match self {
             ParseEntry::Basic(basic) => basic.inner_cast_type(name_ctx),
             ParseEntry::Choice { .. } => {
-                let name = self.into_name(name_ctx)?;
+                let name = self.to_name(name_ctx)?;
                 let type_name = name.type_name();
                 Ok(parse_quote!(#type_name))
             }

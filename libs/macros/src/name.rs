@@ -52,7 +52,7 @@ pub enum Name<'a> {
     Choice(NameForm<'a>),
 }
 
-impl<'a> NameForm<'a> {
+impl NameForm<'_> {
     fn name(&self) -> String {
         match self {
             NameForm::Token { token, .. } => format!("{token:?}"),
@@ -69,7 +69,7 @@ impl<'a> NameForm<'a> {
                     CompositeKind::Segment => "Segment",
                     CompositeKind::Variant => "Variant",
                 };
-                format!("{}{kind}{position}", parent.type_name().to_string())
+                format!("{}{kind}{position}", parent.type_name())
             }
         }
     }
@@ -132,7 +132,7 @@ impl Name<'_> {
                     format!("{}_token", self.name().to_snake_case())
                 }
             }
-            _ => format!("{}", self.name().to_snake_case()),
+            _ => self.name().to_snake_case().to_string(),
         }
     }
 
@@ -174,12 +174,12 @@ impl NameCtx<'_> {
     }
 }
 
-pub trait IntoName {
-    fn into_name<'a, 'b: 'a>(&'a self, ctx: NameCtx<'b>) -> Result<Name<'a>>;
+pub trait ToName {
+    fn to_name<'a, 'b: 'a>(&'a self, ctx: NameCtx<'b>) -> Result<Name<'a>>;
 }
 
-impl IntoName for BasicParseEntry {
-    fn into_name<'a, 'b: 'a>(&'a self, ctx: NameCtx<'b>) -> Result<Name<'a>> {
+impl ToName for BasicParseEntry {
+    fn to_name<'a, 'b: 'a>(&'a self, ctx: NameCtx<'b>) -> Result<Name<'a>> {
         match self {
             BasicParseEntry::Token { token, span, .. } => Ok(Name::Single(NameForm::Token {
                 token: *token,
@@ -194,7 +194,7 @@ impl IntoName for BasicParseEntry {
             }
             // For {T} and [T], we unwrap them
             BasicParseEntry::Repeated { entries, .. } if entries.len() == 1 => {
-                match entries.first().unwrap().into_name(ctx)? {
+                match entries.first().unwrap().to_name(ctx)? {
                     Name::Single(form) | Name::Choice(form) => Ok(Name::Many(form)),
                     Name::Optional(form) => Err(syn::Error::new(
                         form.span(),
@@ -207,7 +207,7 @@ impl IntoName for BasicParseEntry {
                 }
             }
             BasicParseEntry::Optional { entries, .. } if entries.len() == 1 => {
-                match entries.first().unwrap().into_name(ctx)? {
+                match entries.first().unwrap().to_name(ctx)? {
                     Name::Single(form) | Name::Choice(form) => Ok(Name::Optional(form)),
                     Name::Optional(form) => {
                         Err(syn::Error::new(form.span(), "Unexpected nested optional"))
@@ -259,10 +259,10 @@ impl IntoName for BasicParseEntry {
     }
 }
 
-impl IntoName for ParseEntry {
-    fn into_name<'a, 'b: 'a>(&'a self, ctx: NameCtx<'b>) -> Result<Name<'a>> {
+impl ToName for ParseEntry {
+    fn to_name<'a, 'b: 'a>(&'a self, ctx: NameCtx<'b>) -> Result<Name<'a>> {
         match self {
-            ParseEntry::Basic(basic_parse_entry) => basic_parse_entry.into_name(ctx),
+            ParseEntry::Basic(basic_parse_entry) => basic_parse_entry.to_name(ctx),
             ParseEntry::Choice { .. } => {
                 if let Some(name) = self.config().name.as_ref() {
                     return Ok(Name::Choice(NameForm::FromConfig(name)));
@@ -289,7 +289,7 @@ impl BasicParseEntry {
             | BasicParseEntry::Group { entries, .. } => entries
                 .iter()
                 .enumerate()
-                .map(|(pos, s)| s.into_name(NameCtx::new(parent, pos)))
+                .map(|(pos, s)| s.to_name(NameCtx::new(parent, pos)))
                 .collect(),
             _ => unreachable!(),
         }
@@ -307,7 +307,7 @@ impl ParseEntry {
             ParseEntry::Choice { entries, .. } => entries
                 .iter()
                 .enumerate()
-                .map(|(pos, s)| s.into_name(NameCtx::new(parent, pos)))
+                .map(|(pos, s)| s.to_name(NameCtx::new(parent, pos)))
                 .collect(),
         }
     }
