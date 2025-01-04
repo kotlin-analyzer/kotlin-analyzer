@@ -43,10 +43,7 @@ mod test {
         };
 
         assert_eq!(map.0.len(), 3);
-        assert!(map
-            .0
-            .into_iter()
-            .all(|(key, value)| key == value.value()));
+        assert!(map.0.into_iter().all(|(key, value)| key == value.value()));
 
         // wroks for non-trailing as well
         let map: Map<Ident, LitStr> = parse_quote! {
@@ -56,9 +53,6 @@ mod test {
         };
 
         assert_eq!(map.0.len(), 3);
-        assert!(map
-            .0
-            .into_iter()
-            .all(|(key, value)| key == value.value()));
+        assert!(map.0.into_iter().all(|(key, value)| key == value.value()));
     }
 }

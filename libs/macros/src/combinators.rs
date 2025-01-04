@@ -125,24 +125,22 @@ where
                 last: None,
             })
         }
-        TrailingOpt::Deny => {
-            input
-                .parse::<T>()
-                .map_err(|_| {
-                    syn::Error::new(
-                        input.span(),
-                        if result.is_empty() {
-                            "Separated expectes at least one match"
-                        } else {
-                            "unexpected trailing separator"
-                        },
-                    )
-                })
-                .map(|last| Separated {
-                    items: result,
-                    last: Some(last),
-                })
-        }
+        TrailingOpt::Deny => input
+            .parse::<T>()
+            .map_err(|_| {
+                syn::Error::new(
+                    input.span(),
+                    if result.is_empty() {
+                        "Separated expectes at least one match"
+                    } else {
+                        "unexpected trailing separator"
+                    },
+                )
+            })
+            .map(|last| Separated {
+                items: result,
+                last: Some(last),
+            }),
     }
 }
 
