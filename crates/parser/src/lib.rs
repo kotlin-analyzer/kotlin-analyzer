@@ -136,7 +136,7 @@ pub fn parse<'a>(token_source: &'a mut dyn TokenSource<'_>, tree_sink: &'a mut d
 
         fn simple_identifier(&mut self) {
             match self.current().map(|sp| (sp.is_soft_keyword(), sp.token())) {
-                Some((true, _) | (_, Token::IDENTIFIER)) => {
+                Some((true, _) | (_, Token::IDENTIFIER_TOKEN)) => {
                     self.sink.start_node(SIMPLE_IDENTIFIER);
                     self.bump();
                     self.sink.finish_node();
