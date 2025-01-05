@@ -652,7 +652,7 @@ fn tag<'a>(pattern: &'static str) -> impl ParseFn<'a> {
             .map(|t| t == pattern)
             .unwrap_or_default()
         {
-            Some(step.advance_with(pattern.len(), IDENTIFIER))
+            Some(step.advance_with(pattern.len(), IDENTIFIER_TOKEN))
         } else {
             None
         }
@@ -741,7 +741,7 @@ fn quoted_symbol(step: Step<'_>) -> Option<Step<'_>> {
 fn parse_identifier(step: Step<'_>) -> Option<Step<'_>> {
     quoted_symbol
         .or(letter.and(many0(when(|ch| ch.can_be_in_ident()))))
-        .with(IDENTIFIER)(step)
+        .with(IDENTIFIER_TOKEN)(step)
 }
 
 fn double_lit(step: Step<'_>) -> Option<Step<'_>> {

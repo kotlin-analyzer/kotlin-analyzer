@@ -199,7 +199,7 @@ define_syntax! {
             QUOTE_CLOSE,
             TRIPLE_QUOTE_OPEN,
             TRIPLE_QUOTE_CLOSE,
-            IDENTIFIER,
+            IDENTIFIER_TOKEN,
             LINE_STR_REF,
             MULTI_LINE_STR_REF,
             MULTI_LINE_STRING_QUOTE,
@@ -213,6 +213,7 @@ define_syntax! {
         }
         syntax {
             SIMPLE_IDENTIFIER,
+            IDENTIFIER,
             UNESCAPED_ANNOTATION,
             ANNOTATION_USE_SITE_TARGET,
             MULTI_ANNOTATION,
