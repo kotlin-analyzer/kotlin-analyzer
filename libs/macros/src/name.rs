@@ -56,8 +56,15 @@ impl NameForm<'_> {
     fn name(&self) -> String {
         match self {
             NameForm::Token { token, .. } => format!("{token:?}"),
-            NameForm::Ident(ident) | NameForm::TokenIdent(ident) | NameForm::FromConfig(ident) => {
-                ident.to_string()
+            NameForm::Ident(ident) | NameForm::FromConfig(ident) => ident.to_string(),
+            NameForm::TokenIdent(ident) => {
+                if ident.to_string().ends_with(char::is_lowercase) {
+                    // ShebangLine
+                    format!("{ident}Token")
+                } else {
+                    // NL | AT_NO_WS
+                    ident.to_string()
+                }
             }
             NameForm::Composite(CompositeName {
                 parent,
@@ -132,7 +139,7 @@ impl Name<'_> {
                     format!("{}_token", self.name().to_snake_case())
                 }
             }
-            _ => self.name().to_snake_case().to_string(),
+            _ => self.name().to_snake_case(),
         }
     }
 
