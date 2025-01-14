@@ -1,0 +1,14 @@
+[package]
+name = "decompiler"
+version = "0.0.1"
+description = "Java class decompiler"
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+ron = "0.8"
+jars = "0.1.1"
+classy = "0.3.0"
