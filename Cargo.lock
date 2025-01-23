@@ -254,6 +254,7 @@ dependencies = [
 name = "decompiler"
 version = "0.0.1"
 dependencies = [
+ "classpath_resolver",
  "classy",
  "jars",
  "ron",

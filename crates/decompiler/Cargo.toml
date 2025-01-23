@@ -12,3 +12,4 @@ rust-version.workspace = true
 ron = "0.8"
 jars = "0.1.1"
 classy = "0.3.0"
+classpath_resolver.workspace = true
