@@ -32,11 +32,12 @@ pub enum DecompilationError {
     MissingMethodDescriptor,
     InvalidMethodDescriptor,
     InvalidObjectDescriptor,
+    MissingClassName,
 }
 
 #[derive(Debug)]
 pub struct JClass {
-    name: Option<String>,
+    name: String,
     is_public: bool,
     is_final: bool,
     implements: Vec<String>,
@@ -131,8 +132,12 @@ pub struct JArg {
 }
 
 pub fn decompile_class(class_file: ClassFile) -> DecompilationResult<JClass> {
-    let this_class_info = class_file.constant_pool[class_file.this_class as usize].clone();
-    let super_class_info = class_file.constant_pool[class_file.super_class as usize].clone();
+    let this_class_info = class_file.constant_pool[class_file.this_class as usize - 1].clone();
+
+    let super_class_info = match class_file.super_class {
+        0 => None,
+        _ => Some(class_file.constant_pool[class_file.super_class as usize - 1].clone()),
+    };
 
     let is_public = matches_mask(class_file.access_flags, ACC_PUBLIC);
     let is_final = matches_mask(class_file.access_flags, ACC_FINAL);
@@ -146,7 +151,7 @@ pub fn decompile_class(class_file: ClassFile) -> DecompilationResult<JClass> {
     }
 
     let mut parent_name: Option<String> = None;
-    if let Constant::ClassInfo { name_index } = super_class_info {
+    if let Some(Constant::ClassInfo { name_index }) = super_class_info {
         if name_index != 0 {
             parent_name = class_file
                 .get_constant_utf8(name_index)
@@ -157,7 +162,7 @@ pub fn decompile_class(class_file: ClassFile) -> DecompilationResult<JClass> {
 
     let mut interfaces: Vec<String> = vec![];
     for index in class_file.interfaces.as_slice() {
-        let interface_info = class_file.constant_pool[*index as usize].clone();
+        let interface_info = class_file.constant_pool[*index as usize - 1].clone();
         if let Constant::ClassInfo { name_index } = interface_info {
             interfaces.push(
                 class_file
@@ -210,7 +215,7 @@ pub fn decompile_class(class_file: ClassFile) -> DecompilationResult<JClass> {
 
         fields.push(JField {
             field_name,
-            java_type: parse_descriptor(&mut descriptor.chars().peekable())
+            java_type: parse_descriptor(&descriptor)
                 .map_err(|_| DecompilationError::InvalidFieldDescriptor)?,
             visibility,
             is_static,
@@ -315,7 +320,7 @@ pub fn decompile_class(class_file: ClassFile) -> DecompilationResult<JClass> {
     }
 
     Ok(JClass {
-        name,
+        name: name.ok_or(DecompilationError::MissingClassName)?,
         extends: parent_name,
         fields,
         implements: interfaces,
@@ -325,79 +330,65 @@ pub fn decompile_class(class_file: ClassFile) -> DecompilationResult<JClass> {
     })
 }
 
-fn parse_descriptor<U>(chars: &mut std::iter::Peekable<U>) -> Result<JType, DecompilationError>
-where
-    U: Iterator<Item = char>,
-{
-    fn parse_internal<I>(chars: &mut std::iter::Peekable<I>) -> Result<JType, DecompilationError>
-    where
-        I: Iterator<Item = char>,
-    {
-        match chars.next() {
-            Some('B') => Ok(JType::Byte),
-            Some('C') => Ok(JType::Char),
-            Some('D') => Ok(JType::Double),
-            Some('F') => Ok(JType::Float),
-            Some('I') => Ok(JType::Int),
-            Some('J') => Ok(JType::Long),
-            Some('S') => Ok(JType::Short),
-            Some('Z') => Ok(JType::Bool),
-            Some('V') => Ok(JType::Void),
-            Some('L') => {
-                // Parse object type
-                let mut class_name = String::new();
-                while let Some(&ch) = chars.peek() {
-                    if ch == ';' {
-                        chars.next(); // Consume ';'
-                        break;
-                    }
-                    class_name.push(ch);
-                    chars.next();
-                }
-                if class_name.is_empty() {
-                    Err(DecompilationError::InvalidObjectDescriptor)
-                } else {
-                    Ok(JType::Object(class_name))
-                }
-            }
-            Some('[') => {
-                // Parse array type
-                let nested_type = parse_internal(chars)?;
-                Ok(JType::Array(Box::new(nested_type)))
-            }
-            Some(_) | None => Err(DecompilationError::InvalidMethodDescriptor),
-        }
-    }
+fn parse_descriptor(t: &str) -> DecompilationResult<JType> {
+    let (a, _) = parse_type_from(t, 0)?;
+    Ok(a)
+}
 
-    parse_internal(chars)
+fn parse_type_from(t: &str, i: usize) -> DecompilationResult<(JType, usize)> {
+    match t.chars().nth(i).unwrap() {
+        'V' => Ok((JType::Void, i + 1)),
+        'B' => Ok((JType::Byte, i + 1)),
+        'C' => Ok((JType::Char, i + 1)),
+        'D' => Ok((JType::Double, i + 1)),
+        'F' => Ok((JType::Float, i + 1)),
+        'S' => Ok((JType::Short, i + 1)),
+        'I' => Ok((JType::Int, i + 1)),
+        'J' => Ok((JType::Long, i + 1)),
+        'Z' => Ok((JType::Bool, i + 1)),
+        'L' => {
+            let remaining = &t[i + 1..];
+            let pos = remaining.find(';').unwrap();
+            let class_name = remaining[0..pos].to_owned();
+            Ok((JType::Object(class_name.replace('/', ".")), i + pos + 2))
+        }
+        '[' => {
+            let (t, pos) = parse_type_from(t, i + 1)?;
+            Ok((JType::Array(Box::new(t)), pos))
+        }
+        other => Err(DecompilationError::InvalidFieldDescriptor),
+    }
 }
 
 fn parse_method_descriptor(descriptor: &str) -> Result<MethodDescriptor, DecompilationError> {
-    let mut chars = descriptor.chars().peekable();
-
-    // Ensure it starts with '('
-    if chars.next() != Some('(') {
-        return Err(DecompilationError::InvalidMethodDescriptor);
-    }
-
-    let mut parameters = Vec::new();
-
-    // Parse parameters
-    while let Some(&ch) = chars.peek() {
-        if ch == ')' {
-            chars.next(); // Consume ')'
-            break;
+    let mut arguments = vec![];
+    let mut processed_args = false;
+    let mut i = 0;
+    while i < descriptor.chars().count() {
+        match descriptor.chars().nth(i).unwrap() {
+            '(' => {
+                assert_eq!(i, 0);
+                i += 1;
+            }
+            ')' => {
+                processed_args = true;
+                i += 1;
+            }
+            _ => {
+                let (java_type, offset) = parse_type_from(descriptor, i)?;
+                i = offset;
+                if processed_args {
+                    return Ok(MethodDescriptor {
+                        parameters: arguments,
+                        return_type: java_type,
+                    });
+                } else {
+                    arguments.push(java_type);
+                }
+            }
         }
-        parameters.push(parse_descriptor(&mut chars)?);
     }
-
-    // Parse return type
-    let return_type = parse_descriptor(&mut chars)?;
-
-    Ok(MethodDescriptor {
-        parameters,
-        return_type,
-    })
+    unreachable!()
 }
 
 fn matches_mask(flags: u16, mask: u16) -> bool {
@@ -415,7 +406,7 @@ mod tests {
     #[test]
     fn test_parse_descriptor_regular_type() {
         let desc = "B".to_string();
-        let result = parse_descriptor(&mut desc.chars().peekable());
+        let result = parse_descriptor(&desc);
 
         assert_eq!(result, Ok(JType::Byte));
     }
@@ -423,14 +414,14 @@ mod tests {
     #[test]
     fn test_parse_descriptor_array_type() {
         let desc = "[Z".to_string();
-        let result = parse_descriptor(&mut desc.chars().peekable());
+        let result = parse_descriptor(&desc);
 
         assert_eq!(result, Ok(JType::Array(Box::new(JType::Bool))));
     }
     #[test]
     fn test_parse_descriptor_multi_dim_array_type() {
         let desc = "[[[Ljava.lang.Object;".to_string();
-        let result = parse_descriptor(&mut desc.chars().peekable());
+        let result = parse_descriptor(&desc);
 
         assert_eq!(
             result,

@@ -9,7 +9,7 @@ pub enum Error {
     JarError(std::io::Error),
 }
 
-fn generate_definitions(jar_file: &Path) -> Result<HashMap<String, JClass>, Error> {
+pub fn generate_definitions(jar_file: &Path) -> Result<HashMap<String, JClass>, Error> {
     let jar = jars::jar(jar_file, JarOptionBuilder::builder().ext("class").build())
         .map_err(Error::JarError)?;
 
@@ -35,23 +35,31 @@ fn generate_definitions(jar_file: &Path) -> Result<HashMap<String, JClass>, Erro
     Ok(class_definitions)
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use crate::generate_definitions;
-//     use classpath_resolver::ClasspathResolver;
+#[cfg(test)]
+mod tests {
+    use crate::generate_definitions;
+    use classpath_resolver::ClasspathResolver;
 
-//     #[test]
-//     fn test_generate_definitions() {
-//         let path = std::path::Path::new("/Users/benjamin/Programs/kotlin/mvnproject");
+    // #[test]
+    fn test_generate_definitions() {
+        let path = std::path::Path::new("/Users/benjamin/.m2/repository/org/springframework/boot/spring-boot/3.2.4/spring-boot-3.2.4.jar");
+        let start = std::time::Instant::now();
+        let _ = generate_definitions(path);
+        let duration = start.elapsed();
+        println!("{:?}", duration);
+    }
 
-//         let resolver = ClasspathResolver::new(path);
+    // #[test]
+    fn test_generate_definitions_from_resolver() {
+        let path = std::path::Path::new("/Users/benjamin/Programs/kotlin/mvnproject");
 
-//         let start = std::time::Instant::now();
-//         for cp in resolver.classpath {
-//             let _ = generate_definitions(&cp);
-//         }
-//         let duration = start.elapsed();
-//         println!("{:?}", duration);
+        let resolver = ClasspathResolver::new(path);
 
-//     }
-// }
+        let start = std::time::Instant::now();
+        for cp in resolver.classpath {
+            if let Ok(defs) = generate_definitions(&cp) {}
+        }
+        let duration = start.elapsed();
+        println!("{:?}", duration);
+    }
+}
