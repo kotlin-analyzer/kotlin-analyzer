@@ -1,6 +1,7 @@
 #![allow(unused)]
 pub mod java;
 
+use classy::ClassFile;
 use jars::JarOptionBuilder;
 use java::{decompile_class, JClass};
 use std::{collections::HashMap, io::BufReader, path::Path};
@@ -37,16 +38,16 @@ pub fn generate_definitions(jar_file: &Path) -> Result<HashMap<String, JClass>, 
 
 #[cfg(test)]
 mod tests {
-    use crate::generate_definitions;
+    use crate::{generate_definitions, java::JClass};
     use classpath_resolver::ClasspathResolver;
 
-    // #[test]
+    #[test]
     fn test_generate_definitions() {
         let path = std::path::Path::new("/Users/benjamin/.m2/repository/org/springframework/boot/spring-boot/3.2.4/spring-boot-3.2.4.jar");
-        let start = std::time::Instant::now();
-        let _ = generate_definitions(path);
-        let duration = start.elapsed();
-        println!("{:?}", duration);
+        if let Ok(defs) = generate_definitions(path) {
+            let syntax = defs.values().nth(0).map(JClass::syntax).expect("ERR");
+            println!("{}", syntax);
+        }
     }
 
     // #[test]
@@ -55,11 +56,8 @@ mod tests {
 
         let resolver = ClasspathResolver::new(path);
 
-        let start = std::time::Instant::now();
         for cp in resolver.classpath {
             if let Ok(defs) = generate_definitions(&cp) {}
         }
-        let duration = start.elapsed();
-        println!("{:?}", duration);
     }
 }

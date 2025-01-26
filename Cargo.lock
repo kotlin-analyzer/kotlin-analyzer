@@ -194,8 +194,6 @@ version = "0.0.1"
 [[package]]
 name = "classy"
 version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "58c6480108167630f6947ea3318dc7f63ae1dc1ea5a8cf3754363aeffb80db6f"
 dependencies = [
  "byteorder",
  "glob",

@@ -1,7 +1,7 @@
 #![allow(unused)]
 use std::fmt::Display;
 
-use classy::{ClassFile, Constant, FieldInfo, MethodInfo};
+use classy::{Attribute, ClassFile, Constant, FieldInfo, MethodInfo};
 
 const ACC_PUBLIC: u16 = 0x0001;
 const ACC_PRIVATE: u16 = 0x0002;
@@ -10,6 +10,7 @@ const ACC_STATIC: u16 = 0x0008;
 const ACC_FINAL: u16 = 0x0010;
 const ACC_VOLATILE: u16 = 0x0040;
 const ACC_TRANSIENT: u16 = 0x0080;
+const ACC_INTERFACE: u16 = 0x0200;
 const ACC_SYNTHETIC: u16 = 0x1000;
 const ACC_VARARGS: u16 = 0x0080;
 const ACC_NATIVE: u16 = 0x0100;
@@ -19,6 +20,7 @@ const ACC_ABSTRACT: u16 = 0x0400;
 const ACC_SYNCHRONIZED: u16 = 0x0020;
 const ACC_BRIDGE: u16 = 0x0040;
 const ACC_MANDATED: u16 = 0x8000;
+const ACC_MODULE: u16 = 0x8000;
 
 type DecompilationResult<T> = Result<T, DecompilationError>;
 
@@ -40,17 +42,100 @@ pub struct JClass {
     name: String,
     is_public: bool,
     is_final: bool,
+    is_abstract: bool,
+    is_interface: bool,
+    is_enum: bool,
+    is_module: bool,
     implements: Vec<String>,
     extends: Option<String>,
     fields: Vec<JField>,
     methods: Vec<JMethod>,
 }
 
-#[derive(Debug)]
+impl JClass {
+    pub fn syntax(&self) -> String {
+        let mut syntax = "".to_string();
+
+        if self.is_public {
+            syntax.push_str("public ");
+        }
+
+        if self.is_final {
+            syntax.push_str("final ");
+        }
+
+        if self.is_abstract && !self.is_interface {
+            syntax.push_str("abstract ");
+        }
+
+        if self.is_enum {
+            syntax.push_str("enum ");
+        }
+
+        if self.is_interface {
+            syntax.push_str("interface ");
+        }
+
+        if !self.is_enum && !self.is_interface {
+            syntax.push_str("class ");
+        }
+
+        syntax.push_str(&format!("{} ", &self.name.replace("/", "."),));
+
+        if let Some(extends) = &self.extends {
+            syntax.push_str(&format!("extends {} ", extends.replace("/", ".")));
+        }
+
+        if self.implements.len() > 0 {
+            syntax.push_str(&format!(
+                "implements {} ",
+                self.implements.join(", ").replace("/", ".")
+            ));
+        }
+
+        syntax.push_str("{\n");
+
+        if self.fields.len() > 0 {
+            syntax.push_str("\n");
+
+            for field in &self.fields {
+                syntax.push_str("\t");
+                syntax.push_str(&field.syntax());
+                syntax.push_str("\n");
+            }
+        }
+
+        if self.methods.len() > 0 {
+            syntax.push_str("\n");
+
+            for method in &self.methods {
+                syntax.push_str("\t");
+                syntax.push_str(&method.syntax());
+                syntax.push_str("\n");
+            }
+        }
+
+        syntax.push_str("\n}");
+
+        syntax
+    }
+}
+
+#[derive(Debug, PartialEq)]
 pub enum JVisibility {
     Public,
     Private,
     Protected,
+}
+
+impl ToString for JVisibility {
+    fn to_string(&self) -> String {
+        match self {
+            Self::Public => "public ".to_string(),
+            Self::Private => "private ".to_string(),
+            Self::Protected => "protected ".to_string(),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -60,10 +145,39 @@ pub struct JField {
     visibility: JVisibility,
     is_static: bool,
     is_final: bool,
-    is_in_enum: bool,
+    is_enum_field: bool,
     is_volatile: bool,
     is_transient: bool,
     is_synthetic: bool,
+    initial_value: Option<String>,
+}
+
+impl JField {
+    pub fn syntax(&self) -> String {
+        let mut syntax = "".to_string();
+
+        if self.visibility != JVisibility::Public {
+            syntax.push_str(&self.visibility.to_string());
+        }
+
+        if self.is_static {
+            syntax.push_str("static ");
+        }
+
+        if self.is_final {
+            syntax.push_str("final ");
+        }
+
+        syntax.push_str(&format!("{} {}", self.java_type, self.field_name));
+
+        if let Some(value) = &self.initial_value {
+            syntax.push_str(&format!(" = {}", value));
+        }
+
+        syntax.push_str(";\n");
+
+        syntax
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -92,7 +206,7 @@ impl Display for JType {
             Self::Long => write!(f, "long"),
             Self::Short => write!(f, "short"),
             Self::Bool => write!(f, "boolean"),
-            Self::Object(custom) => write!(f, "{}", custom),
+            Self::Object(custom) => write!(f, "{}", custom.replace("/", ".")),
             Self::Void => write!(f, "void"),
             Self::Array(j_type) => write!(f, "{}[]", j_type),
         }
@@ -116,6 +230,45 @@ pub struct JMethod {
     is_strict: bool,
 }
 
+impl JMethod {
+    pub fn syntax(&self) -> String {
+        let mut syntax = "".to_string();
+
+        if self.visibility != JVisibility::Public {
+            syntax.push_str(&self.visibility.to_string());
+        }
+
+        if self.is_static {
+            syntax.push_str("static ");
+        }
+
+        if self.is_final {
+            syntax.push_str("final ");
+        }
+
+        syntax.push_str(&format!("{} {}(", self.return_type, self.method_name));
+
+        let arguments = self
+            .args
+            .iter()
+            .map(JArg::syntax)
+            .collect::<Vec<String>>()
+            .join(", ");
+
+        syntax.push_str(&arguments);
+
+        syntax.push_str(")");
+
+        if self.is_abstract {
+            syntax.push_str(";");
+        } else {
+            syntax.push_str(" {\n\t}\n");
+        }
+
+        syntax
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub struct MethodDescriptor {
     parameters: Vec<JType>,
@@ -131,6 +284,23 @@ pub struct JArg {
     is_mandated: bool,
 }
 
+impl JArg {
+    pub fn syntax(&self) -> String {
+        let mut syntax = "".to_string();
+
+        if self.is_final {
+            syntax.push_str("final ");
+        }
+        syntax.push_str(&self.java_type.to_string());
+
+        if let Some(name) = &self.arg_name {
+            syntax.push_str(&format!(" {}", name));
+        }
+
+        syntax
+    }
+}
+
 pub fn decompile_class(class_file: ClassFile) -> DecompilationResult<JClass> {
     let this_class_info = class_file.constant_pool[class_file.this_class as usize - 1].clone();
 
@@ -141,6 +311,10 @@ pub fn decompile_class(class_file: ClassFile) -> DecompilationResult<JClass> {
 
     let is_public = matches_mask(class_file.access_flags, ACC_PUBLIC);
     let is_final = matches_mask(class_file.access_flags, ACC_FINAL);
+    let is_abstract = matches_mask(class_file.access_flags, ACC_ABSTRACT);
+    let is_interface = matches_mask(class_file.access_flags, ACC_INTERFACE);
+    let is_enum = matches_mask(class_file.access_flags, ACC_ENUM);
+    let is_module = matches_mask(class_file.access_flags, ACC_MODULE);
 
     let mut name: Option<String> = None;
     if let Constant::ClassInfo { name_index } = this_class_info {
@@ -180,7 +354,7 @@ pub fn decompile_class(class_file: ClassFile) -> DecompilationResult<JClass> {
         let is_protected = matches_mask(field.access_flags, ACC_PROTECTED);
         let is_static = matches_mask(field.access_flags, ACC_STATIC);
         let is_final = matches_mask(field.access_flags, ACC_FINAL);
-        let is_in_enum = matches_mask(field.access_flags, ACC_ENUM);
+        let is_enum_field = matches_mask(field.access_flags, ACC_ENUM);
         let is_volatile = matches_mask(field.access_flags, ACC_VOLATILE);
         let is_transient = matches_mask(field.access_flags, ACC_TRANSIENT);
         let is_synthetic = matches_mask(field.access_flags, ACC_SYNTHETIC);
@@ -188,8 +362,18 @@ pub fn decompile_class(class_file: ClassFile) -> DecompilationResult<JClass> {
         let FieldInfo {
             name_index,
             descriptor_index,
+            attributes,
             ..
         } = field;
+
+        let initial_value = attributes
+            .iter()
+            .filter_map(|attr| match attr {
+                Attribute::ConstantValue(index) => Some(class_file.get_constant(*index)),
+                _ => None,
+            })
+            .nth(0)
+            .map(ToOwned::to_owned);
 
         let mut visibility = JVisibility::Public;
 
@@ -220,10 +404,29 @@ pub fn decompile_class(class_file: ClassFile) -> DecompilationResult<JClass> {
             visibility,
             is_static,
             is_final,
-            is_in_enum,
+            is_enum_field,
             is_synthetic,
             is_transient,
             is_volatile,
+            initial_value: match initial_value {
+                Some(value) => match value {
+                    Constant::String { string_index } => class_file
+                        .get_constant_utf8(string_index)
+                        .ok()
+                        .map(|v| format!("\"{}\"", v)),
+                    Constant::Integer(v) => Some(v.to_string()),
+                    Constant::Float(v) => Some(f32::from_bits(v).to_string()),
+                    Constant::Long(high, low) => Some(format!(
+                        "{}L",
+                        (((high as u64) << 32) + (low as u64)).to_string()
+                    )),
+                    Constant::Double(high, low) => {
+                        Some(f64::from_bits(((high as u64) << 32) + (low as u64)).to_string())
+                    }
+                    _ => None,
+                },
+                None => None,
+            },
         });
     }
 
@@ -277,7 +480,7 @@ pub fn decompile_class(class_file: ClassFile) -> DecompilationResult<JClass> {
         let mut arguments: Vec<JArg> = vec![];
 
         for attribute in method.attributes.as_slice() {
-            if let classy::Attribute::MethodParameters(params) = attribute {
+            if let Attribute::MethodParameters(params) = attribute {
                 for (counter, (name_index, access_flags)) in params.iter().enumerate() {
                     let is_synthetic = matches_mask(*access_flags, ACC_SYNTHETIC);
                     let is_mandated = matches_mask(*access_flags, ACC_MANDATED);
@@ -326,6 +529,10 @@ pub fn decompile_class(class_file: ClassFile) -> DecompilationResult<JClass> {
         implements: interfaces,
         is_final,
         is_public,
+        is_abstract,
+        is_enum,
+        is_interface,
+        is_module,
         methods,
     })
 }
