@@ -11,5 +11,5 @@ rust-version.workspace = true
 [dependencies]
 ron = "0.8"
 jars = "0.1.1"
-classy = { path = "/Users/benjamin/Programs/rust/classy" }
+classy = { git = "https://github.com/iambenkay/classy", rev = "dbaf85d" }
 classpath_resolver.workspace = true
