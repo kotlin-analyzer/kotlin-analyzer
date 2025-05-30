@@ -128,12 +128,12 @@ pub enum JVisibility {
     Protected,
 }
 
-impl ToString for JVisibility {
-    fn to_string(&self) -> String {
+impl Display for JVisibility {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Public => "public ".to_string(),
-            Self::Private => "private ".to_string(),
-            Self::Protected => "protected ".to_string(),
+            Self::Public => f.write_str("public "),
+            Self::Private => f.write_str("private "),
+            Self::Protected => f.write_str("protected "),
         }
     }
 }
