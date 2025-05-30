@@ -171,7 +171,7 @@ impl JField {
         syntax.push_str(&format!("{} {}", self.java_type, self.field_name));
 
         if let Some(value) = &self.initial_value {
-            syntax.push_str(&format!(" = {}", value));
+            syntax.push_str(&format!(" = {value}"));
         }
 
         syntax.push_str(";\n");
@@ -208,7 +208,7 @@ impl Display for JType {
             Self::Bool => write!(f, "boolean"),
             Self::Object(custom) => write!(f, "{}", custom.replace("/", ".")),
             Self::Void => write!(f, "void"),
-            Self::Array(j_type) => write!(f, "{}[]", j_type),
+            Self::Array(j_type) => write!(f, "{j_type}[]"),
         }
     }
 }
@@ -298,7 +298,7 @@ impl JArg {
         syntax.push_str(&self.java_type.to_string());
 
         if let Some(name) = &self.arg_name {
-            syntax.push_str(&format!(" {}", name));
+            syntax.push_str(&format!(" {name}"));
         }
 
         syntax
@@ -417,7 +417,7 @@ pub fn decompile_class(class_file: ClassFile) -> DecompilationResult<JClass> {
                     Constant::String { string_index } => class_file
                         .get_constant_utf8(string_index)
                         .ok()
-                        .map(|v| format!("\"{}\"", v)),
+                        .map(|v| format!("\"{v}\"")),
                     Constant::Integer(v) => Some(v.to_string()),
                     Constant::Float(v) => Some(f32::from_bits(v).to_string()),
                     Constant::Long(high, low) => {

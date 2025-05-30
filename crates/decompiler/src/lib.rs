@@ -30,7 +30,7 @@ pub fn generate_definitions(jar_file: &Path) -> Result<HashMap<String, JClass>, 
                 }
             }
             Err(err) => {
-                println!("Skipping class file {} due to error: {}", file_path, err);
+                println!("Skipping class file {file_path} due to error: {err}");
             }
         }
     }
