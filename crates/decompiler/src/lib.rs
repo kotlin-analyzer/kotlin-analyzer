@@ -6,6 +6,7 @@ use jars::JarOptionBuilder;
 use java::{decompile_class, JClass};
 use std::{collections::HashMap, io::BufReader, path::Path};
 
+#[derive(Debug)]
 pub enum Error {
     JarError(std::io::Error),
 }
@@ -38,26 +39,46 @@ pub fn generate_definitions(jar_file: &Path) -> Result<HashMap<String, JClass>, 
 
 #[cfg(test)]
 mod tests {
+    const SYNTAX: &str = concat!(
+        "public class com.jstart.JavaClass extends java.lang.Object {java.lang.String type;",
+        "void <init>() {}java.lang.String getType() {}void setType() {}}"
+    );
+
     use crate::{generate_definitions, java::JClass};
     use classpath_resolver::ClasspathResolver;
 
     #[test]
     fn test_generate_definitions() {
-        let path = std::path::Path::new("/Users/benjamin/.m2/repository/org/springframework/boot/spring-boot/3.2.4/spring-boot-3.2.4.jar");
-        if let Ok(defs) = generate_definitions(path) {
-            let syntax = defs.values().nth(0).map(JClass::syntax).expect("ERR");
-            println!("{}", syntax);
-        }
+        let path = std::path::Path::new("assets/jstart.jar");
+
+        let result = generate_definitions(path);
+
+        assert!(
+            result.is_ok(),
+            "Expected Ok from generate_definitions, got Err"
+        );
+
+        let definitions = result.unwrap();
+
+        let class = definitions.get("com/jstart/JavaClass.class");
+        assert!(
+            class.is_some(),
+            "Expected to find class com.jstart.JavaClass, got None"
+        );
+
+        let class = class.unwrap();
+        assert!(
+            syntax_matches(class, SYNTAX),
+            "Expected class definition to match, got {}",
+            class.syntax()
+        );
     }
 
-    // #[test]
-    fn test_generate_definitions_from_resolver() {
-        let path = std::path::Path::new("/Users/benjamin/Programs/kotlin/mvnproject");
+    fn syntax_matches(class: &JClass, expected: &str) -> bool {
+        let syntax = class.syntax();
+        let syntax = syntax.replace("\n", "");
+        let syntax = syntax.replace("\t", "");
 
-        let resolver = ClasspathResolver::new(path);
-
-        for cp in resolver.classpath {
-            if let Ok(defs) = generate_definitions(&cp) {}
-        }
+        syntax == expected
     }
 }

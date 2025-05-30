@@ -86,7 +86,7 @@ impl JClass {
             syntax.push_str(&format!("extends {} ", extends.replace("/", ".")));
         }
 
-        if self.implements.len() > 0 {
+        if !self.implements.is_empty() {
             syntax.push_str(&format!(
                 "implements {} ",
                 self.implements.join(", ").replace("/", ".")
@@ -95,23 +95,23 @@ impl JClass {
 
         syntax.push_str("{\n");
 
-        if self.fields.len() > 0 {
-            syntax.push_str("\n");
+        if !self.fields.is_empty() {
+            syntax.push('\n');
 
             for field in &self.fields {
-                syntax.push_str("\t");
+                syntax.push('\t');
                 syntax.push_str(&field.syntax());
-                syntax.push_str("\n");
+                syntax.push('\n');
             }
         }
 
-        if self.methods.len() > 0 {
-            syntax.push_str("\n");
+        if !self.methods.is_empty() {
+            syntax.push('\n');
 
             for method in &self.methods {
-                syntax.push_str("\t");
+                syntax.push('\t');
                 syntax.push_str(&method.syntax());
-                syntax.push_str("\n");
+                syntax.push('\n');
             }
         }
 
@@ -257,12 +257,16 @@ impl JMethod {
 
         syntax.push_str(&arguments);
 
-        syntax.push_str(")");
+        syntax.push(')');
 
         if self.is_abstract {
-            syntax.push_str(";");
+            syntax.push(';');
         } else {
-            syntax.push_str(" {\n\t}\n");
+            syntax.push_str(" {");
+            syntax.push('\n');
+            syntax.push('\t');
+            syntax.push('}');
+            syntax.push('\n');
         }
 
         syntax
@@ -372,7 +376,7 @@ pub fn decompile_class(class_file: ClassFile) -> DecompilationResult<JClass> {
                 Attribute::ConstantValue(index) => Some(class_file.get_constant(*index)),
                 _ => None,
             })
-            .nth(0)
+            .next()
             .map(ToOwned::to_owned);
 
         let mut visibility = JVisibility::Public;
@@ -416,10 +420,9 @@ pub fn decompile_class(class_file: ClassFile) -> DecompilationResult<JClass> {
                         .map(|v| format!("\"{}\"", v)),
                     Constant::Integer(v) => Some(v.to_string()),
                     Constant::Float(v) => Some(f32::from_bits(v).to_string()),
-                    Constant::Long(high, low) => Some(format!(
-                        "{}L",
-                        (((high as u64) << 32) + (low as u64)).to_string()
-                    )),
+                    Constant::Long(high, low) => {
+                        Some(format!("{}L", (((high as u64) << 32) + (low as u64))))
+                    }
                     Constant::Double(high, low) => {
                         Some(f64::from_bits(((high as u64) << 32) + (low as u64)).to_string())
                     }
