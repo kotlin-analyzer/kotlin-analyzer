@@ -13,20 +13,20 @@ pub enum WorkspaceType {
 }
 
 #[allow(dead_code)]
-pub struct ClasspathResolver {
+pub struct ClasspathResolver<'a> {
     workspace_type: Option<WorkspaceType>,
-    workspace_root: PathBuf,
-    classpath: Vec<PathBuf>,
+    workspace_root: &'a Path,
+    pub classpath: Vec<PathBuf>,
 }
 
-impl ClasspathResolver {
+impl<'a> ClasspathResolver<'a> {
     pub fn new_with_type(
-        workspace_root: PathBuf,
+        workspace_root: &'a Path,
         workspace_type: Option<WorkspaceType>,
-    ) -> ClasspathResolver {
+    ) -> ClasspathResolver<'a> {
         let classpath = match workspace_type {
-            Some(WorkspaceType::Maven) => resolve_maven_classpath(&workspace_root),
-            Some(WorkspaceType::Gradle) => resolve_gradle_classpath(&workspace_root),
+            Some(WorkspaceType::Maven) => resolve_maven_classpath(workspace_root),
+            Some(WorkspaceType::Gradle) => resolve_gradle_classpath(workspace_root),
             None => Ok(vec![]),
         };
 
@@ -37,8 +37,8 @@ impl ClasspathResolver {
         }
     }
 
-    pub fn new(workspace_root: PathBuf) -> ClasspathResolver {
-        let workspace_type = detect_workspace_type(&workspace_root);
+    pub fn new(workspace_root: &Path) -> ClasspathResolver {
+        let workspace_type = detect_workspace_type(workspace_root);
 
         ClasspathResolver::new_with_type(workspace_root, workspace_type)
     }
