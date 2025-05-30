@@ -135,7 +135,7 @@ impl Generate for ParseEntry {
             ParseEntry::Basic(basic) => basic.generate(sink, name_ctx, gen_ctx),
             ParseEntry::Choice { entries, .. } => {
                 let node_name = node.type_name();
-                let kind_name = Ident::new(&format!("{}Kind", node_name), node.span());
+                let kind_name = Ident::new(&format!("{node_name}Kind"), node.span());
 
                 {
                     let casts = children_names.iter().map(|v| v.cast_closure());

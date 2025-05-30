@@ -31,7 +31,7 @@ pub fn gen_single_ast(input: TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn gen_ast_debug(input: TokenStream) -> TokenStream {
     let ast = parse_macro_input!(input as TopLevelParseEntry);
-    let output_ast = format!("{:#?}", ast);
+    let output_ast = format!("{ast:#?}");
     let cargo_path: PathBuf = std::env!("CARGO_MANIFEST_DIR").into();
     std::fs::write(cargo_path.join("debug.ron"), output_ast).expect("unable to create file");
 
