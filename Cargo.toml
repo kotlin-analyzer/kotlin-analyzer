@@ -11,6 +11,7 @@ rust-version = "1.86"
 
 
 [workspace.dependencies]
+antlr-rust = "0.2.2"
 assert-panic = "1.0.1"
 ast = { path = "./crates/ast" }
 casey = "0.4.0"
