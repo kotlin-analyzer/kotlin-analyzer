@@ -1,0 +1,3 @@
+[submodule "crates/parser/kotlin_spec"]
+	path = crates/parser/kotlin_spec
+	url = https://github.com/Kotlin/kotlin-spec
