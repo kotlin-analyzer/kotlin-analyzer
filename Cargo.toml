@@ -6,7 +6,7 @@ resolver = "2"
 version = "0.0.1"
 edition = "2021"
 license = "MIT OR Apache-2.0"
-authors = ["Ikechukwu Eze"]
+authors = ["Ikechukwu Eze", "Benjamin Chibuzor-Orie"]
 rust-version = "1.86"
 
 
