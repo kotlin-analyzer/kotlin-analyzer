@@ -194,7 +194,7 @@ version = "0.0.1"
 [[package]]
 name = "classy"
 version = "0.3.0"
-source = "git+https://github.com/iambenkay/classy?rev=dbaf85d#dbaf85dd5c24bed360d93db8d08052cc3c0deeea"
+source = "git+https://github.com/kotlin-analyzer/classy?rev=v0.0.1#dbaf85dd5c24bed360d93db8d08052cc3c0deeea"
 dependencies = [
  "byteorder",
  "glob",
