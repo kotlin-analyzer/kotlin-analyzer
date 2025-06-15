@@ -1,7 +1,7 @@
 use crate::syntax::KotlinNode;
 use lady_deirdre::{
     syntax::{Node, SyntaxTree},
-    units::{CompilationUnit, Document},
+    units::Document,
 };
 
 #[test]
@@ -9,6 +9,10 @@ fn test_kotlin_node() {
     let source = r#"#! shebang
     // This is a comment
     /* multiline comment */
+    identifier another `quoted ident`
+    `incomplete`
+    ``
+    angebange`
 "#;
     KotlinNode::debug(source);
 
@@ -17,6 +21,4 @@ fn test_kotlin_node() {
     for error in doc.errors() {
         println!("{:#}", error.display(&doc));
     }
-
-    println!("{:#}", doc.display(&doc.root_node_ref()));
 }

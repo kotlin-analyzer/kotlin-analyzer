@@ -3,7 +3,9 @@ use lady_deirdre::syntax::{Node, NodeRef};
 #[cfg(test)]
 mod tests;
 
-use crate::parser::{parse_delimited_comment, parse_line_comment, parse_shebang_line};
+use crate::parser::{
+    parse_delimited_comment, parse_identifier, parse_line_comment, parse_shebang_line,
+};
 use crate::tokens::KotlinToken;
 
 // TODO: implement unicode
@@ -12,9 +14,9 @@ use crate::tokens::KotlinToken;
 
 #[derive(Node)]
 #[token(KotlinToken)]
-#[define(HIDDEN = LineComment | DelimitedComment | $Whitespace)]
-#[trivia($Whitespace | DelimitedComment | LineComment )]
-#[define(HiddenBefore =  DelimitedComment | $Whitespace)]
+#[define(HIDDEN = $Whitespace | LineComment | DelimitedComment)]
+#[trivia(HIDDEN)]
+#[define(HiddenBefore =  $Whitespace | DelimitedComment)]
 #[recovery(
     $LCurl,
     $RCurl,
@@ -55,14 +57,19 @@ pub enum KotlinNode {
         value: NodeRef,
     },
 
-    #[rule(ShebangLine $Newline*)]
-    // shebangLine? NL* fileAnnotation* packageHeader importList topLevelObject* EOF
+    #[rule(shebang_line: ShebangLine? $Newline* ident_test: Identifier+ $Newline*)]
+    /// shebangLine? NL* fileAnnotation* packageHeader importList topLevelObject* EOF
     KotlinFile {
         #[node]
         node: NodeRef,
         #[parent]
         parent: NodeRef,
+        #[child]
+        shebang_line: NodeRef,
+        #[child]
+        ident_test: Vec<NodeRef>,
     },
+
     /// Matches `ShebangLine NL+`
     #[rule($Hash $ExclNoWs)]
     #[denote(SHEBANG_LINE)]
@@ -76,12 +83,24 @@ pub enum KotlinNode {
     },
 
     /* Leaf Nodes - Mostly complex tokens that could not be handled by the lexer */
+    ///
+    #[rule($MisMatch | $Tick)]
+    #[denote(IDENTIFIER)]
+    #[parser(parse_identifier(session))]
+    #[secondary]
+    #[describe("identifier", "ident")]
+    Identifier {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+    },
     /// Matches `"//" (^['\r', '\n'])*`
     #[rule($LineCommentStart)]
     #[denote(LINE_COMMENT)]
     #[parser(parse_line_comment(session))]
     #[describe("line comment")]
-    // #[secondary]
+    #[secondary]
     LineComment {
         #[node]
         node: NodeRef,
@@ -94,7 +113,7 @@ pub enum KotlinNode {
     #[denote(DELIMITED_COMMENT)]
     #[parser(parse_delimited_comment(session))]
     #[describe("delimited comment")]
-    // #[secondary]
+    #[secondary]
     DelimitedComment {
         #[node]
         node: NodeRef,

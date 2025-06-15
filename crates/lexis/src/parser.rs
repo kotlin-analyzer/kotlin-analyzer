@@ -1,11 +1,12 @@
 mod indent;
 
 use lady_deirdre::{
-    lexis::TokenSet,
+    lexis::{TokenSet, EMPTY_TOKEN_SET},
     syntax::{NodeRef, Recovery, RecoveryResult, SyntaxError, SyntaxSession, EMPTY_NODE_SET},
 };
 
 use crate::{syntax::KotlinNode, tokens::KotlinToken};
+use finl_unicode::categories::CharacterCategories;
 
 pub(super) fn skip_trivia<'a>(session: &mut impl SyntaxSession<'a, Node = KotlinNode>) {
     loop {
@@ -20,8 +21,21 @@ pub(super) fn skip_trivia<'a>(session: &mut impl SyntaxSession<'a, Node = Kotlin
 }
 
 pub(super) static NEWLINE_TOKEN_SET: TokenSet = TokenSet::inclusive(&[KotlinToken::Newline as u8]);
+pub(super) static SURROUND_TOKEN_SET: TokenSet = TokenSet::inclusive(&[
+    KotlinToken::LCurl as u8,
+    KotlinToken::RCurl as u8,
+    KotlinToken::LSquare as u8,
+    KotlinToken::RSquare as u8,
+    KotlinToken::LParen as u8,
+    KotlinToken::RParen as u8,
+    KotlinToken::LAngle as u8,
+    KotlinToken::RAngle as u8,
+]);
 pub(super) static NEWLINE_RECOVERY: Recovery =
     Recovery::unlimited().unexpected_set(NEWLINE_TOKEN_SET);
+
+pub(super) static SURROUNDED_RECOVERY: Recovery =
+    Recovery::unlimited().unexpected_set(SURROUND_TOKEN_SET);
 
 pub(super) static SHEBANG_TOKEN_SET: TokenSet = TokenSet::inclusive(&[KotlinToken::Hash as u8]);
 pub(super) static COMMENT_TOKEN_SET: TokenSet = TokenSet::inclusive(&[KotlinToken::Div as u8]);
@@ -189,4 +203,100 @@ pub fn parse_delimited_comment<'a>(
 
     let node = session.node_ref();
     KotlinNode::DelimitedComment { node, parent }
+}
+
+pub fn parse_identifier<'a>(session: &mut impl SyntaxSession<'a, Node = KotlinNode>) -> KotlinNode {
+    skip_trivia(session);
+    static TICK_TOKEN_SET: TokenSet = TokenSet::inclusive(&[KotlinToken::Tick as u8]);
+    let mut error_reported = false;
+    loop {
+        match session.token(0) {
+            KotlinToken::Tick => {
+                let mut chars_inside = 0;
+                session.advance();
+
+                while session.token(0) != KotlinToken::Tick && session.token(0) != KotlinToken::EOI
+                {
+                    chars_inside += session.string(0).map(str::len).unwrap_or_default();
+                    session.advance();
+                }
+
+                if session.token(0) == KotlinToken::Tick && chars_inside > 0 {
+                    session.advance();
+
+                    let node = session.node_ref();
+                    let parent = session.parent_ref();
+                    return KotlinNode::Identifier { node, parent };
+                }
+
+                // since this consumes almost everything but EOI, it can only be 0
+
+                let start_site = session.site_ref(0);
+
+                if chars_inside > 0 {
+                    session.failure(SyntaxError {
+                        span: start_site..start_site,
+                        context: KotlinNode::IDENTIFIER,
+                        recovery: RecoveryResult::UnexpectedEOI,
+                        expected_tokens: &TICK_TOKEN_SET,
+                        expected_nodes: &EMPTY_NODE_SET,
+                    });
+                } else {
+                    // no need to recover here, we can just consume the tick token
+                    session.advance();
+
+                    session.failure(SyntaxError {
+                        span: start_site..start_site,
+                        context: KotlinNode::IDENTIFIER,
+                        recovery: RecoveryResult::InsertRecover,
+                        expected_tokens: &EMPTY_TOKEN_SET,
+                        expected_nodes: &EMPTY_NODE_SET,
+                    });
+                }
+
+                error_reported = true;
+                break;
+            }
+            KotlinToken::MisMatch => {
+                if let Some(mut chars) = session.string(0).map(str::chars)
+                    && chars
+                        .next()
+                        .map(|c| c == '_' || c.is_letter())
+                        .unwrap_or_default()
+                    && chars.all(|c| c == '_' || c.is_letter() || c.is_number_decimal())
+                {
+                    session.advance(); // skip first
+
+                    while let Some(mut chars) = session.string(0).map(str::chars)
+                        && chars.all(|c| c == '_' || c.is_letter() || c.is_number_decimal())
+                    {
+                        session.advance();
+                    }
+
+                    let node = session.node_ref();
+                    let parent = session.parent_ref();
+                    return KotlinNode::Identifier { node, parent };
+                }
+                break;
+            }
+            _ => break,
+        }
+    }
+    if !error_reported {
+        let start_site = session.site_ref(0);
+        let result = SURROUNDED_RECOVERY.recover(session, &NEWLINE_TOKEN_SET);
+        let end_site = session.site_ref(0);
+
+        session.failure(SyntaxError {
+            span: start_site..end_site,
+            context: KotlinNode::IDENTIFIER,
+            recovery: result,
+            expected_tokens: &TICK_TOKEN_SET,
+            expected_nodes: &EMPTY_NODE_SET,
+        });
+    }
+
+    let node = session.node_ref();
+    let parent = session.parent_ref();
+    return KotlinNode::Identifier { node, parent };
 }

@@ -46,3 +46,22 @@ fn token_buffer_test() {
         println!()
     }
 }
+
+#[test]
+fn token_debug() {
+    let source = r#"#! shebang
+    // This is a comment
+    /* multiline comment */
+    identifier another
+    `espaced identifier`hey
+"#;
+
+    let buffer = TokenBuffer::<KotlinToken>::from(source);
+    for chunk in buffer.chunks(..) {
+        print!("{:?}", chunk.token);
+        print!(" - {:?}", chunk.string);
+        print!("@{:?}", chunk.start());
+        print!(":{:?}", chunk.end());
+        println!()
+    }
+}

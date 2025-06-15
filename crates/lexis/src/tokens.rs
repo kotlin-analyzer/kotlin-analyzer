@@ -542,6 +542,9 @@ pub enum KotlinToken {
     MultiLineStrExprStart,
 
     // Section: Used only to help implementing custom parsers
+    /// For implementing escaped identifiers
+    #[rule("`")]
+    Tick,
     /// For implementing Line comments
     #[rule("//")]
     LineCommentStart,
