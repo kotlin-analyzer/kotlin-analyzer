@@ -28,6 +28,17 @@ mod tests;
 #[define(ESCAPE_SEQ = UNI_CHARACTER_LITERAL | ESCAPE_IDENTIFIER)]
 #[lookback(2)]
 #[repr(u8)]
+/// List of Kotlin defined tokens, that we cannot tokenise and moved to parsing phase =>
+/// ShebangLine, LineComment, DelimitedComment, Identifier, ReturnAt, ContinueAt, ThisAt, BreakAt, SuperAt.
+
+/// List of Kotlin defined tokens that we chose to ignore because they are covered by a token variant
+/// and trivia in parsing phase => ExclWs, QuestWs.
+
+/// List of Kotlin defined tokens that we chose to ignore because they are covered by a token variants
+/// and trivia with a combination of optional newline in parsing phase => AtPostWs, AtPreWs, NotIs, NotIn.
+
+/// List of Kotlin defined tokens that we ignored becuase they are not used at all => AtBothWs.
+/// IdentifierOrSoftKey is covered by SimpleIdentifier node
 pub enum KotlinToken {
     EOI = 0,
     MisMatch = 1,
@@ -36,7 +47,7 @@ pub enum KotlinToken {
     Whitespace,
 
     #[rule('\n' | '\r' '\n'?)]
-    Newline,
+    NL,
 
     // SECTION: separatorsAndOperations
     #[rule("...")]
@@ -432,71 +443,7 @@ pub enum KotlinToken {
     #[rule('\'' (ESCAPE_SEQ | ^['\r', '\n', '\'', '\\']) '\'')]
     CharLiteral,
 
-    // List of Kotlin defined tokens, that we cannot tokenise and moved to parsing phase
-    // ShebangLine, LineComment, DelimitedComment
-
     // TODO: implement in parsing phase
-
-    // separators and operations with Hidden
-    /// Matches `"@" (Hidden | NL)`
-    /// Parsed in the syntax grammar phase because it depends on Hidden
-    AtPostWs,
-
-    /// Matches `(Hidden | NL) "@"`
-    /// Parsed in the syntax grammar phase because it depends on Hidden
-    AtPreWs,
-
-    /// Matches `(Hidden | NL) "@" (Hidden | NL)`
-    /// Parsed in the syntax grammar phase because it depends on Hidden
-    AtBothWs,
-
-    /// Matches `"!" Hidden`
-    /// Parsed in the syntax grammar phase because it depends on Hidden
-    ExclWs,
-
-    /// Matches `"!is" (Hidden | NL)`
-    /// Parsed in the syntax grammar phase because it depends on Hidden
-    NotIs,
-
-    /// Matches `"!in" (Hidden | NL)`
-    /// Parsed in the syntax grammar phase because it depends on Hidden
-    NotIn,
-
-    /// Matches `"?" Hidden`
-    /// Parsed in the syntax grammar phase because it depends on Hidden
-    QuestWs,
-
-    // Keywords with Identifier
-    /// Matches `"return@" Identifier`
-    /// Parsed in the syntax grammar phase because it depends on Identifier
-    ReturnAt,
-
-    /// Matches `"continue@" Identifier`
-    /// Parsed in the syntax grammar phase because it depends on Identifier
-    ContinueAt,
-
-    /// Matches `"break@" Identifier`
-    /// Parsed in the syntax grammar phase because it depends on Identifier
-    BreakAt,
-
-    /// Matches `"this@" Identifier`
-    /// Parsed in the syntax grammar phase because it depends on Identifier
-    ThisAt,
-
-    /// Matches `"super@" Identifier`
-    /// Parsed in the syntax grammar phase because it depends on Identifier
-    SuperAt,
-
-    // Section: Identifiers
-    /// Matches `(Letter | '_') (Letter | '_' | UnicodeDigit)*``
-    /// | '`' ~([\r\n] | '`')+ '`'
-    /// Parsed in the syntax grammar phase
-    Identifier,
-
-    /// Matches `Identifier` or any of the soft keywords or hard keywords
-    /// Parsed in the syntax grammar phase
-    IdentifierOrSoftKey,
-
     /// Matches `'$' IdentifierOrSoftKey`
     /// Parsed in the syntax grammar phase
     FieldIdentifier,
@@ -554,6 +501,7 @@ pub enum KotlinToken {
     DelimitedCommentStart,
 }
 
+// TODO: conisder removing if not used
 pub static SOFT_KEYWORDS: TokenSet = TokenSet::inclusive(&[
     KotlinToken::Abstract as u8,
     KotlinToken::Annotation as u8,
@@ -600,9 +548,7 @@ pub static SOFT_KEYWORDS: TokenSet = TokenSet::inclusive(&[
     KotlinToken::Expect as u8,
     KotlinToken::Actual as u8,
     KotlinToken::Value as u8,
+    // strong keywords
+    KotlinToken::Const as u8,
+    KotlinToken::Suspend as u8,
 ]);
-
-pub static HARD_KEYWORDS: TokenSet =
-    TokenSet::inclusive(&[KotlinToken::Const as u8, KotlinToken::Suspend as u8]);
-
-// TODO: add more token sets for operators, keywords, etc.
