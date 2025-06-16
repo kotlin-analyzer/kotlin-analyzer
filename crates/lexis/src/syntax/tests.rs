@@ -10,7 +10,7 @@ fn test_kotlin_node() {
     // This is a comment
     /* multiline comment */
     identifier another `quoted ident`
-    `incomplete`
+    _ident _03_name
     ``
     angebange`
 "#;

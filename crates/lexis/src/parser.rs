@@ -255,6 +255,12 @@ pub fn parse_identifier_token<'a>(
                 error_reported = true;
                 break;
             }
+            KotlinToken::AsciiIdentifier => {
+                session.advance();
+                let node = session.node_ref();
+                let parent = session.parent_ref();
+                return KotlinNode::IdentifierToken { node, parent };
+            }
             KotlinToken::MisMatch => {
                 if let Some(mut chars) = session.string(0).map(str::chars)
                     && chars

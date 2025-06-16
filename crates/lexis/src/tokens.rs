@@ -23,6 +23,7 @@ mod tests;
 #[define(BIN_LITERAL = '0' ['b', 'B'] BinDigit BinDigitOrSeparator* BinDigit | '0' ['b', 'B'] BinDigit)]
 // Char
 #[define(UNI_CHARACTER_LITERAL = '\\' 'u' HexDigit HexDigit HexDigit HexDigit)]
+#[define(IDENT_START = ['a'..'z', 'A'..'Z', '_'])]
 // Escapes
 #[define(ESCAPE_IDENTIFIER = '\\' ('"' | '\'' | '\\' | 'n' | 'r' | 't' | 'b' | '$' ))]
 #[define(ESCAPE_SEQ = UNI_CHARACTER_LITERAL | ESCAPE_IDENTIFIER)]
@@ -193,220 +194,292 @@ pub enum KotlinToken {
 
     // SECTION: keywords
     #[rule("file")]
+    #[priority(10)]
     File,
 
     #[rule("field")]
+    #[priority(10)]
     Field,
 
     #[rule("property")]
+    #[priority(10)]
     Property,
 
     #[rule("get")]
+    #[priority(10)]
     Get,
 
     #[rule("set")]
+    #[priority(10)]
     Set,
 
     #[rule("receiver")]
+    #[priority(10)]
     Receiver,
 
     #[rule("param")]
+    #[priority(10)]
     Param,
 
     #[rule("setparam")]
+    #[priority(10)]
     Setparam,
 
     #[rule("delegate")]
+    #[priority(10)]
     Delegate,
 
     #[rule("package")]
+    #[priority(10)]
     Package,
 
     #[rule("import")]
+    #[priority(10)]
     Import,
 
     #[rule("class")]
+    #[priority(10)]
     Class,
 
     #[rule("interface")]
+    #[priority(10)]
     Interface,
 
     #[rule("fun")]
+    #[priority(10)]
     Fun,
 
     #[rule("object")]
+    #[priority(10)]
     Object,
 
     #[rule("val")]
+    #[priority(10)]
     Val,
 
     #[rule("var")]
+    #[priority(10)]
     Var,
 
     #[rule("typealias")]
+    #[priority(10)]
     TypeAlias,
 
     #[rule("constructor")]
+    #[priority(10)]
     Constructor,
 
     #[rule("by")]
+    #[priority(10)]
     By,
 
     #[rule("companion")]
+    #[priority(10)]
     Companion,
 
     #[rule("init")]
+    #[priority(10)]
     Init,
 
     #[rule("this")]
+    #[priority(10)]
     This,
 
     #[rule("super")]
+    #[priority(10)]
     Super,
 
     #[rule("typeof")]
+    #[priority(10)]
     Typeof,
 
     #[rule("where")]
+    #[priority(10)]
     Where,
 
     #[rule("if")]
+    #[priority(10)]
     If,
 
     #[rule("else")]
+    #[priority(10)]
     Else,
 
     #[rule("when")]
+    #[priority(10)]
     When,
 
     #[rule("try")]
+    #[priority(10)]
     Try,
 
     #[rule("catch")]
+    #[priority(10)]
     Catch,
 
     #[rule("finally")]
+    #[priority(10)]
     Finally,
 
     #[rule("for")]
+    #[priority(10)]
     For,
 
     #[rule("do")]
+    #[priority(10)]
     Do,
 
     #[rule("while")]
+    #[priority(10)]
     While,
 
     #[rule("throw")]
+    #[priority(10)]
     Throw,
 
     #[rule("return")]
+    #[priority(10)]
     Return,
 
     #[rule("continue")]
+    #[priority(10)]
     Continue,
 
     #[rule("break")]
+    #[priority(10)]
     Break,
 
     #[rule("as")]
+    #[priority(10)]
     As,
 
     #[rule("is")]
+    #[priority(10)]
     Is,
 
     #[rule("in")]
+    #[priority(10)]
     In,
 
     #[rule("out")]
+    #[priority(10)]
     Out,
 
     #[rule("dynamic")]
+    #[priority(10)]
     Dynamic,
 
     // SECTION: lexicalModifiers
     #[rule("public")]
+    #[priority(10)]
     Public,
 
     #[rule("private")]
+    #[priority(10)]
     Private,
 
     #[rule("protected")]
+    #[priority(10)]
     Protected,
 
     #[rule("internal")]
+    #[priority(10)]
     Internal,
 
     #[rule("enum")]
+    #[priority(10)]
     Enum,
 
     #[rule("sealed")]
+    #[priority(10)]
     Sealed,
 
     #[rule("annotation")]
+    #[priority(10)]
     Annotation,
 
     #[rule("data")]
+    #[priority(10)]
     Data,
 
     #[rule("inner")]
+    #[priority(10)]
     Inner,
 
     #[rule("value")]
+    #[priority(10)]
     Value,
 
     #[rule("tailrec")]
+    #[priority(10)]
     Tailrec,
 
     #[rule("operator")]
+    #[priority(10)]
     Operator,
 
     #[rule("inline")]
+    #[priority(10)]
     Inline,
 
     #[rule("infix")]
+    #[priority(10)]
     Infix,
 
     #[rule("external")]
+    #[priority(10)]
     External,
 
     #[rule("suspend")]
+    #[priority(10)]
     Suspend,
 
     #[rule("override")]
+    #[priority(10)]
     Override,
 
     #[rule("abstract")]
+    #[priority(10)]
     Abstract,
 
     #[rule("final")]
+    #[priority(10)]
     Final,
 
     #[rule("open")]
+    #[priority(10)]
     Open,
 
     #[rule("const")]
+    #[priority(10)]
     Const,
 
     #[rule("lateinit")]
+    #[priority(10)]
     Lateinit,
 
     #[rule("vararg")]
+    #[priority(10)]
     Vararg,
 
     #[rule("noinline")]
+    #[priority(10)]
     Noinline,
 
     #[rule("crossinline")]
+    #[priority(10)]
     Crossinline,
 
     #[rule("reified")]
+    #[priority(10)]
     Reified,
 
     #[rule("expect")]
+    #[priority(10)]
     Expect,
 
     #[rule("actual")]
+    #[priority(10)]
     Actual,
 
     // SECTION: literals
@@ -435,9 +508,11 @@ pub enum KotlinToken {
     LongLiteral,
 
     #[rule("true" | "false")]
+    #[priority(10)]
     BoolLiteral,
 
     #[rule("null")]
+    #[priority(10)]
     NullLiteral,
 
     #[rule('\'' (ESCAPE_SEQ | ^['\r', '\n', '\'', '\\']) '\'')]
@@ -489,6 +564,11 @@ pub enum KotlinToken {
     MultiLineStrExprStart,
 
     // Section: Used only to help implementing custom parsers
+    /// For implementing identifiers
+    #[rule(IDENT_START (IDENT_START | DEC_DIGIT)*)]
+    #[priority(0)]
+    AsciiIdentifier,
+
     /// For implementing escaped identifiers
     #[rule("`")]
     Tick,

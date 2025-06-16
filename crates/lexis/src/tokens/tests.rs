@@ -54,6 +54,8 @@ fn token_debug() {
     /* multiline comment */
     identifier another
     `espaced identifier`hey
+    if fun()
+    _ident _03_name
 "#;
 
     let buffer = TokenBuffer::<KotlinToken>::from(source);

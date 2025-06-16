@@ -158,14 +158,6 @@ pub enum KotlinNode {
         parent: NodeRef,
     },
 
-    #[rule($In | $Out)]
-    VarianceModifier {
-        #[node]
-        node: NodeRef,
-        #[parent]
-        parent: NodeRef,
-    },
-
     #[rule($LAngle TypeProjection)]
     #[denote(TEMP8)]
     TypeArguments {
@@ -199,19 +191,38 @@ pub enum KotlinNode {
 
     // SECTION: types
     // Section Notes : Quest is always $QuestNoWs
+    /// Matches typeModifiers? (functionType | parenthesizedType | nullableType | typeReference | definitelyNonNullableType)
+    #[rule(TypeModifier* (FunctionType | ParenthesizedType /*| NullableType */ | TypeReference | DefinitelyNonNullableType))]
+    #[denote(T15)]
+    Type {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+    },
 
-    // type
-    //     : typeModifiers? (functionType | parenthesizedType | nullableType | typeReference | definitelyNonNullableType)
-    //     ;
+    /// Matches userType | DYNAMIC.
+    /// But note that this is unneccessarily repititive as `
+    /// DYNAMIC` is already covered by UserType -> SimpleUserType -> SimpleIdentifier
+    /// So it is not included in the rule
+    #[rule(UserType)]
+    TypeReference {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+    },
 
-    // typeReference
-    //     : userType
-    //     | DYNAMIC
-    //     ;
+    /// Matches (typeReference | parenthesizedType) NL* quest+
+    #[rule((TypeReference  | ParenthesizedType) $NL* $QuestNoWs+)]
+    #[denote(TEMP10)]
+    NullableType {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+    },
 
-    // nullableType
-    //     : (typeReference | parenthesizedType) NL* quest+
-    //     ;
     /// Matches `simpleUserType (NL* DOT NL* simpleUserType)*`
     #[rule(main_type: SimpleUserType ($NL* $Dot $NL* other_types: SimpleUserType)*)]
     #[denote(TEMP9)]
@@ -261,29 +272,341 @@ pub enum KotlinNode {
         parent: NodeRef,
     },
 
-    // functionType
-    //     : (receiverType NL* DOT NL*)? functionTypeParameters NL* ARROW NL* type
+    // Matches (receiverType NL* DOT NL*)? functionTypeParameters NL* ARROW NL* type
+    #[rule((ReceiverType $NL* $Dot $NL*)? FunctionTypeParameters $NL* $Arrow $NL* Type )]
+    #[denote(T14)]
+    FunctionType {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+    },
+
+    /// Matches ` LPAREN NL* (parameter | type)? (NL* COMMA NL* (parameter | type))* (NL* COMMA)? NL* RPAREN`
+    #[rule($LParen $NL* (Parameter | Type)? ($NL* $Comma $NL* (Parameter | Type))* ($NL* $Comma)? $NL* $RParen)]
+    #[denote(T13)]
+    FunctionTypeParameters {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+    },
+
+    /// Matches `LPAREN NL* type NL* RPAREN`
+    #[rule($LParen $NL* Type $NL* $RParen)]
+    #[denote(T22)]
+    ParenthesizedType {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+    },
+
+    /// Matches `typeModifiers? (parenthesizedType | nullableType | typeReference)`
+    #[rule(type_modifiers: TypeModifier* kt_type: (ParenthesizedType | NullableType | TypeReference))]
+    #[denote(T23)]
+    ReceiverType {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        type_modifiers: Vec<NodeRef>,
+        #[child]
+        kt_type: NodeRef,
+    },
+
+    /// Matches LPAREN NL* (userType | parenthesizedUserType) NL* RPAREN
+    #[rule($LParen $NL* inner: (UserType | ParenthesizedUserType) $NL* $RParen)]
+    #[denote(TEMP11)]
+    ParenthesizedUserType {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        inner: NodeRef,
+    },
+
+    /// Matches `typeModifiers? (userType | parenthesizedUserType) NL* AMP NL* typeModifiers? (userType | parenthesizedUserType)`
+    #[rule(first_modifiers: TypeModifier* first_type: (UserType | ParenthesizedUserType)$ NL* $Amp $NL* second_modifiers: TypeModifier* second_type: (UserType | ParenthesizedUserType))]
+    DefinitelyNonNullableType {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        first_modifiers: Vec<NodeRef>,
+        #[child]
+        first_type: NodeRef,
+        #[child]
+        second_modifiers: Vec<NodeRef>,
+        #[child]
+        second_type: NodeRef,
+    },
+
+    // SECTION: classMembers
+
+    // classMemberDeclarations
+    //     : (classMemberDeclaration semis?)*
     //     ;
 
-    // functionTypeParameters
-    //     : LPAREN NL* (parameter | type)? (NL* COMMA NL* (parameter | type))* (NL* COMMA)? NL* RPAREN
+    // classMemberDeclaration
+    //     : declaration
+    //     | companionObject
+    //     | anonymousInitializer
+    //     | secondaryConstructor
     //     ;
 
-    // parenthesizedType
-    //     : LPAREN NL* type NL* RPAREN
+    // anonymousInitializer
+    //     : INIT NL* block
     //     ;
 
-    // receiverType
-    //     : typeModifiers? (parenthesizedType | nullableType | typeReference)
+    // companionObject
+    //     : modifiers? COMPANION NL* DATA? NL* OBJECT
+    //       (NL* simpleIdentifier)?
+    //       (NL* COLON NL* delegationSpecifiers)?
+    //       (NL* classBody)?
     //     ;
 
-    // parenthesizedUserType
-    //     : LPAREN NL* (userType | parenthesizedUserType) NL* RPAREN
+    // functionValueParameters
+    //     : LPAREN NL* (functionValueParameter (NL* COMMA NL* functionValueParameter)* (NL* COMMA)?)? NL* RPAREN
     //     ;
 
-    // definitelyNonNullableType
-    //     : typeModifiers? (userType | parenthesizedUserType) NL* AMP NL* typeModifiers? (userType | parenthesizedUserType)
+    // functionValueParameter
+    //     : parameterModifiers? parameter (NL* ASSIGNMENT NL* expression)?
     //     ;
+
+    // functionDeclaration
+    //     : modifiers?
+    //       FUN (NL* typeParameters)? (NL* receiverType NL* DOT)? NL* simpleIdentifier
+    //       NL* functionValueParameters
+    //       (NL* COLON NL* type)?
+    //       (NL* typeConstraints)?
+    //       (NL* functionBody)?
+    //     ;
+
+    // functionBody
+    //     : block
+    //     | ASSIGNMENT NL* expression
+    //     ;
+
+    // variableDeclaration
+    //     : annotation* NL* simpleIdentifier (NL* COLON NL* type)?
+    //     ;
+
+    // multiVariableDeclaration
+    //     : LPAREN NL* variableDeclaration (NL* COMMA NL* variableDeclaration)* (NL* COMMA)? NL* RPAREN
+    //     ;
+
+    // propertyDeclaration
+    //     : modifiers? (VAL | VAR)
+    //       (NL* typeParameters)?
+    //       (NL* receiverType NL* DOT)?
+    //       (NL* (multiVariableDeclaration | variableDeclaration))
+    //       (NL* typeConstraints)?
+    //       (NL* (ASSIGNMENT NL* expression | propertyDelegate))?
+    //       (NL* SEMICOLON)? NL* (getter? (NL* semi? setter)? | setter? (NL* semi? getter)?)
+    //     ;
+
+    // propertyDelegate
+    //     : BY NL* expression
+    //     ;
+
+    // getter
+    //     : modifiers? GET
+    //       (NL* LPAREN NL* RPAREN (NL* COLON NL* type)? NL* functionBody)?
+    //     ;
+
+    // setter
+    //     : modifiers? SET
+    //       (NL* LPAREN NL* functionValueParameterWithOptionalType (NL* COMMA)? NL* RPAREN (NL* COLON NL* type)? NL* functionBody)?
+    //     ;
+
+    // parametersWithOptionalType
+    //     : LPAREN NL* (functionValueParameterWithOptionalType (NL* COMMA NL* functionValueParameterWithOptionalType)* (NL* COMMA)?)? NL* RPAREN
+    //     ;
+
+    // functionValueParameterWithOptionalType
+    //     : parameterModifiers? parameterWithOptionalType (NL* ASSIGNMENT NL* expression)?
+    //     ;
+
+    // parameterWithOptionalType
+    //     : simpleIdentifier NL* (COLON NL* type)?
+    //     ;
+    /// Matches `simpleIdentifier NL* COLON NL* type`
+    #[rule(identifier: SimpleIdenitifer $NL* $Colon $NL* /* Type */)]
+    #[denote(TEMP12)]
+    Parameter {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        identifier: NodeRef,
+    },
+
+    // objectDeclaration
+    //     : modifiers? OBJECT
+    //       NL* simpleIdentifier
+    //       (NL* COLON NL* delegationSpecifiers)?
+    //       (NL* classBody)?
+    //     ;
+
+    // secondaryConstructor
+    //     : modifiers? CONSTRUCTOR NL* functionValueParameters (NL* COLON NL* constructorDelegationCall)? NL* block?
+    //     ;
+
+    // constructorDelegationCall
+    //     : (THIS | SUPER) NL* valueArguments
+    //     ;
+
+    // SECTION: modifiers
+    /// Matches `(annotation | modifier)+`
+    #[rule((Annotation | Modifier)+)]
+    #[denote(T21)]
+    Modifiers {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+    },
+
+    /// Matches `(annotation | parameterModifier)+`
+    #[rule((Annotation | ParameterModifier)+)]
+    #[denote(T28)]
+    ParameterModifiers {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+    },
+
+    /// Matches `(classModifier| memberModifier| visibilityModifier| functionModifier| propertyModifier| inheritanceModifier| parameterModifier| platformModifier) NL*`
+    #[rule((ClassModifier| MemberModifier| VisibilityModifier| FunctionModifier| PropertyModifier| InheritanceModifier| ParameterModifier| PlatformModifier) $NL*)]
+    #[denote(T29)]
+    Modifier {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+    },
+
+    /// Matches `annotation | SUSPEND NL*`
+    #[rule(annotation: Annotation | suspend: $Suspend $NL*)]
+    #[denote(T16)]
+    TypeModifier {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        annotation: NodeRef,
+        #[child]
+        suspend: TokenRef,
+    },
+
+    /// Matches ENUM | SEALED | ANNOTATION | DATA | INNER | VALUE
+    #[rule($Enum | $Sealed | $Annotation | $Data | $Inner | $Value)]
+    ClassModifier {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+    },
+
+    /// Matches OVERRIDE | LATEINIT
+    #[rule($Override | $Lateinit)]
+    MemberModifier {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+    },
+
+    /// Matches PUBLIC | PRIVATE | INTERNAL | PROTECTED
+    #[rule($Public | $Private | $Internal | $Protected)]
+    VisibilityModifier {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+    },
+
+    /// Matches IN | OUT
+    #[rule($In | $Out)]
+    VarianceModifier {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+    },
+
+    // typeParameterModifiers
+    //     : typeParameterModifier+
+    //     ;
+    #[rule(ReificationModifier | (VarianceModifier $NL*) | Annotation)]
+    #[denote(T20)]
+    TypeParameterModifier {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+    },
+
+    /// Matches TAILREC | OPERATOR | INFIX | INLINE | EXTERNAL | SUSPEND
+    #[rule($Tailrec | $Operator | $Infix | $Inline | $External | $Suspend)]
+    FunctionModifier {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+    },
+
+    /// Matches CONST
+    #[rule($Const)]
+    PropertyModifier {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+    },
+
+    /// Matches ABSTRACT | FINAL | OPEN
+    #[rule($Abstract | $Final | $Open)]
+    InheritanceModifier {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+    },
+
+    /// Matches VARARG | NOINLINE | CROSSINLINE
+    #[rule($Vararg | $Noinline | $Crossinline)]
+    ParameterModifier {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+    },
+
+    /// Matches REIFIED
+    #[rule($Reified)]
+    ReificationModifier {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+    },
+
+    /// Matches EXPECT | ACTUAL
+    #[rule($Expect | $Actual)]
+    PlatformModifier {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+    },
 
     /* SECTION: annotations */
     /// Matches either singleAnnotation or multiAnnotation as described in
@@ -318,7 +641,7 @@ pub enum KotlinNode {
     /* Leaf Nodes - Mostly complex tokens that could not be handled by the lexer */
     /// Matches `(Letter | '_') (Letter | '_' | UnicodeDigit)*`
     /// | '`' ~([\r\n] | '`')+ '`'
-    #[rule($MisMatch | $Tick)]
+    #[rule($Tick | $AsciiIdentifier | $MisMatch )]
     #[denote(IDENTIFIER_TOKEN)]
     #[parser(parse_identifier_token(session))]
     #[secondary]
