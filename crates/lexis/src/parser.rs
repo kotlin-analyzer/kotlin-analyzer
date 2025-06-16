@@ -20,7 +20,7 @@ pub(super) fn skip_trivia<'a>(session: &mut impl SyntaxSession<'a, Node = Kotlin
     }
 }
 
-pub(super) static NEWLINE_TOKEN_SET: TokenSet = TokenSet::inclusive(&[KotlinToken::Newline as u8]);
+pub(super) static NEWLINE_TOKEN_SET: TokenSet = TokenSet::inclusive(&[KotlinToken::NL as u8]);
 pub(super) static SURROUND_TOKEN_SET: TokenSet = TokenSet::inclusive(&[
     KotlinToken::LCurl as u8,
     KotlinToken::RCurl as u8,
@@ -41,7 +41,6 @@ pub(super) static SHEBANG_TOKEN_SET: TokenSet = TokenSet::inclusive(&[KotlinToke
 pub(super) static COMMENT_TOKEN_SET: TokenSet = TokenSet::inclusive(&[KotlinToken::Div as u8]);
 pub(super) static CLOSING_COMMENT_TOKEN_SET: TokenSet =
     TokenSet::inclusive(&[KotlinToken::Mult as u8]);
-// static ALL_TOKEN_SET: TokenSet = TokenSet::all();
 
 pub fn parse_shebang_line<'a>(
     session: &mut impl SyntaxSession<'a, Node = KotlinNode>,
@@ -53,12 +52,9 @@ pub fn parse_shebang_line<'a>(
         match (session.token(0), session.token(1)) {
             (KotlinToken::Hash, KotlinToken::ExclNoWs) => {
                 session.skip(2);
-                skip_trivia(session);
 
                 // skip until the end of the line
-                while session.token(0) != KotlinToken::Newline
-                    && session.token(0) != KotlinToken::EOI
-                {
+                while session.token(0) != KotlinToken::NL && session.token(0) != KotlinToken::EOI {
                     session.advance();
                 }
 
@@ -83,7 +79,7 @@ pub fn parse_shebang_line<'a>(
                 }
 
                 // skip all the newlines after the shebang line
-                while session.token(0) == KotlinToken::Newline {
+                while session.token(0) == KotlinToken::NL {
                     session.advance();
                 }
 
@@ -118,11 +114,9 @@ pub fn parse_shebang_line<'a>(
 pub fn parse_line_comment<'a>(
     session: &mut impl SyntaxSession<'a, Node = KotlinNode>,
 ) -> KotlinNode {
-    skip_trivia(session);
-
     if session.token(0) == KotlinToken::LineCommentStart {
         session.advance();
-        while session.token(0) != KotlinToken::Newline && session.token(0) != KotlinToken::EOI {
+        while session.token(0) != KotlinToken::NL && session.token(0) != KotlinToken::EOI {
             session.advance();
         }
 
@@ -144,17 +138,18 @@ pub fn parse_line_comment<'a>(
         expected_nodes: &EMPTY_NODE_SET,
     });
 
-    let node = session.node_ref();
     let parent = session.parent_ref();
 
-    KotlinNode::LineComment { node, parent }
+    KotlinNode::LineComment {
+        node: NodeRef::nil(),
+        parent,
+    }
 }
 
 pub fn parse_delimited_comment<'a>(
     session: &mut impl SyntaxSession<'a, Node = KotlinNode>,
 ) -> KotlinNode {
     let parent = session.parent_ref();
-    skip_trivia(session);
     let mut matched = 0;
 
     loop {
@@ -201,12 +196,15 @@ pub fn parse_delimited_comment<'a>(
         expected_nodes: &EMPTY_NODE_SET,
     });
 
-    let node = session.node_ref();
-    KotlinNode::DelimitedComment { node, parent }
+    KotlinNode::DelimitedComment {
+        node: NodeRef::nil(),
+        parent,
+    }
 }
 
-pub fn parse_identifier<'a>(session: &mut impl SyntaxSession<'a, Node = KotlinNode>) -> KotlinNode {
-    skip_trivia(session);
+pub fn parse_identifier_token<'a>(
+    session: &mut impl SyntaxSession<'a, Node = KotlinNode>,
+) -> KotlinNode {
     static TICK_TOKEN_SET: TokenSet = TokenSet::inclusive(&[KotlinToken::Tick as u8]);
     let mut error_reported = false;
     loop {
@@ -226,7 +224,7 @@ pub fn parse_identifier<'a>(session: &mut impl SyntaxSession<'a, Node = KotlinNo
 
                     let node = session.node_ref();
                     let parent = session.parent_ref();
-                    return KotlinNode::Identifier { node, parent };
+                    return KotlinNode::IdentifierToken { node, parent };
                 }
 
                 // since this consumes almost everything but EOI, it can only be 0
@@ -236,7 +234,7 @@ pub fn parse_identifier<'a>(session: &mut impl SyntaxSession<'a, Node = KotlinNo
                 if chars_inside > 0 {
                     session.failure(SyntaxError {
                         span: start_site..start_site,
-                        context: KotlinNode::IDENTIFIER,
+                        context: KotlinNode::IDENTIFIER_TOKEN,
                         recovery: RecoveryResult::UnexpectedEOI,
                         expected_tokens: &TICK_TOKEN_SET,
                         expected_nodes: &EMPTY_NODE_SET,
@@ -247,7 +245,7 @@ pub fn parse_identifier<'a>(session: &mut impl SyntaxSession<'a, Node = KotlinNo
 
                     session.failure(SyntaxError {
                         span: start_site..start_site,
-                        context: KotlinNode::IDENTIFIER,
+                        context: KotlinNode::IDENTIFIER_TOKEN,
                         recovery: RecoveryResult::InsertRecover,
                         expected_tokens: &EMPTY_TOKEN_SET,
                         expected_nodes: &EMPTY_NODE_SET,
@@ -275,7 +273,7 @@ pub fn parse_identifier<'a>(session: &mut impl SyntaxSession<'a, Node = KotlinNo
 
                     let node = session.node_ref();
                     let parent = session.parent_ref();
-                    return KotlinNode::Identifier { node, parent };
+                    return KotlinNode::IdentifierToken { node, parent };
                 }
                 break;
             }
@@ -289,14 +287,16 @@ pub fn parse_identifier<'a>(session: &mut impl SyntaxSession<'a, Node = KotlinNo
 
         session.failure(SyntaxError {
             span: start_site..end_site,
-            context: KotlinNode::IDENTIFIER,
+            context: KotlinNode::IDENTIFIER_TOKEN,
             recovery: result,
             expected_tokens: &TICK_TOKEN_SET,
             expected_nodes: &EMPTY_NODE_SET,
         });
     }
 
-    let node = session.node_ref();
     let parent = session.parent_ref();
-    return KotlinNode::Identifier { node, parent };
+    return KotlinNode::IdentifierToken {
+        node: NodeRef::nil(),
+        parent,
+    };
 }
