@@ -1,3 +1,6 @@
+//! Notes:
+//! 1 - $NL should not be used at the start of any rule. If it is needed, apply it at the site of usage
+
 use lady_deirdre::{
     lexis::TokenRef,
     syntax::{Node, NodeRef},
@@ -16,6 +19,7 @@ use crate::tokens::KotlinToken;
 #[derive(Node)]
 #[token(KotlinToken)]
 #[define(HIDDEN = $Whitespace | LineComment | DelimitedComment)]
+#[define(HIDDEN_WITH_NL = $Whitespace | $NL | LineComment | DelimitedComment)]
 #[trivia(HIDDEN)]
 #[define(HiddenBefore =  $Whitespace | DelimitedComment)]
 #[recovery(
@@ -47,7 +51,7 @@ use crate::tokens::KotlinToken;
     $Companion,
 )]
 #[define(ANNOTATION_TYPE = ($Field | $Property | $Get | $Set | $Receiver | $Param | $Setparam | $Delegate))]
-#[define(SOFT_KEYWORDS = (
+#[define(SOFT_KEYWORDS_SANS_SUSPEND = (
     | $Abstract
     | $Annotation
     | $By
@@ -93,9 +97,9 @@ use crate::tokens::KotlinToken;
     | $Expect
     | $Actual
     | $Const
-    | $Suspend
     | $Value
 ))]
+#[define(SOFT_KEYWORDS = ( SOFT_KEYWORDS_SANS_SUSPEND | $Suspend))]
 pub enum KotlinNode {
     #[root]
     #[rule(value: KotlinFile)]
@@ -192,9 +196,18 @@ pub enum KotlinNode {
     // SECTION: types
     // Section Notes : Quest is always $QuestNoWs
     /// Matches typeModifiers? (functionType | parenthesizedType | nullableType | typeReference | definitelyNonNullableType)
-    #[rule(TypeModifier* (FunctionType | ParenthesizedType /*| NullableType */ | TypeReference | DefinitelyNonNullableType))]
-    #[denote(T15)]
-    Type {
+    // #[rule(TypeModifier* (FunctionType | ParenthesizedType /*| NullableType */ | TypeReference | DefinitelyNonNullableType))]
+    // #[denote(T15)]
+    // Type {
+    //     #[node]
+    //     node: NodeRef,
+    //     #[parent]
+    //     parent: NodeRef,
+    // },
+
+    #[rule(NonSuspendTypeModifier* DefinitelyNonNullableType)]
+    #[denote(T16)]
+    Type2 {
         #[node]
         node: NodeRef,
         #[parent]
@@ -224,7 +237,8 @@ pub enum KotlinNode {
     },
 
     /// Matches `simpleUserType (NL* DOT NL* simpleUserType)*`
-    #[rule(main_type: SimpleUserType ($NL* $Dot $NL* other_types: SimpleUserType)*)]
+    #[rule(main_type: SimpleUserType ($Dot other_types: SimpleUserType)*)]
+    #[trivia($NL)]
     #[denote(TEMP9)]
     UserType {
         #[node]
@@ -252,7 +266,7 @@ pub enum KotlinNode {
     },
 
     /// Matches `typeProjectionModifiers? type | MULT`
-    #[rule((modifiers: TypeProjectionModifier* /*Type (remove Div)*/ $Div) | $Mult)]
+    #[rule((modifiers: TypeProjectionModifier* /*Type2 (remove Div)*/ $Div) | $Mult)]
     #[denote(TEMP7)]
     TypeProjection {
         #[node]
@@ -273,7 +287,8 @@ pub enum KotlinNode {
     },
 
     // Matches (receiverType NL* DOT NL*)? functionTypeParameters NL* ARROW NL* type
-    #[rule((ReceiverType $NL* $Dot $NL*)? FunctionTypeParameters $NL* $Arrow $NL* Type )]
+    #[trivia(HIDDEN_WITH_NL)]
+    #[rule((ReceiverType $Dot)? FunctionTypeParameters $Arrow Type2 )]
     #[denote(T14)]
     FunctionType {
         #[node]
@@ -282,8 +297,21 @@ pub enum KotlinNode {
         parent: NodeRef,
     },
 
+    /// FunctionType using baseReciever Type2 for making other nodes
+    /// Matches (baseReceiverType NL* DOT NL*)? functionTypeParameters NL* ARROW NL* type
+    #[trivia(HIDDEN_WITH_NL)]
+    #[rule((BaseReceiverType $Dot)? FunctionTypeParameters $Arrow Type2)]
+    #[denote(T25)]
+    BaseFunctionType {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+    },
+
     /// Matches ` LPAREN NL* (parameter | type)? (NL* COMMA NL* (parameter | type))* (NL* COMMA)? NL* RPAREN`
-    #[rule($LParen $NL* (Parameter | Type)? ($NL* $Comma $NL* (Parameter | Type))* ($NL* $Comma)? $NL* $RParen)]
+    #[trivia(HIDDEN_WITH_NL)]
+    #[rule($LParen (Parameter | Type2)? ($Comma (Parameter | Type2))* ($Comma)? $RParen)]
     #[denote(T13)]
     FunctionTypeParameters {
         #[node]
@@ -293,7 +321,8 @@ pub enum KotlinNode {
     },
 
     /// Matches `LPAREN NL* type NL* RPAREN`
-    #[rule($LParen $NL* Type $NL* $RParen)]
+    #[rule($LParen Type2 $RParen)]
+    #[trivia(HIDDEN_WITH_NL)]
     #[denote(T22)]
     ParenthesizedType {
         #[node]
@@ -303,7 +332,7 @@ pub enum KotlinNode {
     },
 
     /// Matches `typeModifiers? (parenthesizedType | nullableType | typeReference)`
-    #[rule(type_modifiers: TypeModifier* kt_type: (ParenthesizedType | NullableType | TypeReference))]
+    #[rule(type_modifiers: TypeModifier* base: BaseReceiverType)]
     #[denote(T23)]
     ReceiverType {
         #[node]
@@ -313,11 +342,22 @@ pub enum KotlinNode {
         #[child]
         type_modifiers: Vec<NodeRef>,
         #[child]
-        kt_type: NodeRef,
+        base: NodeRef,
+    },
+
+    /// Matches `(parenthesizedType | nullableType | typeReference)`
+    #[rule(ParenthesizedType | NullableType | TypeReference)]
+    #[denote(T24)]
+    BaseReceiverType {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
     },
 
     /// Matches LPAREN NL* (userType | parenthesizedUserType) NL* RPAREN
-    #[rule($LParen $NL* inner: (UserType | ParenthesizedUserType) $NL* $RParen)]
+    #[rule($LParen inner: (UserType | ParenthesizedUserType) $RParen)]
+    #[trivia(HIDDEN_WITH_NL)]
     #[denote(TEMP11)]
     ParenthesizedUserType {
         #[node]
@@ -329,18 +369,17 @@ pub enum KotlinNode {
     },
 
     /// Matches `typeModifiers? (userType | parenthesizedUserType) NL* AMP NL* typeModifiers? (userType | parenthesizedUserType)`
-    #[rule(first_modifiers: TypeModifier* first_type: (UserType | ParenthesizedUserType)$ NL* $Amp $NL* second_modifiers: TypeModifier* second_type: (UserType | ParenthesizedUserType))]
+    /// TODO: reintroduce typeModifiers?
+    #[rule(first_type: (UserType | ParenthesizedUserType) $NL* $Amp $NL* modifiers: NonSuspendTypeModifier* second_type: (UserType | ParenthesizedUserType))]
     DefinitelyNonNullableType {
         #[node]
         node: NodeRef,
         #[parent]
         parent: NodeRef,
         #[child]
-        first_modifiers: Vec<NodeRef>,
-        #[child]
         first_type: NodeRef,
         #[child]
-        second_modifiers: Vec<NodeRef>,
+        modifiers: Vec<NodeRef>,
         #[child]
         second_type: NodeRef,
     },
@@ -435,7 +474,8 @@ pub enum KotlinNode {
     //     : simpleIdentifier NL* (COLON NL* type)?
     //     ;
     /// Matches `simpleIdentifier NL* COLON NL* type`
-    #[rule(identifier: SimpleIdenitifer $NL* $Colon $NL* /* Type */)]
+    #[rule(identifier: SimpleIdenitifer $Colon /* Type2 */)]
+    #[trivia(HIDDEN_WITH_NL)]
     #[denote(TEMP12)]
     Parameter {
         #[node]
@@ -494,7 +534,7 @@ pub enum KotlinNode {
 
     /// Matches `annotation | SUSPEND NL*`
     #[rule(annotation: Annotation | suspend: $Suspend $NL*)]
-    #[denote(T16)]
+    #[denote(T30)]
     TypeModifier {
         #[node]
         node: NodeRef,
@@ -504,6 +544,16 @@ pub enum KotlinNode {
         annotation: NodeRef,
         #[child]
         suspend: TokenRef,
+    },
+
+    /// Alternative to TypeModifier that does not conflict with SUSPEND
+    #[rule(Annotation)]
+    #[denote(T31)]
+    NonSuspendTypeModifier {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
     },
 
     /// Matches ENUM | SEALED | ANNOTATION | DATA | INNER | VALUE
@@ -613,7 +663,9 @@ pub enum KotlinNode {
     /// https://github.com/Kotlin/kotlin-spec/blob/release/grammar/src/main/antlr/KotlinParser.g4#L852
     /// Note that there is no reason to capture them individually and also it would not be supported by lady-deirdre
     /// Another decision we made was to change NL? at the start to NL* as that caused some conflicts in indirect useage in [Self::TypeArguments]
-    #[rule(($NL* $AtNoWs annotation_type: ANNOTATION_TYPE $NL* $Colon $NL*  | $AtNoWs) (($LSquare /* UnescapedAnnotation+ */ $RSquare) /* | UnescapedAnnotation+ */) $NL*)  ]
+    /// TODO: Lift NL* to usage sites
+    #[trivia($NL)]
+    #[rule(($AtNoWs annotation_type: ANNOTATION_TYPE $Colon  | $AtNoWs) (($LSquare /* UnescapedAnnotation+ */ $RSquare) /* | UnescapedAnnotation+ */))  ]
     #[denote(TEMP6)]
     Annotation {
         #[node]
