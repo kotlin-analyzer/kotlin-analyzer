@@ -42,74 +42,74 @@ pub(super) static COMMENT_TOKEN_SET: TokenSet = TokenSet::inclusive(&[KotlinToke
 pub(super) static CLOSING_COMMENT_TOKEN_SET: TokenSet =
     TokenSet::inclusive(&[KotlinToken::Mult as u8]);
 
-pub fn parse_shebang_line<'a>(
-    session: &mut impl SyntaxSession<'a, Node = KotlinNode>,
-) -> KotlinNode {
-    let parent = session.parent_ref();
-    skip_trivia(session);
+// pub fn parse_shebang_line<'a>(
+//     session: &mut impl SyntaxSession<'a, Node = KotlinNode>,
+// ) -> KotlinNode {
+//     let parent = session.parent_ref();
+//     skip_trivia(session);
 
-    loop {
-        match (session.token(0), session.token(1)) {
-            (KotlinToken::Hash, KotlinToken::ExclNoWs) => {
-                session.skip(2);
+//     loop {
+//         match (session.token(0), session.token(1)) {
+//             (KotlinToken::Hash, KotlinToken::ExclNoWs) => {
+//                 session.skip(2);
 
-                // skip until the end of the line
-                while session.token(0) != KotlinToken::NL && session.token(0) != KotlinToken::EOI {
-                    session.advance();
-                }
+//                 // skip until the end of the line
+//                 while session.token(0) != KotlinToken::NL && session.token(0) != KotlinToken::EOI {
+//                     session.advance();
+//                 }
 
-                // Expect a newline after the shebang line
-                if session.token(0) == KotlinToken::EOI {
-                    // report failure if we reach the end of input without a newline
-                    let start_ref = session.site_ref(0);
-                    let end_ref = session.end_site_ref();
+//                 // Expect a newline after the shebang line
+//                 if session.token(0) == KotlinToken::EOI {
+//                     // report failure if we reach the end of input without a newline
+//                     let start_ref = session.site_ref(0);
+//                     let end_ref = session.end_site_ref();
 
-                    session.failure(SyntaxError {
-                        span: start_ref..end_ref,
-                        context: KotlinNode::SHEBANG_LINE,
-                        recovery: RecoveryResult::UnexpectedEOI,
-                        expected_tokens: &NEWLINE_TOKEN_SET,
-                        expected_nodes: &EMPTY_NODE_SET,
-                    });
+//                     session.failure(SyntaxError {
+//                         span: start_ref..end_ref,
+//                         context: KotlinNode::SHEBANG_LINE,
+//                         recovery: RecoveryResult::UnexpectedEOI,
+//                         expected_tokens: &NEWLINE_TOKEN_SET,
+//                         expected_nodes: &EMPTY_NODE_SET,
+//                     });
 
-                    return KotlinNode::ShebangLine {
-                        node: NodeRef::nil(),
-                        parent,
-                    };
-                }
+//                     return KotlinNode::ShebangLine {
+//                         node: NodeRef::nil(),
+//                         parent,
+//                     };
+//                 }
 
-                // skip all the newlines after the shebang line
-                while session.token(0) == KotlinToken::NL {
-                    session.advance();
-                }
+//                 // skip all the newlines after the shebang line
+//                 while session.token(0) == KotlinToken::NL {
+//                     session.advance();
+//                 }
 
-                let node = session.node_ref();
+//                 let node = session.node_ref();
 
-                return KotlinNode::ShebangLine { node, parent };
-            }
-            _ => {
-                let start_site = session.site_ref(0);
-                let result = NEWLINE_RECOVERY.recover(session, &SHEBANG_TOKEN_SET);
-                let end_site_ref = session.site_ref(0);
+//                 return KotlinNode::ShebangLine { node, parent };
+//             }
+//             _ => {
+//                 let start_site = session.site_ref(0);
+//                 let result = NEWLINE_RECOVERY.recover(session, &SHEBANG_TOKEN_SET);
+//                 let end_site_ref = session.site_ref(0);
 
-                session.failure(SyntaxError {
-                    span: start_site..end_site_ref,
-                    context: KotlinNode::SHEBANG_LINE,
-                    recovery: result,
-                    expected_tokens: &SHEBANG_TOKEN_SET,
-                    expected_nodes: &EMPTY_NODE_SET,
-                });
+//                 session.failure(SyntaxError {
+//                     span: start_site..end_site_ref,
+//                     context: KotlinNode::SHEBANG_LINE,
+//                     recovery: result,
+//                     expected_tokens: &SHEBANG_TOKEN_SET,
+//                     expected_nodes: &EMPTY_NODE_SET,
+//                 });
 
-                if !result.recovered() {
-                    return KotlinNode::ShebangLine {
-                        node: NodeRef::nil(),
-                        parent,
-                    };
-                }
-            }
-        }
-    }
-}
+//                 if !result.recovered() {
+//                     return KotlinNode::ShebangLine {
+//                         node: NodeRef::nil(),
+//                         parent,
+//                     };
+//                 }
+//             }
+//         }
+//     }
+// }
 
 pub fn parse_line_comment<'a>(
     session: &mut impl SyntaxSession<'a, Node = KotlinNode>,

@@ -576,9 +576,17 @@ pub enum KotlinToken {
     #[rule("//")]
     LineCommentStart,
 
-    /// For implementing Line comments
+    /// For implementing delimited comments
     #[rule("/*")]
     DelimitedCommentStart,
+
+    /// For implementing delimited comments
+    #[rule("*/")]
+    DelimitedCommentEnd,
+
+    /// For implementing SehbangLine comments
+    #[rule("#!")]
+    ShebangLineStart,
 }
 
 // TODO: conisder removing if not used

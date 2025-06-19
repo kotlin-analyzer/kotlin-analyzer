@@ -9,9 +9,7 @@ use lady_deirdre::{
 #[cfg(test)]
 mod tests;
 
-use crate::parser::{
-    parse_delimited_comment, parse_identifier_token, parse_line_comment, parse_shebang_line,
-};
+use crate::parser::parse_identifier_token;
 use crate::tokens::KotlinToken;
 
 // TODO: implement strings
@@ -140,8 +138,9 @@ pub enum KotlinNode {
     //     ident_test: Vec<NodeRef>,
     // },
     /// Matches `ShebangLine NL+`
-    #[rule($Hash $ExclNoWs)]
-    #[parser(parse_shebang_line(session))]
+    #[trivia($Whitespace)]
+    #[rule(start: $ShebangLineStart content: ^[$NL | $Whitespace]+ $NL)]
+    // #[parser(parse_shebang_line(session))]
     #[denote(SHEBANG_LINE)]
     #[describe("shebangline", "#! ...")]
     ShebangLine {
@@ -149,6 +148,10 @@ pub enum KotlinNode {
         node: NodeRef,
         #[parent]
         parent: NodeRef,
+        #[child]
+        start: TokenRef,
+        #[child]
+        content: Vec<TokenRef>,
     },
 
     /// Matches `(AT_NO_WS | AT_PRE_WS) FILE NL* COLON NL* (LSQUARE unescapedAnnotation+ RSQUARE | unescapedAnnotation) NL*`
@@ -827,10 +830,11 @@ pub enum KotlinNode {
 
     // Section: Comments
     /// Matches `"//" (^['\r', '\n'])*`
-    #[rule($LineCommentStart)]
+
+    #[rule($LineCommentStart ^[$NL]* $NL)]
     #[denote(LINE_COMMENT)]
-    #[parser(parse_line_comment(session))]
-    #[describe("line comment")]
+    #[trivia]
+    #[describe("comment", "'//...'")]
     #[secondary]
     LineComment {
         #[node]
@@ -840,9 +844,10 @@ pub enum KotlinNode {
     },
 
     /// Matches `_*'/*' ( DelimitedComment | . )*? '*/'`
-    #[rule($DelimitedCommentStart)]
+    #[rule($DelimitedCommentStart (^[$DelimitedCommentEnd | $DelimitedCommentStart] | DelimitedComment)* $DelimitedCommentEnd)]
     #[denote(DELIMITED_COMMENT)]
-    #[parser(parse_delimited_comment(session))]
+    #[trivia]
+    // #[parser(parse_delimited_comment(session))]
     #[describe("delimited comment")]
     #[secondary]
     DelimitedComment {
