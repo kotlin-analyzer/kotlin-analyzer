@@ -1,0 +1,16 @@
+[package]
+name = "lexis"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Kotlin lexer in Rust"
+license.workspace = true
+
+[dependencies]
+finl_unicode.workspace = true
+lady-deirdre.workspace = true
+
+[dev-dependencies]
+pretty_assertions.workspace = true
+rstest.workspace = true
