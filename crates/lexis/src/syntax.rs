@@ -287,31 +287,30 @@ pub enum KotlinNode {
     },
 
     // Matches (receiverType NL* DOT NL*)? functionTypeParameters NL* ARROW NL* type
-    #[trivia(HIDDEN_WITH_NL)]
-    #[rule((ReceiverType $Dot)? FunctionTypeParameters $Arrow Type2 )]
-    #[denote(T14)]
-    FunctionType {
-        #[node]
-        node: NodeRef,
-        #[parent]
-        parent: NodeRef,
-    },
-
+    // #[trivia(HIDDEN_WITH_NL)]
+    // #[rule((ReceiverType $Dot)? FunctionTypeParameters $Arrow Type2 )]
+    // #[denote(T14)]
+    // FunctionType {
+    //     #[node]
+    //     node: NodeRef,
+    //     #[parent]
+    //     parent: NodeRef,
+    // },
     /// FunctionType using baseReciever Type2 for making other nodes
     /// Matches (baseReceiverType NL* DOT NL*)? functionTypeParameters NL* ARROW NL* type
-    #[trivia(HIDDEN_WITH_NL)]
-    #[rule((BaseReceiverType $Dot)? FunctionTypeParameters $Arrow Type2)]
-    #[denote(T25)]
-    BaseFunctionType {
-        #[node]
-        node: NodeRef,
-        #[parent]
-        parent: NodeRef,
-    },
+    // #[trivia(HIDDEN_WITH_NL)]
+    // #[rule((BaseReceiverType $Dot)? FunctionTypeParameters $Arrow Type2)]
+    // #[denote(T25)]
+    // BaseFunctionType {
+    //     #[node]
+    //     node: NodeRef,
+    //     #[parent]
+    //     parent: NodeRef,
+    // },
 
     /// Matches ` LPAREN NL* (parameter | type)? (NL* COMMA NL* (parameter | type))* (NL* COMMA)? NL* RPAREN`
     #[trivia(HIDDEN_WITH_NL)]
-    #[rule($LParen (Parameter | Type2)? ($Comma (Parameter | Type2))* ($Comma)? $RParen)]
+    #[rule($LParen (/* Parameter | */ Type2)? ($Comma (/*Parameter|*/  Type2))* ($Comma)? $RParen)]
     #[denote(T13)]
     FunctionTypeParameters {
         #[node]
@@ -332,28 +331,28 @@ pub enum KotlinNode {
     },
 
     /// Matches `typeModifiers? (parenthesizedType | nullableType | typeReference)`
-    #[rule(type_modifiers: TypeModifier* base: BaseReceiverType)]
-    #[denote(T23)]
-    ReceiverType {
-        #[node]
-        node: NodeRef,
-        #[parent]
-        parent: NodeRef,
-        #[child]
-        type_modifiers: Vec<NodeRef>,
-        #[child]
-        base: NodeRef,
-    },
+    // #[rule(type_modifiers: TypeModifier* base: BaseReceiverType)]
+    // #[denote(T23)]
+    // ReceiverType {
+    //     #[node]
+    //     node: NodeRef,
+    //     #[parent]
+    //     parent: NodeRef,
+    //     #[child]
+    //     type_modifiers: Vec<NodeRef>,
+    //     #[child]
+    //     base: NodeRef,
+    // },
 
     /// Matches `(parenthesizedType | nullableType | typeReference)`
-    #[rule(ParenthesizedType | NullableType | TypeReference)]
-    #[denote(T24)]
-    BaseReceiverType {
-        #[node]
-        node: NodeRef,
-        #[parent]
-        parent: NodeRef,
-    },
+    // #[rule(ParenthesizedType | NullableType | TypeReference)]
+    // #[denote(T24)]
+    // BaseReceiverType {
+    //     #[node]
+    //     node: NodeRef,
+    //     #[parent]
+    //     parent: NodeRef,
+    // },
 
     /// Matches LPAREN NL* (userType | parenthesizedUserType) NL* RPAREN
     #[rule($LParen inner: (UserType | ParenthesizedUserType) $RParen)]
