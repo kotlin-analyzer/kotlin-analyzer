@@ -9,7 +9,7 @@ use lady_deirdre::{
 #[cfg(test)]
 mod tests;
 
-use crate::parser::parse_identifier_token;
+use crate::parser::parse_non_ascii_identifier;
 use crate::tokens::KotlinToken;
 
 // TODO: implement strings
@@ -110,7 +110,7 @@ pub enum KotlinNode {
         value: NodeRef,
     },
 
-    #[rule(shebang_line: ShebangLine? $NL* file_annotations: FileAnnotation* ident_test: IdentifierToken+ $NL*)]
+    #[rule(shebang_line: ShebangLine? $NL* file_annotations: FileAnnotation* ident_test: SimpleIdentifier+ $NL*)]
     /// shebangLine? NL* fileAnnotation* packageHeader importList topLevelObject* EOF
     KotlinFile {
         #[node]
@@ -125,7 +125,7 @@ pub enum KotlinNode {
         ident_test: Vec<NodeRef>,
     },
 
-    // #[rule(shebang_line: ShebangLine? $NL* ident_test: IdentifierToken+ $NL*)]
+    // #[rule(shebang_line: ShebangLine? $NL* ident_test: SimpleIdentifier+ $NL*)]
     // /// shebangLine? NL* fileAnnotation* packageHeader importList (statement semi)* EOF
     // Script {
     //     #[node]
@@ -174,19 +174,23 @@ pub enum KotlinNode {
         parent: NodeRef,
     },
 
-    /// Matches `IdentifierToken | SOFT_KEYWORDS`
-    #[rule(SOFT_KEYWORDS | IdentifierToken)]
-    #[denote(TEMP)]
+    /// Matches `Identifier | SOFT_KEYWORDS`
+    /// Because we parse non-ascii identifier, we changed this from the original source
+    #[rule(ascii_or_escaped:($AsciiIdentifier | $EscapedIdentifier | SOFT_KEYWORDS) | non_ascii:NonAsciiIdentifier)]
     #[describe("simple identifier")]
-    SimpleIdenitifer {
+    SimpleIdentifier {
         #[node]
         node: NodeRef,
         #[parent]
         parent: NodeRef,
+        #[child]
+        ascii_or_escaped: TokenRef,
+        #[child]
+        non_ascii: NodeRef,
     },
 
     /// Matches `simpleIdentifier (NL* DOT simpleIdentifier)*`
-    #[rule(SimpleIdenitifer ($NL* $Dot SimpleIdenitifer)*)]
+    #[rule(SimpleIdentifier ($NL* $Dot SimpleIdentifier)*)]
     #[denote(TEMP2)]
     #[describe("identifier")]
     Identifier {
@@ -255,7 +259,7 @@ pub enum KotlinNode {
     },
 
     /// Matches simpleIdentifier (NL* typeArguments)?
-    #[rule(ident: SimpleIdenitifer ($NL* type_args: TypeArguments)?)]
+    #[rule(ident: SimpleIdentifier ($NL* type_args: TypeArguments)?)]
     #[denote(TEMP5)]
     SimpleUserType {
         #[node]
@@ -476,7 +480,7 @@ pub enum KotlinNode {
     //     : simpleIdentifier NL* (COLON NL* type)?
     //     ;
     /// Matches `simpleIdentifier NL* COLON NL* type`
-    #[rule(identifier: SimpleIdenitifer $Colon /* Type2 */)]
+    #[rule(identifier: SimpleIdentifier $Colon /* Type2 */)]
     #[trivia(HIDDEN_WITH_NL)]
     #[denote(TEMP12)]
     Parameter {
@@ -693,14 +697,12 @@ pub enum KotlinNode {
     },
 
     /* Leaf Nodes - Mostly complex tokens that could not be handled by the lexer */
-    /// Matches `(Letter | '_') (Letter | '_' | UnicodeDigit)*`
-    /// | '`' ~([\r\n] | '`')+ '`'
-    #[rule($Tick | $AsciiIdentifier | $MisMatch )]
-    #[denote(IDENTIFIER_TOKEN)]
-    #[parser(parse_identifier_token(session))]
+    #[rule($MisMatch)]
+    #[denote(NON_ASCII_IDENTIFIER)]
+    #[parser(parse_non_ascii_identifier(session))]
     #[secondary]
-    #[describe("identifier", "ident")]
-    IdentifierToken {
+    #[describe("Non-Ascii Identifier", "ident")]
+    NonAsciiIdentifier {
         #[node]
         node: NodeRef,
         #[parent]
@@ -709,7 +711,7 @@ pub enum KotlinNode {
 
     // Keywords with Identifier
     /// Matches `"return@" Identifier`
-    #[rule($Return $AtNoWs identifier: IdentifierToken)]
+    #[rule($Return $AtNoWs identifier: SimpleIdentifier)]
     #[denote(RETURN_AT)]
     #[secondary]
     #[describe("return@<label>", "return@")]
@@ -723,7 +725,7 @@ pub enum KotlinNode {
     },
 
     /// Matches `"continue@" Identifier`
-    #[rule($Continue $AtNoWs identifier: IdentifierToken)]
+    #[rule($Continue $AtNoWs identifier: SimpleIdentifier)]
     #[denote(SOFT_KEYWORDS)]
     #[secondary]
     #[describe("continue@<label>", "continue@")]
@@ -737,7 +739,7 @@ pub enum KotlinNode {
     },
 
     /// Matches `"break@" Identifier`
-    #[rule($Break $AtNoWs identifier: IdentifierToken)]
+    #[rule($Break $AtNoWs identifier: SimpleIdentifier)]
     #[denote(BREAK_AT)]
     #[secondary]
     #[describe("break@<label>", "break@")]
@@ -751,7 +753,7 @@ pub enum KotlinNode {
     },
 
     /// Matches `"this@" Identifier`
-    #[rule($This $AtNoWs identifier: IdentifierToken)]
+    #[rule($This $AtNoWs identifier: SimpleIdentifier)]
     #[denote(THIS_AT)]
     #[secondary]
     #[describe("this@<label>", "this@")]
@@ -765,7 +767,7 @@ pub enum KotlinNode {
     },
 
     /// Matches `"super@" Identifier`
-    #[rule($Super $AtNoWs identifier: IdentifierToken)]
+    #[rule($Super $AtNoWs identifier: SimpleIdentifier)]
     #[denote(SUPER_AT)]
     #[secondary]
     #[describe("super@<label>", "super@")]

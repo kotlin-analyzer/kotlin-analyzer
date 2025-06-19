@@ -569,9 +569,9 @@ pub enum KotlinToken {
     #[priority(0)]
     AsciiIdentifier,
 
-    /// For implementing escaped identifiers
-    #[rule("`")]
-    Tick,
+    #[rule('`' ^['\n', '\r', '`']+ "`" )]
+    EscapedIdentifier,
+
     /// For implementing Line comments
     #[rule("//")]
     LineCommentStart,

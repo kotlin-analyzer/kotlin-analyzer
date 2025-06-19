@@ -10,7 +10,7 @@ fn test_kotlin_node() {
     // This is a comment
     /* multiline comment */
     identifier another `quoted ident`
-    _ident _03_name
+    Åë_ʶῼ٤ _ident _03_name
     ``
     angebange`
 "#;
@@ -21,6 +21,8 @@ fn test_kotlin_node() {
     for error in doc.errors() {
         println!("{:#}", error.display(&doc));
     }
+
+    println!("{:#}", doc.display(&doc.root_node_ref()));
 }
 
 #[test]
