@@ -23,14 +23,14 @@ mod tests;
 #[define(BIN_LITERAL = '0' ['b', 'B'] BinDigit BinDigitOrSeparator* BinDigit | '0' ['b', 'B'] BinDigit)]
 // Char
 #[define(UNI_CHARACTER_LITERAL = '\\' 'u' HexDigit HexDigit HexDigit HexDigit)]
-#[define(IDENT_START = ['a'..'z', 'A'..'Z', '_'])]
+#[define(IDENTIFIER = (('_' | $xid_start) $xid_continue*) | ('`' ^['\n', '\r', '`']+ "`" ))]
 // Escapes
 #[define(ESCAPE_IDENTIFIER = '\\' ('"' | '\'' | '\\' | 'n' | 'r' | 't' | 'b' | '$' ))]
 #[define(ESCAPE_SEQ = UNI_CHARACTER_LITERAL | ESCAPE_IDENTIFIER)]
 #[lookback(2)]
 #[repr(u8)]
 /// List of Kotlin defined tokens, that we cannot tokenise and moved to parsing phase =>
-/// ShebangLine, LineComment, DelimitedComment, Identifier, ReturnAt, ContinueAt, ThisAt, BreakAt, SuperAt.
+/// ShebangLine, LineComment, DelimitedComment, ThisAt, SuperAt.
 
 /// List of Kotlin defined tokens that we chose to ignore because they are covered by a token variant
 /// and trivia in parsing phase => ExclWs, QuestWs.
@@ -221,6 +221,38 @@ pub enum KotlinToken {
     #[priority(10)]
     Param,
 
+    #[rule("@field")]
+    #[priority(10)]
+    AtField,
+
+    #[rule("@property")]
+    #[priority(10)]
+    AtProperty,
+
+    #[rule("@get")]
+    #[priority(10)]
+    AtGet,
+
+    #[rule("@set")]
+    #[priority(10)]
+    AtSet,
+
+    #[rule("@receiver")]
+    #[priority(10)]
+    AtReceiver,
+
+    #[rule("@param")]
+    #[priority(10)]
+    AtParam,
+
+    #[rule("@setparam")]
+    #[priority(10)]
+    AtSetparam,
+
+    #[rule("@delegate")]
+    #[priority(10)]
+    AtDelegate,
+
     #[rule("setparam")]
     #[priority(10)]
     Setparam,
@@ -285,9 +317,17 @@ pub enum KotlinToken {
     #[priority(10)]
     This,
 
+    #[rule("this@" IDENTIFIER)]
+    #[priority(10)]
+    ThisAt,
+
     #[rule("super")]
     #[priority(10)]
     Super,
+
+    #[rule("super@" IDENTIFIER)]
+    #[priority(10)]
+    SuperAt,
 
     #[rule("typeof")]
     #[priority(10)]
@@ -341,13 +381,25 @@ pub enum KotlinToken {
     #[priority(10)]
     Return,
 
+    #[rule("return@" IDENTIFIER)]
+    #[priority(10)]
+    ReturnAt,
+
     #[rule("continue")]
     #[priority(10)]
     Continue,
 
+    #[rule("continue@" IDENTIFIER)]
+    #[priority(10)]
+    ContinueAt,
+
     #[rule("break")]
     #[priority(10)]
     Break,
+
+    #[rule("break@" IDENTIFIER)]
+    #[priority(10)]
+    BreakAt,
 
     #[rule("as")]
     #[priority(10)]
@@ -563,15 +615,13 @@ pub enum KotlinToken {
     /// Matches `${` inside a line string
     MultiLineStrExprStart,
 
-    // Section: Used only to help implementing custom parsers
-    /// For implementing identifiers
-    #[rule(IDENT_START (IDENT_START | DEC_DIGIT)*)]
+    /// TODO: add tests to ensure all supported tokens are allowed
+    /// TODO: add diagonistics for unsupported chars that are captured by this
     #[priority(0)]
-    AsciiIdentifier,
+    #[rule(IDENTIFIER)]
+    Identifier,
 
-    #[rule('`' ^['\n', '\r', '`']+ "`" )]
-    EscapedIdentifier,
-
+    // Section: Used only to help implementing custom parsers
     /// For implementing Line comments
     #[rule("//")]
     LineCommentStart,

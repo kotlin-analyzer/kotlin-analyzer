@@ -9,7 +9,6 @@ use lady_deirdre::{
 #[cfg(test)]
 mod tests;
 
-use crate::parser::parse_non_ascii_identifier;
 use crate::tokens::KotlinToken;
 
 // TODO: implement strings
@@ -47,8 +46,9 @@ use crate::tokens::KotlinToken;
     $Object,
     $Enum,
     $Companion,
+    $AtNoWs,
 )]
-#[define(ANNOTATION_TYPE = ($Field | $Property | $Get | $Set | $Receiver | $Param | $Setparam | $Delegate))]
+#[define(ANNOTATION_TYPE = ($AtField | $AtProperty | $AtGet | $AtSet | $AtReceiver | $AtParam | $AtSetparam | $AtDelegate))]
 #[define(SOFT_KEYWORDS_SANS_SUSPEND = (
     | $Abstract
     | $Annotation
@@ -110,7 +110,7 @@ pub enum KotlinNode {
         value: NodeRef,
     },
 
-    #[rule(shebang_line: ShebangLine? $NL* file_annotations: FileAnnotation* ident_test: SimpleIdentifier+ $NL*)]
+    #[rule($NL* shebang_line: ShebangLine? type_test:Type+ $NL*)]
     /// shebangLine? NL* fileAnnotation* packageHeader importList topLevelObject* EOF
     KotlinFile {
         #[node]
@@ -119,10 +119,10 @@ pub enum KotlinNode {
         parent: NodeRef,
         #[child]
         shebang_line: NodeRef,
+        // #[child]
+        // file_annotations: Vec<NodeRef>,
         #[child]
-        file_annotations: Vec<NodeRef>,
-        #[child]
-        ident_test: Vec<NodeRef>,
+        type_test: Vec<NodeRef>,
     },
 
     // #[rule(shebang_line: ShebangLine? $NL* ident_test: SimpleIdentifier+ $NL*)]
@@ -156,7 +156,9 @@ pub enum KotlinNode {
 
     /// Matches `(AT_NO_WS | AT_PRE_WS) FILE NL* COLON NL* (LSQUARE unescapedAnnotation+ RSQUARE | unescapedAnnotation) NL*`
     // Becuase this comes always before $NL* in Kotlin file we don't need to handle AT_PRE_WS
-    #[rule($AtNoWs $File $NL* $Colon $NL* ($LSquare /* unescapedAnnotation+ */ $RSquare /* | unescapedAnnotation */ ) $NL*)]
+    #[trivia($NL | HIDDEN)]
+    #[denote(FILE_ANNOTATION)]
+    #[rule($AtNoWs $File $Colon ($LSquare  UnescapedAnnotation+  $RSquare | UnescapedAnnotation ))]
     #[describe("file annotation", "file")]
     FileAnnotation {
         #[node]
@@ -165,52 +167,65 @@ pub enum KotlinNode {
         parent: NodeRef,
     },
 
-    #[rule($LAngle TypeProjection)]
-    #[denote(TEMP8)]
+    /// Matches `LANGLE NL* typeProjection (NL* COMMA NL* typeProjection)* (NL* COMMA)? NL* RANGLE`
+    #[rule($LAngle args: Type+{$Comma} $RAngle)]
+    #[denote(TYPE_ARGUMENTS)]
     TypeArguments {
         #[node]
         node: NodeRef,
         #[parent]
         parent: NodeRef,
+        #[child]
+        args: Vec<NodeRef>,
     },
 
     /// Matches `Identifier | SOFT_KEYWORDS`
     /// Because we parse non-ascii identifier, we changed this from the original source
-    #[rule(ascii_or_escaped:($AsciiIdentifier | $EscapedIdentifier | SOFT_KEYWORDS) | non_ascii:NonAsciiIdentifier)]
+    #[rule(inner:($Identifier | SOFT_KEYWORDS_SANS_SUSPEND))]
     #[describe("simple identifier")]
+    #[denote(SIMPLE_IDENTIFIER)]
     SimpleIdentifier {
         #[node]
         node: NodeRef,
         #[parent]
         parent: NodeRef,
         #[child]
-        ascii_or_escaped: TokenRef,
-        #[child]
-        non_ascii: NodeRef,
+        inner: TokenRef,
     },
 
     /// Matches `simpleIdentifier (NL* DOT simpleIdentifier)*`
-    #[rule(SimpleIdentifier ($NL* $Dot SimpleIdentifier)*)]
-    #[denote(TEMP2)]
+    #[rule(idents: SimpleIdentifier ($NL* $Dot idents: SimpleIdentifier)*)]
+    #[denote(IDENTIFIER)]
+    // #[recovery($Whitespace)]
     #[describe("identifier")]
     Identifier {
         #[node]
         node: NodeRef,
         #[parent]
         parent: NodeRef,
+        #[child]
+        idents: Vec<NodeRef>,
     },
 
     // SECTION: types
     // Section Notes : Quest is always $QuestNoWs
     /// Matches typeModifiers? (functionType | parenthesizedType | nullableType | typeReference | definitelyNonNullableType)
-    // #[rule(TypeModifier* (FunctionType | ParenthesizedType /*| NullableType */ | TypeReference | DefinitelyNonNullableType))]
-    // #[denote(T15)]
-    // Type {
-    //     #[node]
-    //     node: NodeRef,
-    //     #[parent]
-    //     parent: NodeRef,
-    // },
+    #[rule(modifiers: Annotation* (((suspend: $Suspend $NL*)? complex: ComplexType) | simple: SimpleType) )]
+    #[denote(TYPE)]
+    Type {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        modifiers: Vec<NodeRef>,
+        #[child]
+        suspend: TokenRef,
+        #[child]
+        complex: NodeRef,
+        #[child]
+        simple: NodeRef,
+    },
 
     #[rule(NonSuspendTypeModifier* DefinitelyNonNullableType)]
     #[denote(T16)]
@@ -221,16 +236,59 @@ pub enum KotlinNode {
         parent: NodeRef,
     },
 
+    #[denote(COMPLEX_TYPE)]
+    #[rule(
+        ($LParen bracketed:Type+{$Comma} $RParen) // Comma-separated list: (foo.x, bar -> baz, fuz)
+        ($Arrow return_type:Type)? // Optional "-> res" suffix for functions
+    )]
+    ComplexType {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        bracketed: Vec<NodeRef>,
+        #[child]
+        return_type: NodeRef,
+    },
+
+    #[rule(inner: GenericTypeReference ($NL* $Dot inner: GenericTypeReference)*)]
+    #[denote(SIMPLE_TYPE)]
+    SimpleType {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        inner: Vec<NodeRef>,
+    },
+
+    #[rule(reference: TypeReference args:(TypeArguments)?)]
+    #[denote(G_TYPE_REFERENCE)]
+    GenericTypeReference {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        reference: NodeRef,
+        #[child]
+        args: NodeRef,
+    },
+
     /// Matches userType | DYNAMIC.
     /// But note that this is unneccessarily repititive as `
     /// DYNAMIC` is already covered by UserType -> SimpleUserType -> SimpleIdentifier
     /// So it is not included in the rule
-    #[rule(UserType)]
+    #[rule(identifier: Identifier)]
+    #[denote(TYPE_REFERENCE)]
     TypeReference {
         #[node]
         node: NodeRef,
         #[parent]
         parent: NodeRef,
+        #[child]
+        identifier: NodeRef,
     },
 
     /// Matches (typeReference | parenthesizedType) NL* quest+
@@ -244,8 +302,7 @@ pub enum KotlinNode {
     },
 
     /// Matches `simpleUserType (NL* DOT NL* simpleUserType)*`
-    #[rule(main_type: SimpleUserType ($Dot other_types: SimpleUserType)*)]
-    #[trivia($NL)]
+    #[rule(main_type: SimpleUserType ($NL* $Dot $NL* other_types: SimpleUserType)*)]
     #[denote(TEMP9)]
     UserType {
         #[node]
@@ -260,7 +317,7 @@ pub enum KotlinNode {
 
     /// Matches simpleIdentifier (NL* typeArguments)?
     #[rule(ident: SimpleIdentifier ($NL* type_args: TypeArguments)?)]
-    #[denote(TEMP5)]
+    #[denote(SIMPLE_USER_TYPE)]
     SimpleUserType {
         #[node]
         node: NodeRef,
@@ -482,7 +539,7 @@ pub enum KotlinNode {
     /// Matches `simpleIdentifier NL* COLON NL* type`
     #[rule(identifier: SimpleIdentifier $Colon /* Type2 */)]
     #[trivia(HIDDEN_WITH_NL)]
-    #[denote(TEMP12)]
+    #[denote(PARAMETER)]
     Parameter {
         #[node]
         node: NodeRef,
@@ -540,7 +597,7 @@ pub enum KotlinNode {
 
     /// Matches `annotation | SUSPEND NL*`
     #[rule(annotation: Annotation | suspend: $Suspend $NL*)]
-    #[denote(T30)]
+    #[denote(TYPE_MODIFIER)]
     TypeModifier {
         #[node]
         node: NodeRef,
@@ -669,9 +726,8 @@ pub enum KotlinNode {
     /// https://github.com/Kotlin/kotlin-spec/blob/release/grammar/src/main/antlr/KotlinParser.g4#L852
     /// Note that there is no reason to capture them individually and also it would not be supported by lady-deirdre
     /// Another decision we made was to change NL? at the start to NL* as that caused some conflicts in indirect useage in [Self::TypeArguments]
-    /// TODO: Lift NL* to usage sites
     #[trivia($NL)]
-    #[rule(($AtNoWs annotation_type: ANNOTATION_TYPE $Colon  | $AtNoWs) (($LSquare /* UnescapedAnnotation+ */ $RSquare) /* | UnescapedAnnotation+ */))  ]
+    #[rule((annotation_type: ANNOTATION_TYPE $Colon  | at: $AtNoWs) (($LSquare multi: UnescapedAnnotation+ $RSquare) | single: UnescapedAnnotation))  ]
     #[denote(TEMP6)]
     Annotation {
         #[node]
@@ -680,106 +736,28 @@ pub enum KotlinNode {
         parent: NodeRef,
         #[child]
         annotation_type: TokenRef,
+        #[child]
+        at: TokenRef,
+        #[child]
+        multi: Vec<NodeRef>,
+        #[child]
+        single: NodeRef,
     },
 
-    // unescapedAnnotation
-    //     : constructorInvocation
-    //     | userType
-    //     ;
-    ///  constructorInvocation| userType
-    // #[rule()]
-    // #[describe("Unescaped Annotation")]
+    /// TODO: Matches constructorInvocation| userType
+    #[rule(type_ref: SimpleType)]
+    #[denote(UNESCAPED_ANNOTATION)]
+    #[describe("Unescaped Annotation")]
     UnescapedAnnotation {
         #[node]
         node: NodeRef,
         #[parent]
         parent: NodeRef,
+        #[child]
+        type_ref: NodeRef,
     },
 
     /* Leaf Nodes - Mostly complex tokens that could not be handled by the lexer */
-    #[rule($MisMatch)]
-    #[denote(NON_ASCII_IDENTIFIER)]
-    #[parser(parse_non_ascii_identifier(session))]
-    #[secondary]
-    #[describe("Non-Ascii Identifier", "ident")]
-    NonAsciiIdentifier {
-        #[node]
-        node: NodeRef,
-        #[parent]
-        parent: NodeRef,
-    },
-
-    // Keywords with Identifier
-    /// Matches `"return@" Identifier`
-    #[rule($Return $AtNoWs identifier: SimpleIdentifier)]
-    #[denote(RETURN_AT)]
-    #[secondary]
-    #[describe("return@<label>", "return@")]
-    ReturnAt {
-        #[node]
-        node: NodeRef,
-        #[parent]
-        parent: NodeRef,
-        #[child]
-        identifier: NodeRef,
-    },
-
-    /// Matches `"continue@" Identifier`
-    #[rule($Continue $AtNoWs identifier: SimpleIdentifier)]
-    #[denote(SOFT_KEYWORDS)]
-    #[secondary]
-    #[describe("continue@<label>", "continue@")]
-    ContinueAt {
-        #[node]
-        node: NodeRef,
-        #[parent]
-        parent: NodeRef,
-        #[child]
-        identifier: NodeRef,
-    },
-
-    /// Matches `"break@" Identifier`
-    #[rule($Break $AtNoWs identifier: SimpleIdentifier)]
-    #[denote(BREAK_AT)]
-    #[secondary]
-    #[describe("break@<label>", "break@")]
-    BreakAt {
-        #[node]
-        node: NodeRef,
-        #[parent]
-        parent: NodeRef,
-        #[child]
-        identifier: NodeRef,
-    },
-
-    /// Matches `"this@" Identifier`
-    #[rule($This $AtNoWs identifier: SimpleIdentifier)]
-    #[denote(THIS_AT)]
-    #[secondary]
-    #[describe("this@<label>", "this@")]
-    ThisAt {
-        #[node]
-        node: NodeRef,
-        #[parent]
-        parent: NodeRef,
-        #[child]
-        identifier: NodeRef,
-    },
-
-    /// Matches `"super@" Identifier`
-    #[rule($Super $AtNoWs identifier: SimpleIdentifier)]
-    #[denote(SUPER_AT)]
-    #[secondary]
-    #[describe("super@<label>", "super@")]
-    SuperAt {
-        #[node]
-        node: NodeRef,
-        #[parent]
-        parent: NodeRef,
-        #[child]
-        identifier: NodeRef,
-    },
-
     // Section: separators and operations with Hidden
     /// Matches `"@" (Hidden | NL)`
     /// Since `Hidden` is trivia, we only add newline explicitly

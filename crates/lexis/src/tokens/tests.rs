@@ -50,9 +50,10 @@ fn token_buffer_test() {
 #[test]
 fn test_identifiers() {
     let source = r#"
-    identifier another
-    `espaced identifier`hey
+    identifier another `quoted ident`
+    Åë_ʶῼ٤ _ident _03_name 23andme
     ``
+    angebange`
 "#;
 
     let buffer = TokenBuffer::<KotlinToken>::from(source);
