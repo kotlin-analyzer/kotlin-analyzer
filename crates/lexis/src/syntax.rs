@@ -1,6 +1,3 @@
-//! Notes:
-//! 1 - $NL should not be used at the start of any rule. If it is needed, apply it at the site of usage
-
 use lady_deirdre::{
     lexis::TokenRef,
     syntax::{Node, NodeRef},
@@ -11,14 +8,13 @@ mod tests;
 
 use crate::tokens::KotlinToken;
 
-// TODO: implement strings
+// TODO: Add parameter to complex type
 
 #[derive(Node)]
 #[token(KotlinToken)]
 #[define(HIDDEN = $Whitespace | LineComment | DelimitedComment)]
-#[define(HIDDEN_WITH_NL = $Whitespace | $NL | LineComment | DelimitedComment)]
+#[define(HIDDEN_WITH_NL = $NL | HIDDEN)]
 #[trivia(HIDDEN)]
-#[define(HiddenBefore =  $Whitespace | DelimitedComment)]
 #[recovery(
     $LCurl,
     $RCurl,
@@ -196,7 +192,7 @@ pub enum KotlinNode {
     /// Matches `simpleIdentifier (NL* DOT simpleIdentifier)*`
     #[rule(idents: SimpleIdentifier ($NL* $Dot idents: SimpleIdentifier)*)]
     #[denote(IDENTIFIER)]
-    // #[recovery($Whitespace)]
+    #[recovery($Dot)]
     #[describe("identifier")]
     Identifier {
         #[node]
@@ -210,7 +206,7 @@ pub enum KotlinNode {
     // SECTION: types
     // Section Notes : Quest is always $QuestNoWs
     /// Matches typeModifiers? (functionType | parenthesizedType | nullableType | typeReference | definitelyNonNullableType)
-    #[rule(modifiers: Annotation* (((suspend: $Suspend $NL*)? complex: ComplexType) | simple: SimpleType) )]
+    #[rule(modifiers: TypeModifier* (complex: ComplexType | simple: SimpleType) extra: AdditionalType?)]
     #[denote(TYPE)]
     Type {
         #[node]
@@ -220,20 +216,28 @@ pub enum KotlinNode {
         #[child]
         modifiers: Vec<NodeRef>,
         #[child]
-        suspend: TokenRef,
-        #[child]
         complex: NodeRef,
         #[child]
         simple: NodeRef,
+        #[child]
+        extra: NodeRef,
     },
 
-    #[rule(NonSuspendTypeModifier* DefinitelyNonNullableType)]
-    #[denote(T16)]
-    Type2 {
+    #[rule((nullable: $QuestNoWs | receiver_dot: $Dot | intersection: $Amp) receiver_dot: $Dot? type_ref: Type?)]
+    AdditionalType {
         #[node]
         node: NodeRef,
         #[parent]
         parent: NodeRef,
+        #[child]
+        nullable: TokenRef,
+        #[child]
+        intersection: TokenRef,
+        #[child]
+        // should always be one.
+        receiver_dot: Vec<TokenRef>,
+        #[child]
+        type_ref: NodeRef,
     },
 
     #[denote(COMPLEX_TYPE)]
@@ -252,35 +256,23 @@ pub enum KotlinNode {
         return_type: NodeRef,
     },
 
-    #[rule(inner: GenericTypeReference ($NL* $Dot inner: GenericTypeReference)*)]
-    #[denote(SIMPLE_TYPE)]
+    #[rule(identifier: SimpleIdentifier generic_args:(TypeArguments)?)]
     SimpleType {
         #[node]
         node: NodeRef,
         #[parent]
         parent: NodeRef,
         #[child]
-        inner: Vec<NodeRef>,
-    },
-
-    #[rule(reference: TypeReference args:(TypeArguments)?)]
-    #[denote(G_TYPE_REFERENCE)]
-    GenericTypeReference {
-        #[node]
-        node: NodeRef,
-        #[parent]
-        parent: NodeRef,
+        identifier: NodeRef,
         #[child]
-        reference: NodeRef,
-        #[child]
-        args: NodeRef,
+        generic_args: NodeRef,
     },
 
     /// Matches userType | DYNAMIC.
     /// But note that this is unneccessarily repititive as `
     /// DYNAMIC` is already covered by UserType -> SimpleUserType -> SimpleIdentifier
     /// So it is not included in the rule
-    #[rule(identifier: Identifier)]
+    #[rule(identifier: SimpleIdentifier)]
     #[denote(TYPE_REFERENCE)]
     TypeReference {
         #[node]
@@ -360,21 +352,9 @@ pub enum KotlinNode {
     //     #[parent]
     //     parent: NodeRef,
     // },
-    /// FunctionType using baseReciever Type2 for making other nodes
-    /// Matches (baseReceiverType NL* DOT NL*)? functionTypeParameters NL* ARROW NL* type
-    // #[trivia(HIDDEN_WITH_NL)]
-    // #[rule((BaseReceiverType $Dot)? FunctionTypeParameters $Arrow Type2)]
-    // #[denote(T25)]
-    // BaseFunctionType {
-    //     #[node]
-    //     node: NodeRef,
-    //     #[parent]
-    //     parent: NodeRef,
-    // },
-
     /// Matches ` LPAREN NL* (parameter | type)? (NL* COMMA NL* (parameter | type))* (NL* COMMA)? NL* RPAREN`
     #[trivia(HIDDEN_WITH_NL)]
-    #[rule($LParen (/* Parameter | */ Type2)? ($Comma (/*Parameter|*/  Type2))* ($Comma)? $RParen)]
+    #[rule($LParen (/* Parameter | */ Type)? ($Comma (/*Parameter|*/  Type))* ($Comma)? $RParen)]
     #[denote(T13)]
     FunctionTypeParameters {
         #[node]
@@ -384,7 +364,7 @@ pub enum KotlinNode {
     },
 
     /// Matches `LPAREN NL* type NL* RPAREN`
-    #[rule($LParen Type2 $RParen)]
+    #[rule($LParen Type $RParen)]
     #[trivia(HIDDEN_WITH_NL)]
     #[denote(T22)]
     ParenthesizedType {
@@ -407,45 +387,6 @@ pub enum KotlinNode {
     //     #[child]
     //     base: NodeRef,
     // },
-
-    /// Matches `(parenthesizedType | nullableType | typeReference)`
-    // #[rule(ParenthesizedType | NullableType | TypeReference)]
-    // #[denote(T24)]
-    // BaseReceiverType {
-    //     #[node]
-    //     node: NodeRef,
-    //     #[parent]
-    //     parent: NodeRef,
-    // },
-
-    /// Matches LPAREN NL* (userType | parenthesizedUserType) NL* RPAREN
-    #[rule($LParen inner: (UserType | ParenthesizedUserType) $RParen)]
-    #[trivia(HIDDEN_WITH_NL)]
-    #[denote(TEMP11)]
-    ParenthesizedUserType {
-        #[node]
-        node: NodeRef,
-        #[parent]
-        parent: NodeRef,
-        #[child]
-        inner: NodeRef,
-    },
-
-    /// Matches `typeModifiers? (userType | parenthesizedUserType) NL* AMP NL* typeModifiers? (userType | parenthesizedUserType)`
-    /// TODO: reintroduce typeModifiers?
-    #[rule(first_type: (UserType | ParenthesizedUserType) $NL* $Amp $NL* modifiers: NonSuspendTypeModifier* second_type: (UserType | ParenthesizedUserType))]
-    DefinitelyNonNullableType {
-        #[node]
-        node: NodeRef,
-        #[parent]
-        parent: NodeRef,
-        #[child]
-        first_type: NodeRef,
-        #[child]
-        modifiers: Vec<NodeRef>,
-        #[child]
-        second_type: NodeRef,
-    },
 
     // SECTION: classMembers
 

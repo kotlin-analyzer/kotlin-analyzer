@@ -49,25 +49,23 @@ fn test_comments() {
 #[test]
 fn test_types() {
     let source = r#"
-    MyType
-    Generic<T>
-    Generic<T, U>
-    Generic<Nested<T>, U>
-    (MyTypeInParen)
-    @DrawableRes Int
-    @DrawableRes.Mine<T, Y> Int
-    Generic<in Nested<T>, out U>
-    (T1, T2) -> T3
-    suspend (T1, T2) -> T3
-    suspend T.(T1, T2) -> T3
-    suspend T?.(T1, T2) -> T3
-    suspend (T?).(T1, T2) -> T3
-    @Annotated (T1, T2) -> T3
-    ((T1, T2) -> T3)
-    "#;
-    let source = r#"
-    @DrawableRes.Mine<T, Y> Int//
-    @DrawableRes.Yours String//
+    MyType 
+    Generic<T> 
+    Generic<T, U> 
+    Generic<Nested<T>, U> 
+    (MyTypeInParen) 
+    @DrawableRes Int 
+    @DrawableRes.Mine<T, Y> Int 
+    (T1, T2) -> T3 
+    suspend (T1, T2) -> T3 
+    suspend T.(T1, T2) -> T3 
+    suspend T?.(T1, T2) -> T3 
+    (a: T1, b: T2) -> T3 
+    suspend (T).(T1, T2) -> T3 
+    suspend (T?).(T1, T2) -> T3 
+    @Annotated (T1, T2) -> T3 
+    ((T1, T2) -> T3) 
+    ((T1, T2) -> T3)? 
     "#;
     // let source = source
     //     .lines()
