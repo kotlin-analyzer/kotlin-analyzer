@@ -106,7 +106,7 @@ pub enum KotlinNode {
         value: NodeRef,
     },
 
-    #[rule($NL* shebang_line: ShebangLine? type_test:Type+ $NL*)]
+    #[rule($NL* shebang_line: ShebangLine? test_package:ImportList)]
     /// shebangLine? NL* fileAnnotation* packageHeader importList topLevelObject* EOF
     KotlinFile {
         #[node]
@@ -118,7 +118,7 @@ pub enum KotlinNode {
         // #[child]
         // file_annotations: Vec<NodeRef>,
         #[child]
-        type_test: Vec<NodeRef>,
+        test_package: NodeRef,
     },
 
     // #[rule(shebang_line: ShebangLine? $NL* ident_test: SimpleIdentifier+ $NL*)]
@@ -163,21 +163,129 @@ pub enum KotlinNode {
         parent: NodeRef,
     },
 
-    /// Matches `LANGLE NL* typeProjection (NL* COMMA NL* typeProjection)* (NL* COMMA)? NL* RANGLE`
-    #[rule($LAngle args: Type+{$Comma} $RAngle)]
-    #[denote(TYPE_ARGUMENTS)]
-    TypeArguments {
+    #[rule(($Semicolon | $NL) $NL*)]
+    #[secondary]
+    #[describe("semi colon", ";")]
+    Semi {
+         #[node]
+        node: NodeRef,
+        #[parent]
+         parent: NodeRef,
+    },
+
+    #[rule(($Semicolon | $NL)+)]
+    #[denote(SEMIS)]
+    #[secondary]
+    #[describe("semi colon", ";")]
+    Semis {
+         #[node]
+        node: NodeRef,
+        #[parent]
+         parent: NodeRef,
+    },
+
+    /// Matches `(PACKAGE identifier semi?)?`
+    #[denote(PACKAGE_HEADER)]
+    #[rule(package_token: $Package package_name: Identifier Semi?)]
+    #[describe("package header", "package")]
+    PackageHeader {
         #[node]
         node: NodeRef,
         #[parent]
         parent: NodeRef,
         #[child]
-        args: Vec<NodeRef>,
+        package_token: TokenRef,
+        #[child]
+        package_name: NodeRef,
+    },
+
+    #[rule(imports: ImportHeader+)]
+    #[denote(IMPORT_LIST)]
+    ImportList {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+         #[child]
+        imports: Vec<NodeRef>,
+    },
+
+    #[denote(IMPORT_HEADER)]
+    #[describe("import header", "import")]
+    #[rule(import_token: $Import reference: ImportReference Semi?)]
+    ImportHeader {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        import_token: TokenRef,
+        #[child]
+        reference: NodeRef,
+    },
+
+    // #[denote(TOP_LEVEL_OBJECT)]
+    // #[rule(decl: Declaration Semis?)]
+    TopLevelObject {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        decl: NodeRef,
+    },
+
+    #[denote(DECLARATION)]
+    #[rule(
+        TypeAlias
+    )]
+    Declaration {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+    },
+
+    #[rule(
+        modifiers: Modifiers?
+        $TypeAlias $NL* new_type: SimpleType $NL*
+        $Assignment $NL* target: Type
+        
+    )]
+    #[denote(TYPE_ALIAS)]
+    TypeAlias {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        modifiers: NodeRef,
+        #[child]
+        new_type: NodeRef,
+        #[child]
+        target: NodeRef,
+    },
+
+    /// TODO(semantics): This can match false positives like `import foo.bar.* as baz` and `import foo.*.*`
+    #[rule(base: SimpleIdentifier ($Dot (references: SimpleIdentifier | all: $Mult))* ($As as_target: SimpleIdentifier)?)]
+    #[denote(IMPORT_REFERENCE)]
+    ImportReference {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        base: NodeRef,
+        #[child]
+        references: Vec<NodeRef>,
+        #[child]
+        all: Vec<TokenRef>,
+        #[child]
+        as_target: NodeRef,
     },
 
     /// Matches `Identifier | SOFT_KEYWORDS`
-    /// Because we parse non-ascii identifier, we changed this from the original source
-    #[rule(inner:($Identifier | SOFT_KEYWORDS_SANS_SUSPEND))]
+    #[rule(identifier_token: $Identifier | soft_keyword: SOFT_KEYWORDS)]
     #[describe("simple identifier")]
     #[denote(SIMPLE_IDENTIFIER)]
     SimpleIdentifier {
@@ -186,13 +294,29 @@ pub enum KotlinNode {
         #[parent]
         parent: NodeRef,
         #[child]
-        inner: TokenRef,
+        identifier_token: TokenRef,
+        #[child]
+        soft_keyword: TokenRef,
+    },
+
+    /// Variant of SimpleIdentifier that does not allow suspend
+    /// Used in Type definitions and other places where suspend is not allowed
+    #[rule(identifier_token:$Identifier | soft_keyword: SOFT_KEYWORDS_SANS_SUSPEND)]
+    #[describe("simple identifier")]
+    SimpleTypeIdentifier {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        identifier_token: TokenRef,
+        #[child]
+        soft_keyword: TokenRef,
     },
 
     /// Matches `simpleIdentifier (NL* DOT simpleIdentifier)*`
-    #[rule(idents: SimpleIdentifier ($NL* $Dot idents: SimpleIdentifier)*)]
+    #[rule(base: SimpleIdentifier ($NL* $Dot references: SimpleIdentifier)*)]
     #[denote(IDENTIFIER)]
-    #[recovery($Dot)]
     #[describe("identifier")]
     Identifier {
         #[node]
@@ -200,13 +324,19 @@ pub enum KotlinNode {
         #[parent]
         parent: NodeRef,
         #[child]
-        idents: Vec<NodeRef>,
+        base: NodeRef,
+        #[child]
+        references: Vec<NodeRef>,
     },
 
     // SECTION: types
     // Section Notes : Quest is always $QuestNoWs
     /// Matches typeModifiers? (functionType | parenthesizedType | nullableType | typeReference | definitelyNonNullableType)
-    #[rule(modifiers: TypeModifier* (complex: ComplexType | simple: SimpleType) extra: AdditionalType?)]
+    #[rule(
+        modifiers: TypeModifier* 
+        (complex: ComplexType | simple: SimpleType) 
+        extra: AdditionalType?
+    )]
     #[denote(TYPE)]
     Type {
         #[node]
@@ -223,7 +353,11 @@ pub enum KotlinNode {
         extra: NodeRef,
     },
 
-    #[rule((nullable: $QuestNoWs | receiver_dot: $Dot | intersection: $Amp) receiver_dot: $Dot? type_ref: Type?)]
+    #[rule(
+        (nullable: $QuestNoWs | receiver_dot: $Dot | intersection: $Amp) 
+        receiver_dot: $Dot? 
+        type_ref: Type?
+    )]
     AdditionalType {
         #[node]
         node: NodeRef,
@@ -242,7 +376,7 @@ pub enum KotlinNode {
 
     #[denote(COMPLEX_TYPE)]
     #[rule(
-        ($LParen bracketed:Type+{$Comma} $RParen) // Comma-separated list: (foo.x, bar -> baz, fuz)
+        ($LParen bracketed:FunctionTypeParameter+{$Comma} $RParen) // Comma-separated list: (foo.x, bar -> baz, fuz)
         ($Arrow return_type:Type)? // Optional "-> res" suffix for functions
     )]
     ComplexType {
@@ -256,73 +390,54 @@ pub enum KotlinNode {
         return_type: NodeRef,
     },
 
-    #[rule(identifier: SimpleIdentifier generic_args:(TypeArguments)?)]
+    #[rule(base: SimpleTypeIdentifier generic_args:(TypeArguments)?)]
     SimpleType {
         #[node]
         node: NodeRef,
         #[parent]
         parent: NodeRef,
         #[child]
-        identifier: NodeRef,
+        base: NodeRef,
         #[child]
         generic_args: NodeRef,
     },
 
-    /// Matches userType | DYNAMIC.
-    /// But note that this is unneccessarily repititive as `
-    /// DYNAMIC` is already covered by UserType -> SimpleUserType -> SimpleIdentifier
-    /// So it is not included in the rule
-    #[rule(identifier: SimpleIdentifier)]
-    #[denote(TYPE_REFERENCE)]
-    TypeReference {
+    /// Make sure that this is only used inside function type parameters
+    #[rule(
+        type_or_param: Type
+        ($Colon parameter_type: Type)?
+    )]
+    #[denote(TYPE_IDENTIFIER_OR_PARAMETER)]
+    FunctionTypeParameter {
         #[node]
         node: NodeRef,
         #[parent]
         parent: NodeRef,
         #[child]
-        identifier: NodeRef,
+        type_or_param: NodeRef,
+        #[child]
+        parameter_type: NodeRef,
     },
 
-    /// Matches (typeReference | parenthesizedType) NL* quest+
-    #[rule((TypeReference  | ParenthesizedType) $NL* $QuestNoWs+)]
-    #[denote(TEMP10)]
-    NullableType {
+    /// Matches `LANGLE NL* typeProjection (NL* COMMA NL* typeProjection)* (NL* COMMA)? NL* RANGLE`
+    #[trivia($NL | HIDDEN)]
+    #[rule($LAngle args: TypeProjection+{$Comma} $RAngle)]
+    #[denote(TYPE_ARGUMENTS)]
+    TypeArguments {
         #[node]
         node: NodeRef,
         #[parent]
         parent: NodeRef,
+        #[child]
+        args: Vec<NodeRef>,
     },
 
-    /// Matches `simpleUserType (NL* DOT NL* simpleUserType)*`
-    #[rule(main_type: SimpleUserType ($NL* $Dot $NL* other_types: SimpleUserType)*)]
-    #[denote(TEMP9)]
-    UserType {
-        #[node]
-        node: NodeRef,
-        #[parent]
-        parent: NodeRef,
-        #[child]
-        main_type: NodeRef,
-        #[child]
-        other_types: Vec<NodeRef>,
-    },
-
-    /// Matches simpleIdentifier (NL* typeArguments)?
-    #[rule(ident: SimpleIdentifier ($NL* type_args: TypeArguments)?)]
-    #[denote(SIMPLE_USER_TYPE)]
-    SimpleUserType {
-        #[node]
-        node: NodeRef,
-        #[parent]
-        parent: NodeRef,
-        #[child]
-        ident: NodeRef,
-        #[child]
-        type_args: NodeRef,
-    },
 
     /// Matches `typeProjectionModifiers? type | MULT`
-    #[rule((modifiers: TypeProjectionModifier* /*Type2 (remove Div)*/ $Div) | $Mult)]
+    /// Variance modifiers are `IN` or `OUT` but `OUT` is already part of SimpleTypeIdentifier
+    /// Becuase of the LL(1) nature of the parser, we have to use `Type` instead of `$Out`
+    /// If following_type is not Nil, then inner_type_or_out must be `out` TypeProjection
+    #[rule((in_projection: $In | inner_type_or_out: Type) following_type: Type? | star_projection: $Mult)]
     #[denote(TEMP7)]
     TypeProjection {
         #[node]
@@ -330,63 +445,92 @@ pub enum KotlinNode {
         #[parent]
         parent: NodeRef,
         #[child]
-        /// Could only be non-empty when TypeProjection is Type variant
-        modifiers: Vec<NodeRef>,
+        in_projection: TokenRef,
+        #[child]
+        star_projection: TokenRef,
+        #[child]
+        inner_type_or_out: NodeRef,
+        #[child]
+        following_type: NodeRef,
     },
 
-    #[rule((VarianceModifier $NL*) | Annotation)]
-    TypeProjectionModifier {
+    // SECTION: classes
+
+    // classDeclaration
+    //     : modifiers? (CLASS | (FUN NL*)? INTERFACE) NL* simpleIdentifier
+    //       (NL* typeParameters)? (NL* primaryConstructor)?
+    //       (NL* COLON NL* delegationSpecifiers)?
+    //       (NL* typeConstraints)?
+    //       (NL* classBody | NL* enumClassBody)?
+    //     ;
+
+    // primaryConstructor
+    //     : (modifiers? CONSTRUCTOR NL*)? classParameters
+    //     ;
+
+    // classBody
+    //     : LCURL NL* classMemberDeclarations NL* RCURL
+    //     ;
+
+    // classParameters
+    //     : LPAREN NL* (classParameter (NL* COMMA NL* classParameter)* (NL* COMMA)?)? NL* RPAREN
+    //     ;
+
+    // classParameter
+    //     : modifiers? (VAL | VAR)? NL* simpleIdentifier COLON NL* type (NL* ASSIGNMENT NL* expression)?
+    //     ;
+
+    // delegationSpecifiers
+    //     : annotatedDelegationSpecifier (NL* COMMA NL* annotatedDelegationSpecifier)*
+    //     ;
+
+    // delegationSpecifier
+    //     : constructorInvocation
+    //     | explicitDelegation
+    //     | userType
+    //     | functionType
+    //     | SUSPEND NL* functionType
+    //     ;
+
+    // constructorInvocation
+    //     : userType NL* valueArguments
+    //     ;
+
+ConstructorInvocation {
         #[node]
         node: NodeRef,
         #[parent]
         parent: NodeRef,
+        #[child]
+        user_type: NodeRef,
+        #[child]
+        value_arguments: NodeRef,
     },
 
-    // Matches (receiverType NL* DOT NL*)? functionTypeParameters NL* ARROW NL* type
-    // #[trivia(HIDDEN_WITH_NL)]
-    // #[rule((ReceiverType $Dot)? FunctionTypeParameters $Arrow Type2 )]
-    // #[denote(T14)]
-    // FunctionType {
-    //     #[node]
-    //     node: NodeRef,
-    //     #[parent]
-    //     parent: NodeRef,
-    // },
-    /// Matches ` LPAREN NL* (parameter | type)? (NL* COMMA NL* (parameter | type))* (NL* COMMA)? NL* RPAREN`
-    #[trivia(HIDDEN_WITH_NL)]
-    #[rule($LParen (/* Parameter | */ Type)? ($Comma (/*Parameter|*/  Type))* ($Comma)? $RParen)]
-    #[denote(T13)]
-    FunctionTypeParameters {
-        #[node]
-        node: NodeRef,
-        #[parent]
-        parent: NodeRef,
-    },
+// annotatedDelegationSpecifier
+//     : annotation* NL* delegationSpecifier
+//     ;
 
-    /// Matches `LPAREN NL* type NL* RPAREN`
-    #[rule($LParen Type $RParen)]
-    #[trivia(HIDDEN_WITH_NL)]
-    #[denote(T22)]
-    ParenthesizedType {
-        #[node]
-        node: NodeRef,
-        #[parent]
-        parent: NodeRef,
-    },
+// explicitDelegation
+//     : (userType | functionType) NL* BY NL* expression
+//     ;
 
-    /// Matches `typeModifiers? (parenthesizedType | nullableType | typeReference)`
-    // #[rule(type_modifiers: TypeModifier* base: BaseReceiverType)]
-    // #[denote(T23)]
-    // ReceiverType {
-    //     #[node]
-    //     node: NodeRef,
-    //     #[parent]
-    //     parent: NodeRef,
-    //     #[child]
-    //     type_modifiers: Vec<NodeRef>,
-    //     #[child]
-    //     base: NodeRef,
-    // },
+// typeParameters
+//     : LANGLE NL* typeParameter (NL* COMMA NL* typeParameter)* (NL* COMMA)? NL* RANGLE
+//     ;
+
+// typeParameter
+//     : typeParameterModifiers? NL* simpleIdentifier (NL* COLON NL* type)?
+//     ;
+
+// typeConstraints
+//     : WHERE NL* typeConstraint (NL* COMMA NL* typeConstraint)*
+//     ;
+
+// typeConstraint
+//     : annotation* simpleIdentifier NL* COLON NL* type
+//     ;
+    
 
     // SECTION: classMembers
 
@@ -497,12 +641,442 @@ pub enum KotlinNode {
     //       (NL* classBody)?
     //     ;
 
+    // #[rule(modifiers: Modifiers? $Object $NL* identifier: SimpleIdentifier (delegation_specifiers: DelegationSpecifiers)? (class_body: ClassBody)?)]
+    // #[denote(OBJECT_DECLARATION)]
+    ObjectDeclaration {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        modifiers: NodeRef,
+        #[child]
+        identifier: NodeRef,
+        #[child]
+        delegation_specifiers: NodeRef,
+        #[child]
+        class_body: NodeRef,
+    },
+
     // secondaryConstructor
     //     : modifiers? CONSTRUCTOR NL* functionValueParameters (NL* COLON NL* constructorDelegationCall)? NL* block?
     //     ;
 
     // constructorDelegationCall
     //     : (THIS | SUPER) NL* valueArguments
+    //     ;
+
+    // SECTION: expressions
+
+// expression
+//     : disjunction
+//     ;
+    #[denote(EXPRESSION)]
+    #[rule(disjunction: $Range)] // TODO: Change to disjunction
+    #[describe("expression", "expr")]
+    Expression {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        disjunction: TokenRef,
+    },
+
+    // disjunction
+    //     : conjunction (NL* DISJ NL* conjunction)*
+    //     ;
+
+    // conjunction
+    //     : equality (NL* CONJ NL* equality)*
+    //     ;
+
+    // equality
+    //     : comparison (equalityOperator NL* comparison)*
+    //     ;
+
+    // comparison
+    //     : genericCallLikeComparison (comparisonOperator NL* genericCallLikeComparison)*
+    //     ;
+
+    // genericCallLikeComparison
+    //     : infixOperation callSuffix*
+    //     ;
+
+    // infixOperation
+    //     : elvisExpression (inOperator NL* elvisExpression | isOperator NL* type)*
+    //     ;
+
+    // elvisExpression
+    //     : infixFunctionCall (NL* elvis NL* infixFunctionCall)*
+    //     ;
+
+    // elvis
+    //     : QUEST_NO_WS COLON
+    //     ;
+
+    // infixFunctionCall
+    //     : rangeExpression (simpleIdentifier NL* rangeExpression)*
+    //     ;
+
+    // rangeExpression
+    //     : additiveExpression ((RANGE | RANGE_UNTIL) NL* additiveExpression)*
+    //     ;
+
+    // additiveExpression
+    //     : multiplicativeExpression (additiveOperator NL* multiplicativeExpression)*
+    //     ;
+
+    // multiplicativeExpression
+    //     : asExpression (multiplicativeOperator NL* asExpression)*
+    //     ;
+
+    // asExpression
+    //     : prefixUnaryExpression (NL* asOperator NL* type)*
+    //     ;
+
+    // prefixUnaryExpression
+    //     : unaryPrefix* postfixUnaryExpression
+    //     ;
+
+    // unaryPrefix
+    //     : annotation
+    //     | label
+    //     | prefixUnaryOperator NL*
+    //     ;
+
+    // postfixUnaryExpression
+    //     : primaryExpression postfixUnarySuffix*
+    //     ;
+
+    // postfixUnarySuffix
+    //     : postfixUnaryOperator
+    //     | typeArguments
+    //     | callSuffix
+    //     | indexingSuffix
+    //     | navigationSuffix
+    //     ;
+
+    // directlyAssignableExpression
+    //     : postfixUnaryExpression assignableSuffix
+    //     | simpleIdentifier
+    //     | parenthesizedDirectlyAssignableExpression
+    //     ;
+
+    // parenthesizedDirectlyAssignableExpression
+    //     : LPAREN NL* directlyAssignableExpression NL* RPAREN
+    //     ;
+
+    // assignableExpression
+    //     : prefixUnaryExpression
+    //     | parenthesizedAssignableExpression
+    //     ;
+
+    // parenthesizedAssignableExpression
+    //     : LPAREN NL* assignableExpression NL* RPAREN
+    //     ;
+
+    // assignableSuffix
+    //     : typeArguments
+    //     | indexingSuffix
+    //     | navigationSuffix
+    //     ;
+
+    // indexingSuffix
+    //     : LSQUARE NL* expression (NL* COMMA NL* expression)* (NL* COMMA)? NL* RSQUARE
+    //     ;
+
+    // navigationSuffix
+    //     : memberAccessOperator NL* (simpleIdentifier | parenthesizedExpression | CLASS)
+    //     ;
+
+    // callSuffix
+    //     : typeArguments? (valueArguments? annotatedLambda | valueArguments)
+    //     ;
+
+    // annotatedLambda
+    //     : annotation* label? NL* lambdaLiteral
+    //     ;
+
+    // typeArguments
+    //     : LANGLE NL* typeProjection (NL* COMMA NL* typeProjection)* (NL* COMMA)? NL* RANGLE
+    //     ;
+
+    // valueArguments
+    //     : LPAREN NL* (valueArgument (NL* COMMA NL* valueArgument)* (NL* COMMA)? NL*)? RPAREN
+    //     ;
+
+    // valueArgument
+    //     : annotation? NL* (simpleIdentifier NL* ASSIGNMENT NL*)? MULT? NL* expression
+    //     ;
+
+    #[denote(VALUE_ARGUMENT)]
+    #[rule(
+        annotation: Annotation? $NL* (identifier: SimpleIdentifier? $NL* $Assignment $NL*)? mult: $Mult? $NL* expression: Expression
+    )]
+    #[describe("value argument", "value")]
+    ValueArgument {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        annotation: NodeRef,
+        #[child]
+        identifier: NodeRef,
+        #[child]
+        mult: TokenRef,
+        #[child]
+        expression: NodeRef,
+    },
+
+    // primaryExpression
+    //     : parenthesizedExpression
+    //     | simpleIdentifier
+    //     | literalConstant
+    //     | stringLiteral
+    //     | callableReference
+    //     | functionLiteral
+    //     | objectLiteral
+    //     | collectionLiteral
+    //     | thisExpression
+    //     | superExpression
+    //     | ifExpression
+    //     | whenExpression
+    //     | tryExpression
+    //     | jumpExpression
+    //     ;
+
+    // parenthesizedExpression
+    //     : LPAREN NL* expression NL* RPAREN
+    //     ;
+
+    // collectionLiteral
+    //     : LSQUARE NL* (expression (NL* COMMA NL* expression)* (NL* COMMA)? NL*)? RSQUARE
+    //     ;
+
+    // literalConstant
+    //     : BooleanLiteral
+    //     | IntegerLiteral
+    //     | HexLiteral
+    //     | BinLiteral
+    //     | CharacterLiteral
+    //     | RealLiteral
+    //     | NullLiteral
+    //     | LongLiteral
+    //     | UnsignedLiteral
+    //     ;
+
+    // stringLiteral
+    //     : lineStringLiteral
+    //     | multiLineStringLiteral
+    //     ;
+
+    // lineStringLiteral
+    //     : QUOTE_OPEN (lineStringContent | lineStringExpression)* QUOTE_CLOSE
+    //     ;
+
+    // multiLineStringLiteral
+    //     : TRIPLE_QUOTE_OPEN (multiLineStringContent | multiLineStringExpression | MultiLineStringQuote)* TRIPLE_QUOTE_CLOSE
+    //     ;
+
+    // lineStringContent
+    //     : LineStrText
+    //     | LineStrEscapedChar
+    //     | LineStrRef
+    //     ;
+
+    // lineStringExpression
+    //     : LineStrExprStart NL* expression NL* RCURL
+    //     ;
+
+    // multiLineStringContent
+    //     : MultiLineStrText
+    //     | MultiLineStringQuote
+    //     | MultiLineStrRef
+    //     ;
+
+    // multiLineStringExpression
+    //     : MultiLineStrExprStart NL* expression NL* RCURL
+    //     ;
+
+    // lambdaLiteral
+    //     : LCURL NL* (lambdaParameters? NL* ARROW NL*)? statements NL* RCURL
+    //     ;
+
+    // lambdaParameters
+    //     : lambdaParameter (NL* COMMA NL* lambdaParameter)* (NL* COMMA)?
+    //     ;
+
+    // lambdaParameter
+    //     : variableDeclaration
+    //     | multiVariableDeclaration (NL* COLON NL* type)?
+    //     ;
+
+    // anonymousFunction
+    //     : SUSPEND?
+    //       NL*
+    //       FUN
+    //       (NL* type NL* DOT)?
+    //       NL* parametersWithOptionalType
+    //       (NL* COLON NL* type)?
+    //       (NL* typeConstraints)?
+    //       (NL* functionBody)?
+    //     ;
+
+    // functionLiteral
+    //     : lambdaLiteral
+    //     | anonymousFunction
+    //     ;
+
+    // objectLiteral
+    //     : DATA? NL* OBJECT (NL* COLON NL* delegationSpecifiers NL*)? (NL* classBody)?
+    //     ;
+
+    // thisExpression
+    //     : THIS
+    //     | THIS_AT
+    //     ;
+
+    // superExpression
+    //     : SUPER (LANGLE NL* type NL* RANGLE)? (AT_NO_WS simpleIdentifier)?
+    //     | SUPER_AT
+    //     ;
+
+    // ifExpression
+    //     : IF NL* LPAREN NL* expression NL* RPAREN NL*
+    //       ( controlStructureBody
+    //       | controlStructureBody? NL* SEMICOLON? NL* ELSE NL* (controlStructureBody | SEMICOLON)
+    //       | SEMICOLON)
+    //     ;
+
+    // whenSubject
+    //     : LPAREN (annotation* NL* VAL NL* variableDeclaration NL* ASSIGNMENT NL*)? expression RPAREN
+    //     ;
+
+    // whenExpression
+    //     : WHEN NL* whenSubject? NL* LCURL NL* (whenEntry NL*)* NL* RCURL
+    //     ;
+
+    // whenEntry
+    //     : whenCondition (NL* COMMA NL* whenCondition)* (NL* COMMA)? NL* ARROW NL* controlStructureBody semi?
+    //     | ELSE NL* ARROW NL* controlStructureBody semi?
+    //     ;
+
+    // whenCondition
+    //     : expression
+    //     | rangeTest
+    //     | typeTest
+    //     ;
+
+    // rangeTest
+    //     : inOperator NL* expression
+    //     ;
+
+    // typeTest
+    //     : isOperator NL* type
+    //     ;
+
+    // tryExpression
+    //     : TRY NL* block ((NL* catchBlock)+ (NL* finallyBlock)? | NL* finallyBlock)
+    //     ;
+
+    // catchBlock
+    //     : CATCH NL* LPAREN annotation* simpleIdentifier COLON type (NL* COMMA)? RPAREN NL* block
+    //     ;
+
+    // finallyBlock
+    //     : FINALLY NL* block
+    //     ;
+
+    // jumpExpression
+    //     : THROW NL* expression
+    //     | (RETURN | RETURN_AT) expression?
+    //     | CONTINUE
+    //     | CONTINUE_AT
+    //     | BREAK
+    //     | BREAK_AT
+    //     ;
+
+    // callableReference
+    //     : receiverType? COLONCOLON NL* (simpleIdentifier | CLASS)
+    //     ;
+
+    // assignmentAndOperator
+    //     : ADD_ASSIGNMENT
+    //     | SUB_ASSIGNMENT
+    //     | MULT_ASSIGNMENT
+    //     | DIV_ASSIGNMENT
+    //     | MOD_ASSIGNMENT
+    //     ;
+
+    // equalityOperator
+    //     : EXCL_EQ
+    //     | EXCL_EQEQ
+    //     | EQEQ
+    //     | EQEQEQ
+    //     ;
+
+    // comparisonOperator
+    //     : LANGLE
+    //     | RANGLE
+    //     | LE
+    //     | GE
+    //     ;
+
+    // inOperator
+    //     : IN
+    //     | NOT_IN
+    //     ;
+
+    // isOperator
+    //     : IS
+    //     | NOT_IS
+    //     ;
+
+    // additiveOperator
+    //     : ADD
+    //     | SUB
+    //     ;
+
+    // multiplicativeOperator
+    //     : MULT
+    //     | DIV
+    //     | MOD
+    //     ;
+
+    // asOperator
+    //     : AS
+    //     | AS_SAFE
+    //     ;
+
+    // prefixUnaryOperator
+    //     : INCR
+    //     | DECR
+    //     | SUB
+    //     | ADD
+    //     | excl
+    //     ;
+
+    // postfixUnaryOperator
+    //     : INCR
+    //     | DECR
+    //     | EXCL_NO_WS excl
+    //     ;
+
+    // excl
+    //     : EXCL_NO_WS
+    //     | EXCL_WS
+    //     ;
+
+    // memberAccessOperator
+    //     : NL* DOT
+    //     | NL* safeNav
+    //     | COLONCOLON
+    //     ;
+
+    // safeNav
+    //     : QUEST_NO_WS DOT
     //     ;
 
     // SECTION: modifiers
