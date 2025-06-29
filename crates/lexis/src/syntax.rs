@@ -1,3 +1,4 @@
+#![allow(mismatched_lifetime_syntaxes)]
 use lady_deirdre::{
     lexis::TokenRef,
     syntax::{Node, NodeRef},
