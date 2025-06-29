@@ -1,4 +1,5 @@
 #![allow(mismatched_lifetime_syntaxes)]
+
 use lady_deirdre::{
     lexis::TokenRef,
     syntax::{Node, NodeRef},
@@ -10,7 +11,6 @@ mod tests;
 use crate::tokens::KotlinToken;
 
 // TODO: Add parameter to complex type
-
 #[derive(Node)]
 #[token(KotlinToken)]
 #[define(HIDDEN = $Whitespace | LineComment | DelimitedComment)]
@@ -107,7 +107,7 @@ pub enum KotlinNode {
         value: NodeRef,
     },
 
-    #[rule($NL* shebang_line: ShebangLine? test_package:ImportList)]
+    #[rule($NL* shebang_line: ShebangLine? package_header:PackageHeader? import_list: ImportList? top_level_object: TopLevelObject+ $NL*)]
     /// shebangLine? NL* fileAnnotation* packageHeader importList topLevelObject* EOF
     KotlinFile {
         #[node]
@@ -119,7 +119,11 @@ pub enum KotlinNode {
         // #[child]
         // file_annotations: Vec<NodeRef>,
         #[child]
-        test_package: NodeRef,
+        package_header: NodeRef,
+        #[child]
+        import_list: NodeRef,
+        #[child]
+        top_level_object: Vec<NodeRef>,
     },
 
     // #[rule(shebang_line: ShebangLine? $NL* ident_test: SimpleIdentifier+ $NL*)]
@@ -226,7 +230,7 @@ pub enum KotlinNode {
     },
 
     // #[denote(TOP_LEVEL_OBJECT)]
-    // #[rule(decl: Declaration Semis?)]
+    #[rule(decl: Declaration Semis?)]
     TopLevelObject {
         #[node]
         node: NodeRef,
@@ -236,6 +240,13 @@ pub enum KotlinNode {
         decl: NodeRef,
     },
 
+    // TODO: declaration
+    // : classDeclaration
+    // | objectDeclaration
+    // | functionDeclaration
+    // | propertyDeclaration
+    // | typeAlias
+    // ;
     #[denote(DECLARATION)]
     #[rule(
         TypeAlias
@@ -577,7 +588,21 @@ ConstructorInvocation {
 
     /// Matches `annotation* NL* simpleIdentifier (NL* COLON NL* type)?`
     #[trivia(HIDDEN_WITH_NL)]
-    #[rule(annotation: Annotation* identifier: SimpleIdentifier ($Colon type_ref: Type)?)]
+    #[rule(identifier: SimpleIdentifier ($Colon type_ref: Type)?)]
+    VariableDeclarationWithoutAnnotation {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        identifier: NodeRef,
+        #[child]
+        type_ref: NodeRef,
+    },
+
+    /// Matches `annotation* NL* simpleIdentifier (NL* COLON NL* type)?`
+    #[trivia(HIDDEN_WITH_NL)]
+    #[rule(annotation: Annotation* declaration: VariableDeclarationWithoutAnnotation)]
     #[denote(VARIABLE_DECLARATION)]
     VariableDeclaration {
         #[node]
@@ -585,11 +610,9 @@ ConstructorInvocation {
         #[parent]
         parent: NodeRef,
         #[child]
+        declaration: NodeRef,
+        #[child]
         annotation: Vec<NodeRef>,
-        #[child]
-        identifier: NodeRef,
-        #[child]
-        type_ref: NodeRef,
     },
 
     /// Matches `LPAREN NL* variableDeclaration (NL* COMMA NL* variableDeclaration)* (NL* COMMA)? NL* RPAREN`
@@ -772,10 +795,7 @@ ConstructorInvocation {
     // statement
     //     : (label | annotation)* ( declaration | assignment | loopStatement | expression)
     //     ;
-    /// Todo: complete the rule
-    #[rule(
-        (label: Label | annotation: Annotation)* expression: Expression
-    )]
+    #[rule((label: Label | annotation: Annotation)* (inner: BaseStatement | while_statement: WhileStatement))]
     Statement {
         #[node]
         node: NodeRef,
@@ -785,12 +805,31 @@ ConstructorInvocation {
         label: Vec<NodeRef>,
         #[child]
         annotation: Vec<NodeRef>,
+        #[child]
+        inner: NodeRef,
+        #[child]
+        while_statement: NodeRef,
+    },
+
+     /// Todo: complete the rule
+     /// ( declaration | assignment | loopStatement | expression)
+    #[rule(
+        (for_statement: ForStatement | do_while_statement: DoWhileStatement | expression: Expression)
+    )]
+    #[denote(BASE_STATEMENT)]
+    BaseStatement {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
         // #[child]
         // declaration: NodeRef,
         // #[child]
         // assignment: NodeRef,
-        // #[child]
-        // loop_statement: NodeRef,
+        #[child]
+        for_statement: NodeRef,
+        #[child]
+        do_while_statement: NodeRef,
         #[child]
         expression: NodeRef,
     },
@@ -807,13 +846,23 @@ ConstructorInvocation {
         identifier: NodeRef,
     },
 
-    // controlStructureBody
-    //     : block
-    //     | statement
-    //     ;
+    /// Matches `block | statement`
     #[rule(block: Block | statement: Statement)]
     #[denote(CONTROL_STRUCTURE_BODY)]
     ControlStructureBody {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        block: NodeRef,
+        #[child]
+        statement: NodeRef,
+    },
+
+    /// Control structure body for do-while statements i.e. do not contain while statement
+    #[rule(block: Block | statement: BaseStatement)]
+    ControlStructureBodyForDoWhile {
         #[node]
         node: NodeRef,
         #[parent]
@@ -836,24 +885,86 @@ ConstructorInvocation {
         statements: NodeRef,
     },
 
-    // loopStatement
-    //     : forStatement
-    //     | whileStatement
-    //     | doWhileStatement
-    //     ;
+    /// Matches `forStatement | whileStatement | doWhileStatement`
+    #[rule(
+        for_statement: ForStatement
+        | while_statement: WhileStatement
+        | do_while_statement: DoWhileStatement
+    )]
+    #[denote(LOOP_STATEMENT)]
+    LoopStatement {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        for_statement: NodeRef,
+        #[child]
+        while_statement: NodeRef,
+        #[child]
+        do_while_statement: NodeRef,
+    },
 
-    // forStatement
-    //     : FOR NL* LPAREN annotation* (variableDeclaration | multiVariableDeclaration)
-    //       IN expression RPAREN NL* controlStructureBody?
-    //     ;
+    /// Matches `FOR NL* LPAREN annotation* (variableDeclaration | multiVariableDeclaration) IN expression RPAREN NL* controlStructureBody?`
+    #[rule(
+        $For $LParen
+            annotations: Annotation*
+            (variable_declaration: VariableDeclarationWithoutAnnotation | multi_variable_declaration: MultiVariableDeclaration)
+            $In expression: Expression
+        $RParen body: ControlStructureBody?
+    )]
+    #[trivia(HIDDEN_WITH_NL)]
+    #[denote(FOR_STATEMENT)]
+    ForStatement {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        annotations: Vec<NodeRef>,
+        #[child]
+        variable_declaration: NodeRef,
+        #[child]
+        multi_variable_declaration: NodeRef,
+        #[child]
+        expression: NodeRef,
+        #[child]
+        body: NodeRef,
+    },
 
-    // whileStatement
-    //     : WHILE NL* LPAREN expression RPAREN NL* (controlStructureBody | SEMICOLON)
-    //     ;
+    /// Matches `WHILE NL* LPAREN expression RPAREN NL* (controlStructureBody | SEMICOLON)`
+    #[rule(
+        $While $LParen expression: Expression $RParen (body: ControlStructureBody | $Semicolon)
+    )]
+    #[trivia(HIDDEN_WITH_NL)]
+    #[denote(WHILE_STATEMENT)]
+    WhileStatement {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        expression: NodeRef,
+        #[child]
+        body: NodeRef,
+    },
 
-    // doWhileStatement
-    //     : DO NL* controlStructureBody? NL* WHILE NL* LPAREN expression RPAREN
-    //     ;
+    /// Matches `DO NL* controlStructureBody? NL* WHILE NL* LPAREN expression RPAREN`
+    #[rule(
+        $Do body: ControlStructureBodyForDoWhile? $While $LParen expression: Expression $RParen
+    )]
+    #[trivia(HIDDEN_WITH_NL)]
+    #[denote(DO_WHILE_STATEMENT)]
+    DoWhileStatement {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        body: NodeRef,
+        #[child]
+        expression: NodeRef,
+    },
 
     // assignment
     //     : (directlyAssignableExpression ASSIGNMENT | assignableExpression assignmentAndOperator) NL* expression
