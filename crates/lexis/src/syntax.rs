@@ -495,7 +495,7 @@ pub enum KotlinNode {
     //     : userType NL* valueArguments
     //     ;
 
-ConstructorInvocation {
+    ConstructorInvocation {
         #[node]
         node: NodeRef,
         #[parent]
@@ -506,30 +506,30 @@ ConstructorInvocation {
         value_arguments: NodeRef,
     },
 
-// annotatedDelegationSpecifier
-//     : annotation* NL* delegationSpecifier
-//     ;
+    // annotatedDelegationSpecifier
+    //     : annotation* NL* delegationSpecifier
+    //     ;
 
-// explicitDelegation
-//     : (userType | functionType) NL* BY NL* expression
-//     ;
+    // explicitDelegation
+    //     : (userType | functionType) NL* BY NL* expression
+    //     ;
 
-// typeParameters
-//     : LANGLE NL* typeParameter (NL* COMMA NL* typeParameter)* (NL* COMMA)? NL* RANGLE
-//     ;
+    // typeParameters
+    //     : LANGLE NL* typeParameter (NL* COMMA NL* typeParameter)* (NL* COMMA)? NL* RANGLE
+    //     ;
 
-// typeParameter
-//     : typeParameterModifiers? NL* simpleIdentifier (NL* COLON NL* type)?
-//     ;
+    // typeParameter
+    //     : typeParameterModifiers? NL* simpleIdentifier (NL* COLON NL* type)?
+    //     ;
 
-// typeConstraints
-//     : WHERE NL* typeConstraint (NL* COMMA NL* typeConstraint)*
-//     ;
+    // typeConstraints
+    //     : WHERE NL* typeConstraint (NL* COMMA NL* typeConstraint)*
+    //     ;
 
-// typeConstraint
-//     : annotation* simpleIdentifier NL* COLON NL* type
-//     ;
-    
+    // typeConstraint
+    //     : annotation* simpleIdentifier NL* COLON NL* type
+    //     ;
+        
 
     // SECTION: classMembers
 
@@ -972,9 +972,9 @@ ConstructorInvocation {
 
     // SECTION: expressions
 
-// expression
-//     : disjunction
-//     ;
+    // expression
+    //     : disjunction
+    //     ;
     #[denote(EXPRESSION)]
     #[rule(disjunction: $Range)] // TODO: Change to disjunction
     #[describe("expression", "expr")]
