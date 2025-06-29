@@ -36,7 +36,7 @@ mod tests;
 /// and trivia in parsing phase => ExclWs, QuestWs.
 
 /// List of Kotlin defined tokens that we chose to ignore because they are covered by a token variants
-/// and trivia with a combination of optional newline in parsing phase => AtPostWs, AtPreWs, NotIs, NotIn.
+/// and trivia with a combination of optional newline in parsing phase => AtPostWs, AtPreWs
 
 /// List of Kotlin defined tokens that we ignored becuase they are not used at all => AtBothWs.
 /// IdentifierOrSoftKey is covered by SimpleIdentifier node
@@ -145,7 +145,7 @@ pub enum KotlinToken {
     RangeUntil,
 
     #[rule("::")]
-    Coloncolon,
+    ColonColon,
 
     #[rule(";;")]
     DoubleSemicolon,
@@ -175,16 +175,16 @@ pub enum KotlinToken {
     ExclEq,
 
     #[rule("!==")]
-    ExclEqeq,
+    ExclEqEq,
 
     #[rule("as?")]
     AsSafe,
 
     #[rule("==")]
-    Eqeq,
+    EqEq,
 
     #[rule("===")]
-    Eqeqeq,
+    EqEqEq,
 
     #[rule("\"")]
     SingleQuote,
@@ -409,9 +409,17 @@ pub enum KotlinToken {
     #[priority(10)]
     Is,
 
+    #[rule("!is")]
+    #[priority(10)]
+    NotIs,
+
     #[rule("in")]
     #[priority(10)]
     In,
+
+    #[rule("!in")]
+    #[priority(10)]
+    NotIn,
 
     #[rule("out")]
     #[priority(10)]

@@ -419,19 +419,6 @@ pub enum KotlinNode {
         parameter_type: NodeRef,
     },
 
-    /// Matches `LANGLE NL* typeProjection (NL* COMMA NL* typeProjection)* (NL* COMMA)? NL* RANGLE`
-    #[trivia($NL | HIDDEN)]
-    #[rule($LAngle args: TypeProjection+{$Comma} $RAngle)]
-    #[denote(TYPE_ARGUMENTS)]
-    TypeArguments {
-        #[node]
-        node: NodeRef,
-        #[parent]
-        parent: NodeRef,
-        #[child]
-        args: Vec<NodeRef>,
-    },
-
 
     /// Matches `typeProjectionModifiers? type | MULT`
     /// Variance modifiers are `IN` or `OUT` but `OUT` is already part of SimpleTypeIdentifier
@@ -573,18 +560,53 @@ ConstructorInvocation {
     //       (NL* functionBody)?
     //     ;
 
-    // functionBody
-    //     : block
-    //     | ASSIGNMENT NL* expression
-    //     ;
+    /// Matches `block | ASSIGNMENT NL* expression`
+    #[denote(FUNCTION_BODY)]
+    #[rule(block: Block | ($Assignment $NL* expression: Expression))]
+    FunctionBody {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        block: NodeRef,
+        #[child]
+        expression: NodeRef,
+    },
 
-    // variableDeclaration
-    //     : annotation* NL* simpleIdentifier (NL* COLON NL* type)?
-    //     ;
+    /// Matches `annotation* NL* simpleIdentifier (NL* COLON NL* type)?`
+    #[trivia(HIDDEN_WITH_NL)]
+    #[rule(annotation: Annotation* identifier: SimpleIdentifier ($Colon type_ref: Type)?)]
+    #[denote(VARIABLE_DECLARATION)]
+    VariableDeclaration {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        annotation: Vec<NodeRef>,
+        #[child]
+        identifier: NodeRef,
+        #[child]
+        type_ref: NodeRef,
+    },
 
-    // multiVariableDeclaration
-    //     : LPAREN NL* variableDeclaration (NL* COMMA NL* variableDeclaration)* (NL* COMMA)? NL* RPAREN
-    //     ;
+    /// Matches `LPAREN NL* variableDeclaration (NL* COMMA NL* variableDeclaration)* (NL* COMMA)? NL* RPAREN`
+    #[rule(
+        $LParen
+        variable_declarations: VariableDeclaration+{$Comma}
+        $RParen
+    )]
+    #[trivia(HIDDEN_WITH_NL)]
+    #[denote(MULTI_VARIABLE_DECLARATION)]
+    MultiVariableDeclaration {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        variable_declarations: Vec<NodeRef>,
+    },
 
     // propertyDeclaration
     //     : modifiers? (VAL | VAR)
@@ -609,20 +631,83 @@ ConstructorInvocation {
     //     : modifiers? SET
     //       (NL* LPAREN NL* functionValueParameterWithOptionalType (NL* COMMA)? NL* RPAREN (NL* COLON NL* type)? NL* functionBody)?
     //     ;
+    #[denote(SETTER)]
+    #[trivia(HIDDEN_WITH_NL)]
+    #[rule(
+        modifiers: Modifiers? $Set 
+        (fn_type: FunctionValueParameterWithOptionalType
+            ($Comma)? $RParen
+            ($Colon type_ref: Type)?  function_body: FunctionBody
+        )
+    )]
+    Setter {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        modifiers: NodeRef,
+        #[child]
+        fn_type: NodeRef,
+        #[child]
+        type_ref: NodeRef,
+        #[child]
+        function_body: NodeRef,
+    },
 
-    // parametersWithOptionalType
-    //     : LPAREN NL* (functionValueParameterWithOptionalType (NL* COMMA NL* functionValueParameterWithOptionalType)* (NL* COMMA)?)? NL* RPAREN
-    //     ;
+    /// Matches `LPAREN NL* (functionValueParameterWithOptionalType (NL* COMMA NL* functionValueParameterWithOptionalType)* (NL* COMMA)?)? NL* RPAREN`
+    #[trivia(HIDDEN_WITH_NL)]
+    #[rule(
+        $LParen
+        fn_value_parameter_opt_type: FunctionValueParameterWithOptionalType+{$Comma}
+        $RParen
+    )]
+    #[denote(PARAMETERS_WITH_OPTIONAL_TYPE)]
+    ParametersWithOptionalType {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        fn_value_parameter_opt_type: Vec<NodeRef>,
+    },
 
-    // functionValueParameterWithOptionalType
-    //     : parameterModifiers? parameterWithOptionalType (NL* ASSIGNMENT NL* expression)?
-    //     ;
+    /// Matches `parameterModifiers? parameterWithOptionalType (NL* ASSIGNMENT NL* expression)?`
+    #[trivia(HIDDEN_WITH_NL)]
+    #[rule(
+        parameter_with_opt_type: ParameterWithOptionalType+
+        ($Assignment expression: Expression)?
+    )]
+    #[denote(FUNCTION_VALUE_PARAMETER_WITH_OPTIONAL_TYPE)]
+    FunctionValueParameterWithOptionalType {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        /// Todo: This captures parameter modifiers.
+        parameter_with_opt_type: Vec<NodeRef>,
+        #[child]
+        expression: NodeRef,
+    },
 
-    // parameterWithOptionalType
-    //     : simpleIdentifier NL* (COLON NL* type)?
-    //     ;
     /// Matches `simpleIdentifier NL* COLON NL* type`
-    #[rule(identifier: SimpleIdentifier $Colon /* Type2 */)]
+    #[rule(identifier: SimpleIdentifier ($Colon type_ref: Type)?)]
+    #[trivia(HIDDEN_WITH_NL)]
+    #[denote(PARAMETER_WITH_OPTIONAL_TYPE)]
+    ParameterWithOptionalType {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        identifier: NodeRef,
+        #[child]
+        type_ref: NodeRef,
+    },
+
+    /// Matches `simpleIdentifier NL* COLON NL* type`
+    #[rule(identifier: SimpleIdentifier $Colon type_ref: Type)]
     #[trivia(HIDDEN_WITH_NL)]
     #[denote(PARAMETER)]
     Parameter {
@@ -632,6 +717,8 @@ ConstructorInvocation {
         parent: NodeRef,
         #[child]
         identifier: NodeRef,
+        #[child]
+        type_ref: NodeRef,
     },
 
     // objectDeclaration
@@ -664,6 +751,111 @@ ConstructorInvocation {
 
     // constructorDelegationCall
     //     : (THIS | SUPER) NL* valueArguments
+    //     ;
+
+    // SECTION: statements
+
+    /// Matches `(statement (semis statement)*)? semis?`
+    #[rule(statements: Statement (Semis statements: Statement)* Semis?)]
+    #[denote(STATEMENTS)]
+    #[describe("statements", "stmts")]
+    Statements {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        statements: Vec<NodeRef>,
+    },
+
+    // statement
+    //     : (label | annotation)* ( declaration | assignment | loopStatement | expression)
+    //     ;
+    /// Todo: complete the rule
+    #[rule(
+        (label: Label | annotation: Annotation)* expression: Expression
+    )]
+    Statement {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        label: Vec<NodeRef>,
+        #[child]
+        annotation: Vec<NodeRef>,
+        // #[child]
+        // declaration: NodeRef,
+        // #[child]
+        // assignment: NodeRef,
+        // #[child]
+        // loop_statement: NodeRef,
+        #[child]
+        expression: NodeRef,
+    },
+
+    /// Matches `simpleIdentifier (AT_NO_WS | AT_POST_WS) NL*`
+    #[denote(LABEL)]
+    #[rule(identifier: SimpleIdentifier $AtNoWs $NL*)]
+    Label {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        identifier: NodeRef,
+    },
+
+    // controlStructureBody
+    //     : block
+    //     | statement
+    //     ;
+    #[rule(block: Block | statement: Statement)]
+    #[denote(CONTROL_STRUCTURE_BODY)]
+    ControlStructureBody {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        block: NodeRef,
+        #[child]
+        statement: NodeRef,
+    },
+
+    /// Matches `LCURL NL* statements NL* RCURL`
+    #[trivia(HIDDEN_WITH_NL)]
+    #[rule($LCurl statements: Statements $RCurl)]
+    Block {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        statements: NodeRef,
+    },
+
+    // loopStatement
+    //     : forStatement
+    //     | whileStatement
+    //     | doWhileStatement
+    //     ;
+
+    // forStatement
+    //     : FOR NL* LPAREN annotation* (variableDeclaration | multiVariableDeclaration)
+    //       IN expression RPAREN NL* controlStructureBody?
+    //     ;
+
+    // whileStatement
+    //     : WHILE NL* LPAREN expression RPAREN NL* (controlStructureBody | SEMICOLON)
+    //     ;
+
+    // doWhileStatement
+    //     : DO NL* controlStructureBody? NL* WHILE NL* LPAREN expression RPAREN
+    //     ;
+
+    // assignment
+    //     : (directlyAssignableExpression ASSIGNMENT | assignableExpression assignmentAndOperator) NL* expression
     //     ;
 
     // SECTION: expressions
@@ -798,21 +990,55 @@ ConstructorInvocation {
     //     : annotation* label? NL* lambdaLiteral
     //     ;
 
-    // typeArguments
-    //     : LANGLE NL* typeProjection (NL* COMMA NL* typeProjection)* (NL* COMMA)? NL* RANGLE
-    //     ;
+    AnnotatedLambda {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        annotation: Vec<NodeRef>,
+        #[child]
+        label: NodeRef,
+        #[child]
+        lambda_literal: NodeRef,
+    },
 
-    // valueArguments
-    //     : LPAREN NL* (valueArgument (NL* COMMA NL* valueArgument)* (NL* COMMA)? NL*)? RPAREN
-    //     ;
+    /// Matches `LANGLE NL* typeProjection (NL* COMMA NL* typeProjection)* (NL* COMMA)? NL* RANGLE`
+    #[trivia($NL | HIDDEN)]
+    #[rule($LAngle args: TypeProjection+{$Comma} $RAngle)]
+    #[denote(TYPE_ARGUMENTS)]
+    TypeArguments {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        args: Vec<NodeRef>,
+    },
 
-    // valueArgument
-    //     : annotation? NL* (simpleIdentifier NL* ASSIGNMENT NL*)? MULT? NL* expression
-    //     ;
-
-    #[denote(VALUE_ARGUMENT)]
+    /// Matches LPAREN NL* (valueArgument (NL* COMMA NL* valueArgument)* (NL* COMMA)? NL*)? RPAREN
+    #[denote(VALUE_ARGUMENTS)]
+    #[trivia(HIDDEN_WITH_NL)]
     #[rule(
-        annotation: Annotation? $NL* (identifier: SimpleIdentifier? $NL* $Assignment $NL*)? mult: $Mult? $NL* expression: Expression
+        $LParen
+        ((value_argument: ValueArgument)+{$Comma})?
+        $RParen
+    )]
+    #[describe("value arguments", "args")]
+    ValueArguments {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        value_argument: Vec<NodeRef>,
+    },
+
+    /// Matches `annotation? NL* (simpleIdentifier NL* ASSIGNMENT NL*)? MULT? NL* expression`
+    #[denote(VALUE_ARGUMENT)]
+    #[trivia(HIDDEN_WITH_NL)]
+    #[rule(
+        annotation: Annotation?  (identifier: SimpleIdentifier?  $Assignment )? mult: $Mult?  expression: Expression
     )]
     #[describe("value argument", "value")]
     ValueArgument {
@@ -950,134 +1176,342 @@ ConstructorInvocation {
     //       | SEMICOLON)
     //     ;
 
-    // whenSubject
-    //     : LPAREN (annotation* NL* VAL NL* variableDeclaration NL* ASSIGNMENT NL*)? expression RPAREN
-    //     ;
+    /// Matches `LPAREN (annotation* NL* VAL NL* variableDeclaration NL* ASSIGNMENT NL*)? expression RPAREN`
+    #[rule(
+        $LParen
+        (annotations: Annotation* $Val variable_declaration: VariableDeclaration $Assignment)?
+        expression: Expression
+        $RParen
+    )]
+    #[denote(WHEN_SUBJECT)]
+    WhenSubject {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        annotations: Vec<NodeRef>,
+        #[child]
+        variable_declaration: NodeRef,
+        #[child]
+        expression: NodeRef,
+    },
 
-    // whenExpression
-    //     : WHEN NL* whenSubject? NL* LCURL NL* (whenEntry NL*)* NL* RCURL
-    //     ;
+    /// Matches `WHEN NL* whenSubject? NL* LCURL NL* (whenEntry NL*)* NL* RCURL`
+    #[trivia(HIDDEN_WITH_NL)]
+    #[rule(
+        $When when_subject: WhenSubject? $LCurl 
+            when_entries: WhenEntry* 
+        $RCurl
+    )]
+    #[denote(WHEN_EXPRESSION)]
+    WhenExpression {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        when_subject: NodeRef,
+        #[child]
+        when_entries: Vec<NodeRef>,
+    },
 
-    // whenEntry
-    //     : whenCondition (NL* COMMA NL* whenCondition)* (NL* COMMA)? NL* ARROW NL* controlStructureBody semi?
-    //     | ELSE NL* ARROW NL* controlStructureBody semi?
-    //     ;
+    /// Matches `whenCondition (NL* COMMA NL* whenCondition)* (NL* COMMA)? NL* ARROW NL* controlStructureBody semi?`
+    /// or `ELSE NL* ARROW NL* controlStructureBody semi?`
+    #[rule(
+        (conditions: WhenCondition+{$Comma} $Arrow body: ControlStructureBody Semi?)
+        | ($Else $Arrow body: ControlStructureBody Semi?)
+    )]
+    #[denote(WHEN_ENTRY)]
+    WhenEntry {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        conditions: Vec<NodeRef>,
+        #[child]
+        body: NodeRef,
+    },
 
-    // whenCondition
-    //     : expression
-    //     | rangeTest
-    //     | typeTest
-    //     ;
+    /// Matches expression | rangeTest | typeTest
+    #[rule(
+        expression: Expression
+        | range_test: RangeTest
+        | type_test: TypeTest
+    )]
+    #[denote(WHEN_CONDITION)]
+    WhenCondition {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        expression: NodeRef,
+        #[child]
+        range_test: NodeRef,
+        #[child]
+        type_test: NodeRef,
+    }, 
 
-    // rangeTest
-    //     : inOperator NL* expression
-    //     ;
+    /// Matches inOperator NL* expression
+    #[rule(in_operator: InOperator $NL* expression: Expression)]
+    #[denote(RANGE_TEST)]
+    RangeTest {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        in_operator: NodeRef,
+        #[child]
+        expression: NodeRef,
+    },
 
-    // typeTest
-    //     : isOperator NL* type
-    //     ;
+    /// Matches isOperator NL* type
+    #[rule(is_operator: IsOperator $NL* type_ref: Type)]
+    #[denote(TYPE_TEST)]
+    TypeTest {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        is_operator: NodeRef,
+        #[child]
+        type_ref: NodeRef,
+    },
 
-    // tryExpression
-    //     : TRY NL* block ((NL* catchBlock)+ (NL* finallyBlock)? | NL* finallyBlock)
-    //     ;
+    /// Matches TRY NL* block ((NL* catchBlock)+ (NL* finallyBlock)? | NL* finallyBlock)
+    #[denote(TRY_EXPRESSION)]
+    #[trivia(HIDDEN_WITH_NL)]
+    #[rule(
+        $Try block: Block 
+        (
+            (catch_blocks: CatchBlock+ (finally_block: FinallyBlock)?)
+            | (finally_block: FinallyBlock)
+        )
+    )]
+    TryExpression {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        block: NodeRef,
+        #[child]
+        catch_blocks: Vec<NodeRef>,
+        #[child]
+        finally_block: NodeRef,
+    },
 
-    // catchBlock
-    //     : CATCH NL* LPAREN annotation* simpleIdentifier COLON type (NL* COMMA)? RPAREN NL* block
-    //     ;
+    /// Matches `CATCH NL* LPAREN annotation* simpleIdentifier COLON type (NL* COMMA)? RPAREN NL* block`
+    #[denote(CATCH_BLOCK)]
+    #[rule(
+        $Catch $NL* 
+        $LParen 
+            annotations: Annotation*
+            identifier: SimpleIdentifier $Colon type_ref: Type ($NL* $Comma)?
+        $RParen $NL*
+        block: Block
+    )]
+    CatchBlock {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        annotations: Vec<NodeRef>,
+        #[child]
+        identifier: NodeRef,
+        #[child]
+        type_ref: NodeRef,
+        #[child]
+        block: NodeRef,
+    },
 
-    // finallyBlock
-    //     : FINALLY NL* block
-    //     ;
+    /// Matches `FINALLY NL* block`
+    #[denote(FINALLY_BLOCK)]
+    #[rule($Finally $NL* block: Block)]
+    FinallyBlock {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        block: NodeRef,
+    },
 
-    // jumpExpression
-    //     : THROW NL* expression
-    //     | (RETURN | RETURN_AT) expression?
-    //     | CONTINUE
-    //     | CONTINUE_AT
-    //     | BREAK
-    //     | BREAK_AT
-    //     ;
+    /// Matches `THROW NL* expression | (RETURN | RETURN_AT) expression? | CONTINUE | CONTINUE_AT | BREAK | BREAK_AT`
+    #[denote(JUMP_EXPRESSION)]
+    #[rule(
+        throw_token: $Throw $NL* expression: Expression
+        | (return_token: ($Return | $ReturnAt) expression: Expression?)
+        | continue_token: $Continue
+        | continue_at_token: $ContinueAt
+        | break_token: $Break
+        | break_at_token: $BreakAt
+    )]
+    JumpExpression {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        throw_token: TokenRef,
+        #[child]
+        expression: NodeRef,
+        #[child]
+        return_token: TokenRef,
+        #[child]
+        continue_token: TokenRef,
+        #[child]
+        continue_at_token: TokenRef,
+        #[child]
+        break_token: TokenRef,
+        #[child]
+        break_at_token: TokenRef,
+    },
 
     // callableReference
     //     : receiverType? COLONCOLON NL* (simpleIdentifier | CLASS)
     //     ;
 
-    // assignmentAndOperator
-    //     : ADD_ASSIGNMENT
-    //     | SUB_ASSIGNMENT
-    //     | MULT_ASSIGNMENT
-    //     | DIV_ASSIGNMENT
-    //     | MOD_ASSIGNMENT
-    //     ;
+    /// Matches assignment and operators: ADD_ASSIGNMENT, SUB_ASSIGNMENT, MULT_ASSIGNMENT, DIV_ASSIGNMENT, MOD_ASSIGNMENT
+    #[rule($AddAssignment | $SubAssignment | $MultAssignment | $DivAssignment | $ModAssignment)]
+    #[denote(ASSIGNMENT_AND_OPERATOR)]
+    AssignmentAndOperator {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+    },
 
-    // equalityOperator
-    //     : EXCL_EQ
-    //     | EXCL_EQEQ
-    //     | EQEQ
-    //     | EQEQEQ
-    //     ;
+    /// Matches equality operators: EXCL_EQ, EXCL_EQEQ, EQEQ, EQEQEQ
+    #[rule($ExclEq | $ExclEqEq | $EqEq | $EqEqEq)]
+    #[denote(EQUALITY_OPERATOR)]
+    EqualityOperator {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+    },
 
-    // comparisonOperator
-    //     : LANGLE
-    //     | RANGLE
-    //     | LE
-    //     | GE
-    //     ;
+    /// Matches comparison operators: LANGLE, RANGLE, LE, GE
+    #[rule($LAngle | $RAngle | $Le | $Ge)]
+    #[denote(COMPARISON_OPERATOR)]
+    ComparisonOperator {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+    },
 
-    // inOperator
-    //     : IN
-    //     | NOT_IN
-    //     ;
+    /// Matches IN | NOT_IN
+    #[rule($In | NotIn)]
+    #[denote(IN_OPERATOR)]
+    InOperator {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+    },
 
-    // isOperator
-    //     : IS
-    //     | NOT_IS
-    //     ;
+    /// Matches IS | NOT_IS
+    #[rule($Is | NotIs)]
+    #[denote(IS_OPERATOR)]
+    IsOperator {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+    },
 
-    // additiveOperator
-    //     : ADD
-    //     | SUB
-    //     ;
+    /// Matches ADD | SUB
+    #[rule($Add | $Sub)]
+    #[denote(ADDITIVE_OPERATOR)]
+    AdditiveOperator {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+    },
 
-    // multiplicativeOperator
-    //     : MULT
-    //     | DIV
-    //     | MOD
-    //     ;
 
-    // asOperator
-    //     : AS
-    //     | AS_SAFE
-    //     ;
+    /// Matches MULT | DIV | MOD
+    #[rule($Mult | $Div | $Mod)]
+    #[denote(MULTIPLICATIVE_OPERATOR)]
+    MultiplicativeOperator {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+    },
 
-    // prefixUnaryOperator
-    //     : INCR
-    //     | DECR
-    //     | SUB
-    //     | ADD
-    //     | excl
-    //     ;
+    /// Matches AS | AS_SAFE
+    #[rule($As | $AsSafe)]
+    #[denote(AS_OPERATOR)]
+    AsOperator {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+    },
 
-    // postfixUnaryOperator
-    //     : INCR
-    //     | DECR
-    //     | EXCL_NO_WS excl
-    //     ;
+    /// Matches `INCR | DECR | SUB | ADD | EXCL_NO_WS excl``
+    #[rule($Incr | $Decr | $Sub | $Add | $ExclNoWs Excl)]
+    #[denote(PREFIX_UNARY_OPERATOR)]
+    PrefixUnaryOperator {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+    },
 
-    // excl
-    //     : EXCL_NO_WS
-    //     | EXCL_WS
-    //     ;
+    /// Matches INCR | DECR | EXCL_NO_WS excl
+    #[rule($Incr | $Decr | $ExclNoWs Excl)]
+    #[denote(POSTFIX_UNARY_OPERATOR)]
+    PostfixUnaryOperator {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+    },
 
-    // memberAccessOperator
-    //     : NL* DOT
-    //     | NL* safeNav
-    //     | COLONCOLON
-    //     ;
 
-    // safeNav
-    //     : QUEST_NO_WS DOT
-    //     ;
+    /// Matches EXCL_NO_WS or EXCL_WS
+    // Todo: consider removing
+    #[rule($ExclNoWs)]
+    #[denote(EXCL)]
+    #[secondary]
+    #[describe("excl", "!")]
+    Excl {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+    },
+
+    /// Matches `DOT | SAFE_NAV | COLONCOLON`
+    #[trivia(HIDDEN_WITH_NL)]
+    #[denote(MEMBER_ACCESS_OPERATOR)]
+    #[rule($Dot | SafeNav |  $ColonColon)]
+    MemberAccessOperator {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+    },
+
+    /// Matches `QUEST_NO_WS DOT`
+    #[rule($QuestNoWs $Dot)]
+    #[denote(SAFE_NAV)]
+    SafeNav {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+    },
 
     // SECTION: modifiers
     /// Matches `(annotation | modifier)+`
@@ -1300,7 +1734,7 @@ ConstructorInvocation {
     },
 
     /// Matches `"!is" (Hidden | NL)`
-    #[rule($ExclNoWs $Is $NL?)]
+    #[rule($NotIs $NL?)]
     #[denote(NOT_IS)]
     #[secondary]
     #[describe("NOT_IS", "!is")]
@@ -1312,7 +1746,7 @@ ConstructorInvocation {
     },
 
     /// Matches `"!in" (Hidden | NL)`
-    #[rule($ExclNoWs $In $NL?)]
+    #[rule($NotIn $NL?)]
     #[denote(NOT_IN)]
     #[secondary]
     #[describe("NOT_IN", "!in")]
