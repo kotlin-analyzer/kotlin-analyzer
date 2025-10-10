@@ -46,7 +46,7 @@ use crate::tokens::KotlinToken;
     $AtNoWs,
 )]
 #[define(ANNOTATION_TYPE = ($AtField | $AtProperty | $AtGet | $AtSet | $AtReceiver | $AtParam | $AtSetparam | $AtDelegate))]
-#[define(SOFT_KEYWORDS_SANS_SUSPEND = (
+#[define(SOFT_KEYWORDS_SANS_SUSPEND_WHERE = (
     | $Abstract
     | $Annotation
     | $By
@@ -81,7 +81,6 @@ use crate::tokens::KotlinToken;
     | $Tailrec
     | $Set
     | $Vararg
-    | $Where
     | $Field
     | $Property
     | $Receiver
@@ -94,6 +93,7 @@ use crate::tokens::KotlinToken;
     | $Const
     | $Value
 ))]
+#[define(SOFT_KEYWORDS_SANS_SUSPEND = ( SOFT_KEYWORDS_SANS_SUSPEND_WHERE | $Where))]
 #[define(SOFT_KEYWORDS = ( SOFT_KEYWORDS_SANS_SUSPEND | $Suspend))]
 pub enum KotlinNode {
     #[root]
@@ -156,7 +156,7 @@ pub enum KotlinNode {
     },
 
     /// Matches `(AT_NO_WS | AT_PRE_WS) FILE NL* COLON NL* (LSQUARE unescapedAnnotation+ RSQUARE | unescapedAnnotation) NL*`
-    // Becuase this comes always before $NL* in Kotlin file we don't need to handle AT_PRE_WS
+    // Because this comes always before $NL* in Kotlin file we don't need to handle AT_PRE_WS
     #[trivia($NL | HIDDEN)]
     #[denote(FILE_ANNOTATION)]
     #[rule($AtNoWs $File $Colon ($LSquare  UnescapedAnnotation+  $RSquare | UnescapedAnnotation ))]
@@ -313,7 +313,7 @@ pub enum KotlinNode {
 
     /// Variant of SimpleIdentifier that does not allow suspend
     /// Used in Type definitions and other places where suspend is not allowed
-    #[rule(identifier_token:$Identifier | soft_keyword: SOFT_KEYWORDS_SANS_SUSPEND)]
+    #[rule(identifier_token: $Identifier | soft_keyword: SOFT_KEYWORDS_SANS_SUSPEND_WHERE)]
     #[describe("simple identifier")]
     SimpleTypeIdentifier {
         #[node]
@@ -414,6 +414,21 @@ pub enum KotlinNode {
         generic_args: NodeRef,
     },
 
+    /// Make sure to not use this in Type directly or indirectly
+    #[trivia(HIDDEN_WITH_NL)]
+    #[rule(first: SimpleType ($Dot others: SimpleType)*)]
+    #[denote(USER_TYPE)]
+    UserType {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        first: NodeRef,
+        #[child]
+        others: Vec<NodeRef>,
+    },
+
     /// Make sure that this is only used inside function type parameters
     #[rule(
         type_or_param: Type
@@ -466,6 +481,18 @@ pub enum KotlinNode {
     // primaryConstructor
     //     : (modifiers? CONSTRUCTOR NL*)? classParameters
     //     ;
+    #[denote(PRIMARY_CONSTRUCTOR)]
+    #[rule((modifiers: Modifiers? $Constructor $NL*)? class_parameters: ClassParameters)]
+    PrimaryConstructor {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        modifiers: NodeRef,
+        #[child]
+        class_parameters: NodeRef,
+    },
 
     // classBody
     //     : LCURL NL* classMemberDeclarations NL* RCURL
@@ -474,10 +501,42 @@ pub enum KotlinNode {
     // classParameters
     //     : LPAREN NL* (classParameter (NL* COMMA NL* classParameter)* (NL* COMMA)?)? NL* RPAREN
     //     ;
+    #[trivia(HIDDEN_WITH_NL)]
+    #[rule(
+        $LParen
+        (class_parameter: ClassParameter+{$Comma})?
+        $RParen
+    )]
+    ClassParameters {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        class_parameter: Vec<NodeRef>,
+    },
 
-    // classParameter
+    /// classParameter
     //     : modifiers? (VAL | VAR)? NL* simpleIdentifier COLON NL* type (NL* ASSIGNMENT NL* expression)?
     //     ;
+    #[trivia(HIDDEN_WITH_NL)]
+    #[rule(/*modifiers: Modifiers? */ (val_or_var: ($Val | $Var))? simple_identifier: SimpleIdentifier $Colon type_ref: Type ( $Assignment expression: Expression)?)]
+    ClassParameter {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        // #[child]
+        // modifiers: Vec<NodeRef>,
+        #[child]
+        val_or_var: TokenRef,
+        #[child]
+        simple_identifier: NodeRef,
+        #[child]
+        type_ref: NodeRef,
+        #[child]
+        expression: NodeRef,
+    },
 
     // delegationSpecifiers
     //     : annotatedDelegationSpecifier (NL* COMMA NL* annotatedDelegationSpecifier)*
@@ -491,10 +550,9 @@ pub enum KotlinNode {
     //     | SUSPEND NL* functionType
     //     ;
 
-    // constructorInvocation
-    //     : userType NL* valueArguments
-    //     ;
 
+    #[denote(CONSTRUCTOR_INVOCATION)]
+    #[rule(user_type: UserType $NL* value_arguments: ValueArguments)]
     ConstructorInvocation {
         #[node]
         node: NodeRef,
@@ -522,13 +580,34 @@ pub enum KotlinNode {
     //     : typeParameterModifiers? NL* simpleIdentifier (NL* COLON NL* type)?
     //     ;
 
-    // typeConstraints
-    //     : WHERE NL* typeConstraint (NL* COMMA NL* typeConstraint)*
-    //     ;
+    /// Matches `WHERE NL* typeConstraint (NL* COMMA NL* typeConstraint)*`
+    #[denote(TYPE_CONSTRAINTS)]
+    #[rule($Where (type_constraints: TypeConstraint ($Comma type_constraints: TypeConstraint)*)?)]
+    #[trivia(HIDDEN_WITH_NL)]
+    TypeConstraints {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        type_constraints: Vec<NodeRef>,
+    },
 
-    // typeConstraint
-    //     : annotation* simpleIdentifier NL* COLON NL* type
-    //     ;
+    /// Matches `annotation* NL* simpleIdentifier NL* COLON NL* type`
+    #[denote(TYPE_CONSTRAINT)]
+    #[rule(/*annotations: Vec<NodeRef>, */ identifier: SimpleIdentifier $Colon type_ref: Type)]
+    #[trivia(HIDDEN_WITH_NL)]
+    TypeConstraint {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        // annotations: Vec<NodeRef>,
+        identifier: NodeRef,
+        #[child]
+        type_ref: NodeRef,
+    },
         
 
     // SECTION: classMembers
@@ -601,6 +680,10 @@ pub enum KotlinNode {
     },
 
     /// Matches `annotation* NL* simpleIdentifier (NL* COLON NL* type)?`
+    /// /// As in: 
+    /// ```kt
+    /// variable: Int
+    /// ```
     #[trivia(HIDDEN_WITH_NL)]
     #[rule(annotation: Annotation* declaration: VariableDeclarationWithoutAnnotation)]
     #[denote(VARIABLE_DECLARATION)]
@@ -616,6 +699,10 @@ pub enum KotlinNode {
     },
 
     /// Matches `LPAREN NL* variableDeclaration (NL* COMMA NL* variableDeclaration)* (NL* COMMA)? NL* RPAREN`
+    /// As in: 
+    /// ```kt 
+    /// (variable: Int, another: String)
+    /// ```
     #[rule(
         $LParen
         variable_declarations: VariableDeclaration+{$Comma}
@@ -642,19 +729,39 @@ pub enum KotlinNode {
     //       (NL* SEMICOLON)? NL* (getter? (NL* semi? setter)? | setter? (NL* semi? getter)?)
     //     ;
 
-    // propertyDelegate
-    //     : BY NL* expression
-    //     ;
+    /// Matches `BY NL* expression`
+    #[rule($By $NL* expression: Expression)]
+    #[denote(PROPERTY_DELEGATE)]
+    PropertyDelegate {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        expression: NodeRef,
+    },
 
-    // getter
-    //     : modifiers? GET
-    //       (NL* LPAREN NL* RPAREN (NL* COLON NL* type)? NL* functionBody)?
-    //     ;
+    /// Matches `modifiers? GET (NL* LPAREN NL* RPAREN (NL* COLON NL* type)? NL* functionBody)?`
+    #[denote(GETTER)]
+    #[trivia(HIDDEN_WITH_NL)]
+    #[rule(
+        modifiers: Modifiers? $Get 
+        ( $LParen $RParen ($Colon type_ref: Type)?  function_body: FunctionBody)?
+    )]
+    Getter {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        modifiers: NodeRef,
+        #[child]
+        type_ref: NodeRef,
+        #[child]
+        function_body: NodeRef,
+    },
 
-    // setter
-    //     : modifiers? SET
-    //       (NL* LPAREN NL* functionValueParameterWithOptionalType (NL* COMMA)? NL* RPAREN (NL* COLON NL* type)? NL* functionBody)?
-    //     ;
+    /// Matches `modifiers? SET (NL* LPAREN NL* functionValueParameterWithOptionalType (NL* COMMA)? NL* RPAREN (NL* COLON NL* type)? NL* functionBody)?`
     #[denote(SETTER)]
     #[trivia(HIDDEN_WITH_NL)]
     #[rule(
@@ -792,9 +899,7 @@ pub enum KotlinNode {
         statements: Vec<NodeRef>,
     },
 
-    // statement
-    //     : (label | annotation)* ( declaration | assignment | loopStatement | expression)
-    //     ;
+    /// Matches `(label | annotation)* ( declaration | assignment | loopStatement | expression)`
     #[rule((label: Label | annotation: Annotation)* (inner: BaseStatement | while_statement: WhileStatement))]
     Statement {
         #[node]
@@ -1246,47 +1351,131 @@ pub enum KotlinNode {
     //     : lambdaParameter (NL* COMMA NL* lambdaParameter)* (NL* COMMA)?
     //     ;
 
-    // lambdaParameter
-    //     : variableDeclaration
-    //     | multiVariableDeclaration (NL* COLON NL* type)?
-    //     ;
+    /// Matches `variableDeclaration | multiVariableDeclaration (NL* COLON NL* type)?`
+    #[trivia(HIDDEN_WITH_NL)]
+    #[rule(variable_declaration: VariableDeclaration | multi_variable_declaration: MultiVariableDeclaration ($Colon type_ref: Type)?)]
+    #[denote(LAMBDA_PARAMETER)]
+    LambdaParameter {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        variable_declaration: NodeRef,
+        #[child]
+        multi_variable_declaration: NodeRef,
+        #[child]
+        type_ref: NodeRef,
+    },
 
-    // anonymousFunction
-    //     : SUSPEND?
-    //       NL*
-    //       FUN
-    //       (NL* type NL* DOT)?
-    //       NL* parametersWithOptionalType
-    //       (NL* COLON NL* type)?
-    //       (NL* typeConstraints)?
-    //       (NL* functionBody)?
-    //     ;
+    /// Matches `SUSPEND? FUN (type DOT)? ParametersWithOptionalType (COLON type)? (TypeConstraints)? (FunctionBody)?`
+    #[denote(ANONYMOUS_FUNCTION)]
+    #[trivia(HIDDEN_WITH_NL)]
+    #[rule(
+        suspend: $Suspend? $Fun
+        (receiver_type: Type $Dot)?
+        // TODO:  parameters_with_optional_type: Type
+        ($Colon  return_type: Type)?
+        (type_constraints: TypeConstraints)?
+        (function_body: FunctionBody)?
+    )]
+    AnonymousFunction {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        suspend: TokenRef,
+        #[child]
+        receiver_type: NodeRef,
+        #[child]
+        return_type: NodeRef,
+        // #[child]
+        // /// Can only be [ParametersWithOptionalType]
+        // parameters_with_optional_type: NodeRef,
+        #[child]
+        type_constraints: NodeRef,
+        #[child]
+        function_body: NodeRef,
+    },
 
     // functionLiteral
     //     : lambdaLiteral
     //     | anonymousFunction
     //     ;
 
-    // objectLiteral
-    //     : DATA? NL* OBJECT (NL* COLON NL* delegationSpecifiers NL*)? (NL* classBody)?
-    //     ;
+    /// Matches `DATA? NL* OBJECT (NL* COLON NL* delegationSpecifiers NL*)? (NL* classBody)?`
+    #[trivia(HIDDEN_WITH_NL)]
+    #[denote(OBJECT_LITERAL)]
+    #[rule($Data? $Object ( $Colon /* delegation_specifiers: DelegationSpecifiers */)? /* (class_body: ClassBody)? */)]
+    ObjectLiteral {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        // #[child]
+        // delegation_specifiers: NodeRef,
+        // #[child]
+        // class_body: NodeRef,
+    },
 
-    // thisExpression
-    //     : THIS
-    //     | THIS_AT
-    //     ;
+    /// Matches `THIS | THIS_AT`
+    #[rule(this_token: $This | this_token: $ThisAt)]
+    #[denote(THIS_EXPRESSION)]
+    ThisExpression {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        this_token: TokenRef,
+    },
 
-    // superExpression
-    //     : SUPER (LANGLE NL* type NL* RANGLE)? (AT_NO_WS simpleIdentifier)?
-    //     | SUPER_AT
-    //     ;
+    /// Matches `SUPER (LANGLE NL* type NL* RANGLE)? (AT_NO_WS simpleIdentifier)? | SUPER_AT`
+    #[trivia(HIDDEN_WITH_NL)]
+    #[rule(
+        super_token: $Super 
+        ( $LAngle type_ref: Type $RAngle )? 
+        ( $AtNoWs identifier: SimpleIdentifier )?
+        | super_token: $SuperAt
+    )]
+    #[denote(SUPER_EXPRESSION)]
+    SuperExpression {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        super_token: TokenRef,
+        #[child]
+        type_ref: NodeRef,
+        #[child]
+        identifier: NodeRef,
+    },
 
-    // ifExpression
-    //     : IF NL* LPAREN NL* expression NL* RPAREN NL*
-    //       ( controlStructureBody
-    //       | controlStructureBody? NL* SEMICOLON? NL* ELSE NL* (controlStructureBody | SEMICOLON)
-    //       | SEMICOLON)
-    //     ;
+    /// Matches `IF NL* LPAREN NL* expression NL* RPAREN NL* (controlStructureBody | controlStructureBody? NL* SEMICOLON? NL* ELSE NL* (controlStructureBody | SEMICOLON) | SEMICOLON)`
+    #[trivia(HIDDEN_WITH_NL)]
+    #[rule(
+        $If $LParen expression: Expression $RParen
+        (
+            (body: ControlStructureBody)
+            | (body: ControlStructureBody? $Semicolon? $Else (else_body: ControlStructureBody | $Semicolon))
+            | ($Semicolon)
+        )
+    )]
+    #[denote(IF_EXPRESSION)]
+    IfExpression {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        expression: NodeRef,
+        #[child]
+        body: NodeRef,
+        #[child]
+        else_body: NodeRef,
+    },
 
     /// Matches `LPAREN (annotation* NL* VAL NL* variableDeclaration NL* ASSIGNMENT NL*)? expression RPAREN`
     #[rule(
@@ -1716,9 +1905,18 @@ pub enum KotlinNode {
         parent: NodeRef,
     },
 
-    // typeParameterModifiers
-    //     : typeParameterModifier+
-    //     ;
+    #[rule(type_parameter_modifiers: TypeParameterModifier+)]
+    #[denote(TYPE_PARAMETER_MODIFIERS)]
+    TypeParameterModifiers {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        type_parameter_modifiers: Vec<NodeRef>,
+    },
+
+
     #[rule(ReificationModifier | (VarianceModifier $NL*) | Annotation)]
     #[denote(T20)]
     TypeParameterModifier {
