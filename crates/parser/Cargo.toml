@@ -1,22 +1,18 @@
 [package]
 name = "parser"
 version = "0.0.1"
-description = "TBD"
-
-authors.workspace = true
 edition.workspace = true
-license.workspace = true
 rust-version.workspace = true
+description = "TBD"
+license.workspace = true
 
 [dependencies]
-tokens = { workspace = true }
-ast.workspace = true
 # todo: remove dependency on lexer: move to dev dependencies
 lexer.workspace = true
+tokens = { workspace = true }
 
 [dev-dependencies]
 itertools.workspace = true
-ast.workspace = true
+pretty_assertions.workspace = true
 rowan.workspace = true
 rstest.workspace = true
-pretty_assertions.workspace = true

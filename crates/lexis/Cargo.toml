@@ -1,7 +1,6 @@
 [package]
 name = "lexis"
 version.workspace = true
-authors.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 description = "Kotlin lexer in Rust"
