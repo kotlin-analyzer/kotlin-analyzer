@@ -17,7 +17,7 @@ derive_more = { version = "2.0.1", features = ["debug"] }
 finl_unicode = "1.3.0"
 inflector-plus = "0.11.7"
 itertools = "0.14.0"
-lady-deirdre = "2.1.0"
+lady-deirdre = "2.2.0"
 lexer = { path = "./crates/lexer" }
 macros = { path = "./libs/macros" }
 nonempty = "0.11.0"
@@ -27,6 +27,6 @@ prettyplease = "0.2.35"
 proc-macro2 = "1.0.95"
 quote = "1.0.40"
 rowan = "0.16.1"
-rstest = "0.25.0"
+rstest = "0.26.1"
 syn = "2.0.104"
 tokens = { path = "./libs/tokens" }

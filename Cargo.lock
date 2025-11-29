@@ -44,19 +44,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "763b2b82aee23fe46c14c792470080c26538396e9ea589f548298f26b22d7f41"
 
 [[package]]
-name = "ast"
-version = "0.0.1"
-dependencies = [
- "casey",
- "inflector-plus",
- "macros",
- "ron",
- "rowan",
- "serde",
- "tokens",
-]
-
-[[package]]
 name = "atty"
 version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -134,15 +121,6 @@ dependencies = [
  "cc",
  "libc",
  "pkg-config",
-]
-
-[[package]]
-name = "casey"
-version = "0.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8e779867f62d81627d1438e0d3fb6ed7d7c9d64293ca6d87a1e88781b94ece1c"
-dependencies = [
- "syn 2.0.104",
 ]
 
 [[package]]
@@ -499,18 +477,18 @@ dependencies = [
 
 [[package]]
 name = "lady-deirdre"
-version = "2.1.0"
+version = "2.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f06a214487071724791266aa4b4537c6fcc103e4b7da76498f7d8d7d69ea7adb"
+checksum = "4bcee683628e06bde58886f9db98f321fff3294aa445ff9ab0380f16e5c71d69"
 dependencies = [
  "lady-deirdre-derive",
 ]
 
 [[package]]
 name = "lady-deirdre-derive"
-version = "2.1.0"
+version = "2.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "33a62476f641ef8f841d8796e14b260f5e84ff56778ae4e0150b1f30a0e344e9"
+checksum = "08962f8cf382586b2ce2ec1a4a6b3f4e4f08aa3d4eaf2607ce2ad3002ba7df12"
 dependencies = [
  "convert_case",
  "prettyplease",
@@ -599,7 +577,6 @@ checksum = "51d515d32fb182ee37cda2ccdcb92950d6a3c2893aa280e540671c2cd0f3b1d9"
 name = "parser"
 version = "0.0.1"
 dependencies = [
- "ast",
  "itertools",
  "lexer",
  "pretty_assertions",
@@ -844,21 +821,20 @@ dependencies = [
 
 [[package]]
 name = "rstest"
-version = "0.25.0"
+version = "0.26.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6fc39292f8613e913f7df8fa892b8944ceb47c247b78e1b1ae2f09e019be789d"
+checksum = "f5a3193c063baaa2a95a33f03035c8a72b83d97a54916055ba22d35ed3839d49"
 dependencies = [
  "futures-timer",
  "futures-util",
  "rstest_macros",
- "rustc_version",
 ]
 
 [[package]]
 name = "rstest_macros"
-version = "0.25.0"
+version = "0.26.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1f168d99749d307be9de54d23fd226628d99768225ef08f6ffb52e0182a27746"
+checksum = "9c845311f0ff7951c5506121a9ad75aec44d083c31583b2ea5a30bcb0b0abba0"
 dependencies = [
  "cfg-if",
  "glob",

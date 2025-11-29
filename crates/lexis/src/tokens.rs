@@ -554,6 +554,7 @@ pub enum KotlinToken {
 
     // Ambiguous, so ignored
     // #[rule(FLOAT_LITERAL | DOUBLE_LITERAL)]
+    // #[priority(5)]
     // RealLiteral,
     #[rule(HEX_LITERAL)]
     HexLiteral,
@@ -569,14 +570,14 @@ pub enum KotlinToken {
 
     #[rule("true" | "false")]
     #[priority(10)]
-    BoolLiteral,
+    BooleanLiteral,
 
     #[rule("null")]
     #[priority(10)]
     NullLiteral,
 
     #[rule('\'' (ESCAPE_SEQ | ^['\r', '\n', '\'', '\\']) '\'')]
-    CharLiteral,
+    CharacterLiteral,
 
     // TODO: implement in parsing phase
     /// Matches `'$' IdentifierOrSoftKey`

@@ -1207,13 +1207,21 @@ pub enum KotlinNode {
     //     : annotation* label? NL* lambdaLiteral
     //     ;
 
+    /// Matches `annotation* label? NL* lambdaLiteral`
+    #[trivia(HIDDEN_WITH_NL)]
+    #[rule(
+        annotations: Annotation*
+        (label: SimpleIdentifier)?
+        lambda_literal: LambdaLiteral
+    )]
+    #[denote(ANNOTATED_LAMBDA)]
     AnnotatedLambda {
         #[node]
         node: NodeRef,
         #[parent]
         parent: NodeRef,
         #[child]
-        annotation: Vec<NodeRef>,
+        annotations: Vec<NodeRef>,
         #[child]
         label: NodeRef,
         #[child]
@@ -1233,7 +1241,7 @@ pub enum KotlinNode {
         args: Vec<NodeRef>,
     },
 
-    /// Matches LPAREN NL* (valueArgument (NL* COMMA NL* valueArgument)* (NL* COMMA)? NL*)? RPAREN
+    /// Matches `LPAREN NL* (valueArgument (NL* COMMA NL* valueArgument)* (NL* COMMA)? NL*)? RPAREN`
     #[denote(VALUE_ARGUMENTS)]
     #[trivia(HIDDEN_WITH_NL)]
     #[rule(
@@ -1273,83 +1281,306 @@ pub enum KotlinNode {
         expression: NodeRef,
     },
 
-    // primaryExpression
-    //     : parenthesizedExpression
-    //     | simpleIdentifier
-    //     | literalConstant
-    //     | stringLiteral
-    //     | callableReference
-    //     | functionLiteral
-    //     | objectLiteral
-    //     | collectionLiteral
-    //     | thisExpression
-    //     | superExpression
-    //     | ifExpression
-    //     | whenExpression
-    //     | tryExpression
-    //     | jumpExpression
-    //     ;
+    /// Matches `parenthesizedExpression | simpleIdentifier | literalConstant | stringLiteral | callableReference | functionLiteral | objectLiteral | collectionLiteral 
+    /// | thisExpression | superExpression | ifExpression | whenExpression | tryExpression | jumpExpression`
+    #[denote(PRIMARY_EXPRESSION)]
+    #[rule(
+        parenthesized_expression: ParenthesizedExpression
+        | identifier: SimpleIdentifier
+        | literal_constant: LiteralConstant
+        | string_literal: StringLiteral
+        // | callable_reference: CallableReference
+        // | function_literal: FunctionLiteral
+        // | object_literal: ObjectLiteral
+        | collection_literal: CollectionLiteral
+        // | this_expression: ThisExpression
+        // | super_expression: SuperExpression
+        // | if_expression: IfExpression
+        // | when_expression: WhenExpression
+        // | try_expression: TryExpression
+        // | jump_expression: JumpExpression
+    )]
+    PrimaryExpression {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        parenthesized_expression: NodeRef,
+        #[child]
+        identifier: NodeRef,
+        #[child]
+        literal_constant: NodeRef,
+        #[child]
+        string_literal: NodeRef,
+        // #[child]
+        // callable_reference: NodeRef,
+        // #[child]
+        // function_literal: NodeRef,
+        // #[child]
+        // object_literal: NodeRef,
+        #[child]
+        collection_literal: NodeRef,
+        // #[child]
+        // this_expression: NodeRef,
+        // #[child]
+        // super_expression: NodeRef,
+        // #[child]
+        // if_expression: NodeRef,
+        // #[child]
+        // when_expression: NodeRef,
+        // #[child]
+        // try_expression: NodeRef,
+        // #[child]
+        // jump_expression: NodeRef,
+    },
 
-    // parenthesizedExpression
-    //     : LPAREN NL* expression NL* RPAREN
-    //     ;
 
-    // collectionLiteral
-    //     : LSQUARE NL* (expression (NL* COMMA NL* expression)* (NL* COMMA)? NL*)? RSQUARE
-    //     ;
+    /// Matches `LPAREN NL* expression NL* RPAREN`
+    #[trivia(HIDDEN_WITH_NL)]
+    #[rule($LParen expression: Expression $RParen)]
+    #[denote(PARENTHESIZED_EXPRESSION)]
+    ParenthesizedExpression {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        expression: NodeRef,
+    },
+    /// Matches `LSQUARE NL* (expression (NL* COMMA NL* expression)* (NL* COMMA)? NL*)? RSQUARE`
+    #[trivia(HIDDEN_WITH_NL)]
+    #[rule(
+        $LSquare
+        (expression: Expression+{$Comma})?
+        $RSquare
+    )]
+    #[denote(COLLECTION_LITERAL)]
+    CollectionLiteral {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        expression: Vec<NodeRef>,
+    },
 
-    // literalConstant
-    //     : BooleanLiteral
-    //     | IntegerLiteral
-    //     | HexLiteral
-    //     | BinLiteral
-    //     | CharacterLiteral
-    //     | RealLiteral
-    //     | NullLiteral
-    //     | LongLiteral
-    //     | UnsignedLiteral
-    //     ;
+    /// Matches `BooleanLiteral | IntegerLiteral | HexLiteral | BinLiteral | CharacterLiteral | RealLiteral | NullLiteral | LongLiteral | UnsignedLiteral`
+    #[denote(LITERAL_CONSTANT)]
+    #[rule(
+        boolean_literal: $BooleanLiteral
+        | integer_literal: $IntegerLiteral
+        | hex_literal: $HexLiteral
+        | bin_literal: $BinLiteral
+        | character_literal: $CharacterLiteral
+        | real_literal: ($DoubleLiteral | $FloatLiteral)
+        | null_literal: $NullLiteral
+        | long_literal: $LongLiteral
+        | unsigned_literal: $UnsignedLiteral
+    )]
+    LiteralConstant {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        boolean_literal: TokenRef,
+        #[child]
+        integer_literal: TokenRef,
+        #[child]
+        hex_literal: TokenRef,
+        #[child]
+        bin_literal: TokenRef,
+        #[child]
+        character_literal: TokenRef,
+        #[child]
+        real_literal: TokenRef,
+        #[child]
+        null_literal: TokenRef,
+        #[child]
+        long_literal: TokenRef,
+        #[child]
+        unsigned_literal: TokenRef,
+    },
+    /// Matches `lineStringLiteral | multiLineStringLiteral`
+    #[denote(STRING_LITERAL)]
+    #[rule(
+        line_string_literal: LineStringLiteral
+        | multi_line_string_literal: MultiLineStringLiteral
+    )]
+    StringLiteral {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        line_string_literal: NodeRef,
+        #[child]
+        multi_line_string_literal: NodeRef,
+    },
 
-    // stringLiteral
-    //     : lineStringLiteral
-    //     | multiLineStringLiteral
-    //     ;
 
-    // lineStringLiteral
-    //     : QUOTE_OPEN (lineStringContent | lineStringExpression)* QUOTE_CLOSE
-    //     ;
+    /// Matches `QUOTE_OPEN (lineStringContent | lineStringExpression)* QUOTE_CLOSE`
+    #[denote(LINE_STRING_LITERAL)]
+    #[rule(
+        $QuoteOpen
+        (
+            line_string_content: LineStringContent
+            | line_string_expression: LineStringExpression
+        )*
+        $QuoteClose
+    )]
+    LineStringLiteral {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        line_string_content: Vec<NodeRef>,
+        #[child]
+        line_string_expression: Vec<NodeRef>,
+    },
 
-    // multiLineStringLiteral
-    //     : TRIPLE_QUOTE_OPEN (multiLineStringContent | multiLineStringExpression | MultiLineStringQuote)* TRIPLE_QUOTE_CLOSE
-    //     ;
+    /// Matches `QUOTE_OPEN (lineStringContent | lineStringExpression)* QUOTE_CLOSE`
+    #[denote(MULTI_LINE_STRING_LITERAL)]
+    #[rule(
+        $TripleQuoteOpen
+        (
+            // Todo: multi_line_string_content: MultiLineStringContent
+            | multi_line_string_expression: MultiLineStringExpression
+            | multi_line_string_quote: $MultiLineStringQuote
+        )*
+        $TripleQuoteClose
+    )]
+    MultiLineStringLiteral {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        // #[child]
+        // multi_line_string_content: Vec<NodeRef>,
+        #[child]
+        multi_line_string_expression: Vec<NodeRef>,
+        #[child]
+        multi_line_string_quote: Vec<TokenRef>,
+    },
 
-    // lineStringContent
-    //     : LineStrText
-    //     | LineStrEscapedChar
-    //     | LineStrRef
-    //     ;
+    /// Matches `LineStrText | LineStrEscapedChar | LineStrRef`
+    #[denote(LINE_STRING_CONTENT)]
+    #[rule(
+        line_str_text: $LineStrText
+        | line_str_escaped_char: $LineStrEscapedChar
+        | line_str_ref: $LineStrRef
+    )]
+    LineStringContent {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        line_str_text: TokenRef,
+        #[child]
+        line_str_escaped_char: TokenRef,
+        #[child]
+        line_str_ref: TokenRef,
+    },
 
-    // lineStringExpression
-    //     : LineStrExprStart NL* expression NL* RCURL
-    //     ;
 
-    // multiLineStringContent
-    //     : MultiLineStrText
-    //     | MultiLineStringQuote
-    //     | MultiLineStrRef
-    //     ;
+    /// Matches `LineStrExprStart NL* expression NL* RCURL`
+    #[trivia(HIDDEN_WITH_NL)]
+    #[rule(
+        line_str_expr_start: $LineStrExprStart
+        expression: Expression
+        $RCurl
+    )]
+    #[denote(LINE_STRING_EXPRESSION)]
+    LineStringExpression {
+        #[node]
+        node: NodeRef,
+        #[parent]   
+        parent: NodeRef,
+        #[child]
+        line_str_expr_start: TokenRef,
+        #[child]
+        expression: NodeRef,
+    },
 
-    // multiLineStringExpression
-    //     : MultiLineStrExprStart NL* expression NL* RCURL
-    //     ;
+    /// Matches `MultiLineStrText | MultiLineStringQuote | MultiLineStrRef`
+    #[denote(MULTI_LINE_STRING_CONTENT)]
+    #[rule(
+        multi_line_str_text: $MultiLineStrText
+        | multi_line_string_quote: $MultiLineStringQuote
+        | multi_line_str_ref: $MultiLineStrRef
+    )]
+    MultiLineStringContent {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        multi_line_str_text: TokenRef,
+        #[child]
+        multi_line_string_quote: TokenRef,
+        #[child]
+        multi_line_str_ref: TokenRef,
+    },
 
-    // lambdaLiteral
-    //     : LCURL NL* (lambdaParameters? NL* ARROW NL*)? statements NL* RCURL
-    //     ;
 
-    // lambdaParameters
-    //     : lambdaParameter (NL* COMMA NL* lambdaParameter)* (NL* COMMA)?
-    //     ;
+    /// Matches `MultiLineStrExprStart NL* expression NL* RCURL`
+    #[trivia(HIDDEN_WITH_NL)]
+    #[rule(
+        multi_line_str_expr_start: $MultiLineStrExprStart
+        expression: Expression
+        $RCurl
+    )]
+    #[denote(MULTI_LINE_STRING_EXPRESSION)]
+    MultiLineStringExpression {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        multi_line_str_expr_start: TokenRef,
+        #[child]
+        expression: NodeRef,
+    },
+
+
+    /// Matches `LCURL NL* (lambdaParameters? NL* ARROW NL*)? statements NL* RCURL`
+    #[trivia(HIDDEN_WITH_NL)]
+    #[rule(
+        $LCurl
+        (lambda_parameters: /* Todo: LambdaParameters */  $Arrow)?
+        statements: Statements
+        $RCurl
+    )]
+    #[denote(LAMBDA_LITERAL)]
+    LambdaLiteral {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        lambda_parameters: TokenRef, // Todo: Change to LambdaParameters
+        #[child]
+        statements: NodeRef,
+    },
+
+
+    /// Matches `lambdaParameter (NL* COMMA NL* lambdaParameter)* (NL* COMMA)?`
+    #[trivia(HIDDEN_WITH_NL)]
+    #[rule(
+        lambda_parameter: LambdaParameter+{$Comma}
+    )]
+    #[denote(LAMBDA_PARAMETERS)]
+    LambdaParameters {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        lambda_parameter: Vec<NodeRef>,
+    },
 
     /// Matches `variableDeclaration | multiVariableDeclaration (NL* COLON NL* type)?`
     #[trivia(HIDDEN_WITH_NL)]
@@ -1399,10 +1630,22 @@ pub enum KotlinNode {
         function_body: NodeRef,
     },
 
-    // functionLiteral
-    //     : lambdaLiteral
-    //     | anonymousFunction
-    //     ;
+    /// Matches `lambdaLiteral | anonymousFunction`
+    #[denote(FUNCTION_LITERAL)]
+    #[rule(
+        lambda_literal: LambdaLiteral
+        | anonymous_function: AnonymousFunction
+    )]
+    FunctionLiteral {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        lambda_literal: NodeRef,
+        #[child]
+        anonymous_function: NodeRef,
+    },
 
     /// Matches `DATA? NL* OBJECT (NL* COLON NL* delegationSpecifiers NL*)? (NL* classBody)?`
     #[trivia(HIDDEN_WITH_NL)]
@@ -1674,9 +1917,22 @@ pub enum KotlinNode {
         break_at_token: TokenRef,
     },
 
-    // callableReference
-    //     : receiverType? COLONCOLON NL* (simpleIdentifier | CLASS)
-    //     ;
+    /// Matches `receiverType? COLONCOLON NL* (simpleIdentifier | CLASS)`
+    #[denote(CALLABLE_REFERENCE)]
+    #[rule(
+        receiver_type: Type? $ColonColon $NL*
+        (identifier: SimpleIdentifier | $Class)
+    )]
+    CallableReference {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        receiver_type: NodeRef,
+        #[child]
+        identifier: NodeRef,
+    },
 
     /// Matches assignment and operators: ADD_ASSIGNMENT, SUB_ASSIGNMENT, MULT_ASSIGNMENT, DIV_ASSIGNMENT, MOD_ASSIGNMENT
     #[rule($AddAssignment | $SubAssignment | $MultAssignment | $DivAssignment | $ModAssignment)]
