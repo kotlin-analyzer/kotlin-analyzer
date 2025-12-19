@@ -21,7 +21,6 @@ lady-deirdre = "2.2.0"
 lexer = { path = "./crates/lexer" }
 macros = { path = "./libs/macros" }
 nonempty = "0.11.0"
-parser = { path = "./crates/parser" }
 pretty_assertions = "1.4.1"
 prettyplease = "0.2.35"
 proc-macro2 = "1.0.95"

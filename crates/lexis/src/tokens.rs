@@ -580,49 +580,24 @@ pub enum KotlinToken {
     CharacterLiteral,
 
     // TODO: implement in parsing phase
-    /// Matches `'$' IdentifierOrSoftKey`
-    /// Parsed in the syntax grammar phase
-    FieldIdentifier,
 
     // Section: Strings
-    /// Matches `"` at the beginning of a line string
-    /// Parsed in the syntax grammar phase as it conflict with [Self::QuoteClose] & [Self::MultiLineStringQuote]
-    QuoteOpen,
+    // NEEDED FOR STRING SYNTAX
+    #[rule('\\')]
+    Escape,
 
-    /// Matches `"` at the end of a line string
-    /// Parsed in the syntax grammar phase as it conflict with [Self::QuoteOpen] & [Self::MultiLineStringQuote]
-    QuoteClose,
-
-    /// Matches `FieldIdentifier` inside a line string
-    LineStrRef,
-
-    /// Matches `~('\\' | '"' | '$')+ | '$'` inside a line string
-    LineStrText,
+    #[rule('$')]
+    Dollar,
 
     /// Matches `EscapedIdentifier| UniCharacterLiteral` inside a line string
+    #[rule(ESCAPE_SEQ)]
     LineStrEscapedChar,
 
-    /// Matches `${` inside a line string
-    LineStrExprStart,
+    #[rule("${")]
+    StrExprStart,
 
-    /// Matches `"""` at the beginning of a multiline string
-    TripleQuoteOpen,
-
-    /// Matches `MultiLineStringQuote? """` at the close of a multiline string
-    TripleQuoteClose,
-
-    /// Matches `"+` inside a multiline string
-    /// Parsed in the syntax grammar phase as it conflict with [Self::QuoteOpen] & [Self::QuoteClose]
-    MultiLineStringQuote,
-
-    /// Matches `FieldIdentifier` inside a line string
-    MultiLineStrRef,
-
-    /// Matches `~('"' | '$')+ | '$'` inside a line string
-    MultiLineStrText,
-
-    /// Matches `${` inside a line string
-    MultiLineStrExprStart,
+    #[rule("\"\"\"")]
+    TripleQuote,
 
     /// TODO: add tests to ensure all supported tokens are allowed
     /// TODO: add diagonistics for unsupported chars that are captured by this

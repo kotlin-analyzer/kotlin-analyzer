@@ -100,8 +100,9 @@ fn test_types() {
     ((T1, T2) -> T3) 
     ((T1, T2) -> T3)?
     T & Any
+    Generic<in T, out U>
     "#;
-    let source = "Generic<in T, out U>";
+
     // let source = source
     //     .lines()
     //     .map(|line| line.trim())

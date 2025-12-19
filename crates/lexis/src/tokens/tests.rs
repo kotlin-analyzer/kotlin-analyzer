@@ -66,6 +66,29 @@ fn test_identifiers() {
     }
 }
 #[test]
+fn test_strings() {
+    let source = trim_idents!(
+        r#""""
+    simple
+    """
+    """
+    complex ${ref}
+    "line string inside multi"
+    """"""
+    """""""""" // open with three, 4 quotes inside and 3 closing
+    "#
+    );
+
+    let buffer = TokenBuffer::<KotlinToken>::from(source);
+    for chunk in buffer.chunks(..) {
+        print!("{:?}", chunk.token);
+        print!(" - {:?}", chunk.string);
+        print!("@{:?}", chunk.start());
+        print!(":{:?}", chunk.end());
+        println!()
+    }
+}
+#[test]
 fn token_debug() {
     let source = r#"#! shebang
     // This is a comment
