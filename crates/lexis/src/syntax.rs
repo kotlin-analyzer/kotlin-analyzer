@@ -104,8 +104,9 @@ pub enum KotlinNode {
         #[child]
         value: NodeRef,
     },
-
-    #[rule($NL* shebang_line: ShebangLine? package_header:PackageHeader? import_list: ImportList? top_level_object: TopLevelObject+ $NL*)]
+    
+    #[trivia(HIDDEN_WITH_NL)]
+    #[rule(shebang_line: ShebangLine? file_annotations: FileAnnotation* package_header:PackageHeader? import_list: ImportList? top_level_object: TopLevelObject+)]
     /// shebangLine? NL* fileAnnotation* packageHeader importList topLevelObject* EOF
     KotlinFile {
         #[node]
@@ -114,8 +115,8 @@ pub enum KotlinNode {
         parent: NodeRef,
         #[child]
         shebang_line: NodeRef,
-        // #[child]
-        // file_annotations: Vec<NodeRef>,
+        #[child]
+        file_annotations: Vec<NodeRef>,
         #[child]
         package_header: NodeRef,
         #[child]
@@ -124,22 +125,30 @@ pub enum KotlinNode {
         top_level_object: Vec<NodeRef>,
     },
 
-    // #[rule(shebang_line: ShebangLine? $NL* ident_test: SimpleIdentifier+ $NL*)]
-    // /// shebangLine? NL* fileAnnotation* packageHeader importList (statement semi)* EOF
-    // Script {
-    //     #[node]
-    //     node: NodeRef,
-    //     #[parent]
-    //     parent: NodeRef,
-    //     #[child]
-    //     shebang_line: NodeRef,
-    //     #[child]
-    //     ident_test: Vec<NodeRef>,
-    // },
+    #[trivia(HIDDEN_WITH_NL)]
+     #[rule(shebang_line: ShebangLine? file_annotations: FileAnnotation* package_header:PackageHeader? import_list: ImportList? (statements: Statement Semi)*)]
+    /// shebangLine? NL* fileAnnotation* packageHeader importList (statement semi)* EOF
+    Script {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        shebang_line: NodeRef,
+        #[child]
+        file_annotations: Vec<NodeRef>,
+        #[child]
+        package_header: NodeRef,
+        #[child]
+        import_list: NodeRef,
+        #[child]
+        statements: Vec<NodeRef>,
+    },
+
+
     /// Matches `ShebangLine NL+`
     #[trivia($Whitespace)]
     #[rule(start: $ShebangLineStart content: ^[$NL | $Whitespace]+ $NL)]
-    // #[parser(parse_shebang_line(session))]
     #[denote(SHEBANG_LINE)]
     #[describe("shebangline", "#! ...")]
     ShebangLine {
@@ -227,7 +236,6 @@ pub enum KotlinNode {
         reference: NodeRef,
     },
 
-    // #[denote(TOP_LEVEL_OBJECT)]
     #[rule(decl: Declaration Semis?)]
     TopLevelObject {
         #[node]
@@ -238,20 +246,22 @@ pub enum KotlinNode {
         decl: NodeRef,
     },
 
-    // TODO: declaration
-    // : classDeclaration
-    // | objectDeclaration
-    // | functionDeclaration
-    // | propertyDeclaration
-    // | typeAlias
-    // ;
+    /// Matches `classDeclaration | functionDeclaration | propertyDeclaration | typeAlias`
     #[denote(DECLARATION)]
-    #[rule(TypeAlias)]
+    #[rule(class_declaration: ClassDeclaration | function_declaration: FunctionDeclaration | property_declaration: PropertyDeclaration | type_alias: TypeAlias)]
     Declaration {
         #[node]
         node: NodeRef,
         #[parent]
         parent: NodeRef,
+        #[child]
+        class_declaration: NodeRef,
+        #[child]
+        function_declaration: NodeRef,
+        #[child]
+        property_declaration: NodeRef,
+        #[child]
+        type_alias: NodeRef,
     },
 
     #[rule(
@@ -478,17 +488,46 @@ pub enum KotlinNode {
 
     // SECTION: classes
 
-    // classDeclaration
-    //     : modifiers? (CLASS | (FUN NL*)? INTERFACE) NL* simpleIdentifier
-    //       (NL* typeParameters)? (NL* primaryConstructor)?
-    //       (NL* COLON NL* delegationSpecifiers)?
-    //       (NL* typeConstraints)?
-    //       (NL* classBody | NL* enumClassBody)?
-    //     ;
+    ///  Matches `modifiers? (CLASS | (FUN NL*)? INTERFACE) NL* simpleIdentifier
+    ///       (NL* typeParameters)? (NL* primaryConstructor)?
+    ///       (NL* COLON NL* delegationSpecifiers)?
+    ///       (NL* typeConstraints)?
+    ///       (NL* classBody | NL* enumClassBody)?`
+    #[denote(CLASS_DECLARATION)]
+    #[trivia(HIDDEN_WITH_NL)]
+    #[rule(
+        modifiers: Modifiers?
+        ($Class | ($Fun? $Interface)) identifier: SimpleIdentifier
+        (type_parameters: TypeParameters)?
+        (primary_constructor: PrimaryConstructor)?
+        ($Colon delegation_specifiers: DelegationSpecifiers)?
+        (type_constraints: TypeConstraints)?
+        (class_body: ClassBody | enum_class_body: EnumClassBody)?
+    )]
+    ClassDeclaration {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        modifiers: NodeRef,
+        #[child]
+        identifier: NodeRef,
+        #[child]
+        type_parameters: NodeRef,
+        #[child]
+        primary_constructor: NodeRef,
+        #[child]
+        delegation_specifiers: NodeRef,
+        #[child]
+        type_constraints: NodeRef,
+        #[child]
+        class_body: NodeRef,
+        #[child]
+        enum_class_body: NodeRef,
+    },
 
-    // primaryConstructor
-    //     : (modifiers? CONSTRUCTOR NL*)? classParameters
-    //     ;
+    /// Matches `(modifiers? CONSTRUCTOR NL*)? classParameters`
     #[denote(PRIMARY_CONSTRUCTOR)]
     #[rule((modifiers: Modifiers? $Constructor $NL*)? class_parameters: ClassParameters)]
     PrimaryConstructor {
@@ -505,10 +544,19 @@ pub enum KotlinNode {
     // classBody
     //     : LCURL NL* classMemberDeclarations NL* RCURL
     //     ;
+    #[trivia(HIDDEN_WITH_NL)]
+    #[denote(CLASS_BODY)]
+    #[rule($LCurl class_member_declarations: ClassMemberDeclarations $RCurl)]
+    ClassBody {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        class_member_declarations: NodeRef,
+    },
 
-    // classParameters
-    //     : LPAREN NL* (classParameter (NL* COMMA NL* classParameter)* (NL* COMMA)?)? NL* RPAREN
-    //     ;
+    /// Matches `LPAREN NL* (classParameter (NL* COMMA NL* classParameter)* (NL* COMMA)?)? NL* RPAREN`
     #[trivia(HIDDEN_WITH_NL)]
     #[rule(
         $LParen
@@ -544,34 +592,45 @@ pub enum KotlinNode {
         expression: NodeRef,
     },
 
-    // delegationSpecifiers
-    //     : annotatedDelegationSpecifier (NL* COMMA NL* annotatedDelegationSpecifier)*
-    //     ;
+    /// Matches `annotatedDelegationSpecifier (NL* COMMA NL* annotatedDelegationSpecifier)*`
+    #[denote(DELEGATION_SPECIFIERS)]
+    #[trivia(HIDDEN_WITH_NL)]
+    #[rule(annotated_delegation_specifier: AnnotatedDelegationSpecifier+{$Comma})]
+    DelegationSpecifiers {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        annotated_delegation_specifier: Vec<NodeRef>,
+    },
 
-    // delegationSpecifier
-    //     : constructorInvocation
-    //     | explicitDelegation
-    //     | userType
-    //     | functionType
-    //     | SUSPEND NL* functionType
-    //     ;
-    // #[rule(
-    //     (constructor_invocation: ConstructorInvocation | explicit_delegation: ExplicitDelegation | type_ref: Type)
-    // )]
-    // #[denote(DELEGATION_SPECIFIER)]
-    // DelegationSpecifier {
-    //     #[node]
-    //     node: NodeRef,
-    //     #[parent]
-    //     parent: NodeRef,
-    //     #[child]
-    //     constructor_invocation: NodeRef,
-    //     #[child]
-    //     explicit_delegation: NodeRef,
-    //     #[child]
-    //     type_ref: NodeRef,
+    /// Matches `constructorInvocation | explicitDelegation | userType | functionType | SUSPEND NL* functionType`
+    #[denote(DELEGATION_SPECIFIER)]
+    #[rule(
+        constructor_invocation: ConstructorInvocation
+        | explicit_delegation: ExplicitDelegation
+        | user_type: UserType
+        | function_type: FunctionType
+        | ( $Suspend $NL* suspend_function_type: FunctionType)
+    )]
+    DelegationSpecifier {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        constructor_invocation: NodeRef,
+        #[child]
+        explicit_delegation: NodeRef,
+        #[child]
+        user_type: NodeRef,
+        #[child]
+        function_type: NodeRef,
+        #[child]
+        suspend_function_type: NodeRef,
+    },
 
-    // },
     /// Matches `userType NL* valueArguments`
     #[denote(CONSTRUCTOR_INVOCATION)]
     #[rule(user_type: UserType $NL* value_arguments: ValueArguments)]
@@ -584,6 +643,21 @@ pub enum KotlinNode {
         user_type: NodeRef,
         #[child]
         value_arguments: NodeRef,
+    },
+
+    /// Matches `annotation* NL* delegationSpecifier`
+    #[trivia(HIDDEN_WITH_NL)]
+    #[rule(annotations: Annotation* delegation_specifier: DelegationSpecifier)]
+    #[denote(ANNOTATED_DELEGATION_SPECIFIER)]
+    AnnotatedDelegationSpecifier {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        annotations: Vec<NodeRef>,
+        #[child]
+        delegation_specifier: NodeRef,
     },
 
     /// Matches ` (userType | functionType) NL* BY NL* expression`
@@ -671,44 +745,154 @@ pub enum KotlinNode {
 
     // SECTION: classMembers
 
-    // classMemberDeclarations
-    //     : (classMemberDeclaration semis?)*
-    //     ;
+    /// Matches `(classMemberDeclaration semis?)*`
+    #[denote(CLASS_MEMBER_DECLARATIONS)]
+    #[rule((class_member_declaration: ClassMemberDeclaration Semis?)*)]
+    ClassMemberDeclarations {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        class_member_declaration: Vec<NodeRef>,
+    },
 
-    // classMemberDeclaration
-    //     : declaration
-    //     | companionObject
-    //     | anonymousInitializer
-    //     | secondaryConstructor
-    //     ;
+    /// Matches `declaration | companionObject | anonymousInitializer | secondaryConstructor`
+    #[denote(CLASS_MEMBER_DECLARATION)]
+    #[rule(
+        declaration: Declaration
+        | companion_object: CompanionObject
+        | anonymous_initializer: AnonymousInitializer
+        | secondary_constructor: SecondaryConstructor
+    )]
+    ClassMemberDeclaration {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        declaration: NodeRef,
+        #[child]
+        companion_object: NodeRef,
+        #[child]
+        anonymous_initializer: NodeRef,
+        #[child]
+        secondary_constructor: NodeRef,
+    },
 
-    // anonymousInitializer
-    //     : INIT NL* block
-    //     ;
+    /// Matches `INIT NL* block`
+    #[denote(ANONYMOUS_INITIALIZER)]
+    #[trivia(HIDDEN_WITH_NL)]
+    #[rule($Init $NL* block: Block)]
+    AnonymousInitializer {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        block: NodeRef,
+    },
 
-    // companionObject
-    //     : modifiers? COMPANION NL* DATA? NL* OBJECT
-    //       (NL* simpleIdentifier)?
-    //       (NL* COLON NL* delegationSpecifiers)?
-    //       (NL* classBody)?
-    //     ;
+    /// Matches `modifiers? COMPANION NL* DATA? NL* OBJECT 
+    /// (NL* simpleIdentifier)? 
+    /// (NL* COLON NL* delegationSpecifiers)? 
+    /// (NL* classBody)?`
+    #[denote(COMPANION_OBJECT)]
+    #[trivia(HIDDEN_WITH_NL)]
+    #[rule(
+        modifiers: Modifiers? $Companion $Data? $Object
+        (identifier: SimpleIdentifier)?
+        ($Colon delegation_specifiers: DelegationSpecifiers)?
+        (class_body: ClassBody)?
+    )]
+    CompanionObject {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        modifiers: NodeRef,
+        #[child]
+        identifier: NodeRef,
+        #[child]
+        delegation_specifiers: NodeRef,
+        #[child]
+        class_body: NodeRef,
+    },
 
-    // functionValueParameters
-    //     : LPAREN NL* (functionValueParameter (NL* COMMA NL* functionValueParameter)* (NL* COMMA)?)? NL* RPAREN
-    //     ;
+    /// Matches `LPAREN NL* (functionValueParameter (NL* COMMA NL* functionValueParameter)* (NL* COMMA)?)? NL* RPAREN`
+    #[denote(FUNCTION_VALUE_PARAMETERS)]
+    #[trivia(HIDDEN_WITH_NL)]
+    #[rule(
+        $LParen
+        (function_value_parameter: FunctionValueParameter+{$Comma})?
+        $RParen
+    )]
+    FunctionValueParameters {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        function_value_parameter: Vec<NodeRef>,
+    },
 
-    // functionValueParameter
-    //     : parameterModifiers? parameter (NL* ASSIGNMENT NL* expression)?
-    //     ;
+    /// Matches `parameterModifiers? parameter (NL* ASSIGNMENT NL* expression)?`
+    #[denote(FUNCTION_VALUE_PARAMETER)]
+    #[trivia(HIDDEN_WITH_NL)]
+    #[rule(parameter_modifiers: ParameterModifiers? parameter: Parameter ($Assignment expression: Expression)?)]
+    FunctionValueParameter {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        parameter_modifiers: NodeRef,
+        #[child]
+        parameter: NodeRef,
+        #[child]
+        expression: NodeRef,
+    },
 
-    // functionDeclaration
-    //     : modifiers?
-    //       FUN (NL* typeParameters)? (NL* receiverType NL* DOT)? NL* simpleIdentifier
-    //       NL* functionValueParameters
-    //       (NL* COLON NL* type)?
-    //       (NL* typeConstraints)?
-    //       (NL* functionBody)?
-    //     ;
+    /// Matches `modifiers? 
+    /// FUN NL* (typeParameters)? (receiverType NL* DOT)? NL* simpleIdentifier 
+    /// NL* functionValueParameters 
+    /// (NL* COLON NL* type)? 
+    /// (NL* typeConstraints)? 
+    /// (NL* functionBody)?`
+    #[denote(FUNCTION_DECLARATION)]
+    #[trivia(HIDDEN_WITH_NL)]
+    #[rule(
+        modifiers: Modifiers?
+        $Fun (type_parameters: TypeParameters)? (receiver_type: Type $Dot)?
+        identifier: SimpleIdentifier
+        function_value_parameters: FunctionValueParameters
+        ($Colon return_type: Type)?
+        (type_constraints: TypeConstraints)?
+        (function_body: FunctionBody)?
+    )]
+    FunctionDeclaration {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        modifiers: NodeRef,
+        #[child]
+        type_parameters: NodeRef,
+        #[child]
+        receiver_type: NodeRef,
+        #[child]
+        identifier: NodeRef,
+        #[child]
+        function_value_parameters: NodeRef,
+        #[child]
+        return_type: NodeRef,
+        #[child]
+        type_constraints: NodeRef,
+        #[child]
+        function_body: NodeRef,
+    },
     /// Matches `block | ASSIGNMENT NL* expression`
     #[denote(FUNCTION_BODY)]
     #[rule(block: Block | ($Assignment $NL* expression: Expression))]
@@ -777,15 +961,53 @@ pub enum KotlinNode {
         variable_declarations: Vec<NodeRef>,
     },
 
-    // propertyDeclaration
-    //     : modifiers? (VAL | VAR)
-    //       (NL* typeParameters)?
-    //       (NL* receiverType NL* DOT)?
-    //       (NL* (multiVariableDeclaration | variableDeclaration))
-    //       (NL* typeConstraints)?
-    //       (NL* (ASSIGNMENT NL* expression | propertyDelegate))?
-    //       (NL* SEMICOLON)? NL* (getter? (NL* semi? setter)? | setter? (NL* semi? getter)?)
-    //     ;
+
+    /// Matches `modifiers? (VAL | VAR)
+    ///  NL* typeParameters? 
+    ///  NL* receiverType? 
+    ///  NL* (multiVariableDeclaration | variableDeclaration) 
+    ///  NL* typeConstraints? 
+    ///  NL* (ASSIGNMENT NL* expression | propertyDelegate)? 
+    ///  NL* SEMICOLON? NL* (getter? (NL* semi? setter?) | setter? (NL* semi? getter)?)`
+    #[denote(PROPERTY_DECLARATION)]
+    #[trivia(HIDDEN_WITH_NL)]
+    #[rule(
+        modifiers: Modifiers?
+        ($Val | $Var)
+        (type_parameters: TypeParameters)?
+        (receiver_type: Type $Dot)?
+        ((multi_variable_declaration: MultiVariableDeclaration | variable_declaration: VariableDeclaration))
+        (type_constraints: TypeConstraints)?
+        (($Assignment expression: Expression | property_delegate: PropertyDelegate))?
+        ($Semicolon)?
+        ((getter: Getter (Semi? setter: Setter)? | setter: Setter (Semi? getter: Getter)?))?
+    )]
+    PropertyDeclaration {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        modifiers: NodeRef,
+        #[child]
+        type_parameters: NodeRef,
+        #[child]
+        receiver_type: NodeRef,
+        #[child]
+        multi_variable_declaration: NodeRef,
+        #[child]
+        variable_declaration: NodeRef,
+        #[child]
+        type_constraints: NodeRef,
+        #[child]
+        expression: NodeRef,
+        #[child]
+        property_delegate: NodeRef,
+        #[child]
+        getter: NodeRef,
+        #[child]
+        setter: NodeRef,
+    },
     /// Matches `BY NL* expression`
     #[rule($By $NL* expression: Expression)]
     #[denote(PROPERTY_DELEGATE)]
@@ -1154,17 +1376,34 @@ pub enum KotlinNode {
         expression: NodeRef,
     },
 
-    // assignment
-    //     : (directlyAssignableExpression ASSIGNMENT | assignableExpression assignmentAndOperator) NL* expression
-    //     ;
+    /// Matches `(directlyAssignableExpression ASSIGNMENT | assignableExpression assignmentAndOperator) NL* expression`
+    #[denote(ASSIGNMENT)]
+    #[trivia(HIDDEN_WITH_NL)]
+    #[rule(
+        (directly_assignable_expression: DirectlyAssignableExpression $Assignment
+        | assignable_expression: AssignableExpression assignment_and_operator: AssignmentAndOperator)
+        $NL* expression: Expression
+    )]
+    Assignment {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        directly_assignable_expression: NodeRef,
+        #[child]
+        assignable_expression: NodeRef,
+        #[child]
+        assignment_and_operator: NodeRef,
+        #[child]
+        expression: NodeRef,
+    },
 
     // SECTION: expressions
 
-    // expression
-    //     : disjunction
-    //     ;
+    /// Matches `disjunction`
     #[denote(EXPRESSION)]
-    #[rule(disjunction: $Range)] // TODO: Change to disjunction
+    #[rule(disjunction: Disjunction)]
     #[describe("expression", "expr")]
     Expression {
         #[node]
@@ -1172,36 +1411,121 @@ pub enum KotlinNode {
         #[parent]
         parent: NodeRef,
         #[child]
-        disjunction: TokenRef,
+        disjunction: NodeRef,
     },
 
-    // disjunction
-    //     : conjunction (NL* DISJ NL* conjunction)*
-    //     ;
+    /// Matches `conjunction (NL* DISJ NL* conjunction)*`
+    #[denote(DISJUNCTION)]
+    #[trivia(HIDDEN_WITH_NL)]
+    #[rule(conjunctions: Conjunction+{$Disj})]
+    Disjunction {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        conjunctions: Vec<NodeRef>,
+    },
 
-    // conjunction
-    //     : equality (NL* CONJ NL* equality)*
-    //     ;
+    /// Matches `equality (NL* CONJ NL* equality)*`
+    #[denote(CONJUNCTION)]
+    #[trivia(HIDDEN_WITH_NL)]
+    #[rule(equalities: EqualityExpression+{$Conj})]
+    Conjunction {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        equalities: Vec<NodeRef>
+    },
 
-    // equality
-    //     : comparison (equalityOperator NL* comparison)*
-    //     ;
+    /// Matches `comparison (equalityOperator NL* comparison)*`
+    #[denote(EQUALITY_EXPRESSION)]
+    #[trivia(HIDDEN_WITH_NL)]
+    #[rule(comparisons: ComparisonExpression+{equality_operators: EqualityOperator})]
+    EqualityExpression {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        comparisons: Vec<NodeRef>,
+        #[child]
+        equality_operators: Vec<NodeRef>,
+    },
 
-    // comparison
-    //     : genericCallLikeComparison (comparisonOperator NL* genericCallLikeComparison)*
-    //     ;
+    /// Matches `genericCallLikeComparison (comparisonOperator NL* genericCallLikeComparison)*`
+    #[denote(COMPARISON_EXPRESSION)]
+    #[trivia(HIDDEN_WITH_NL)]
+    #[rule(generic_call_like_comparisons: GenericCallLikeComparison+{comparison_operators: ComparisonOperator})]
+    ComparisonExpression {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        generic_call_like_comparisons: Vec<NodeRef>,
+        #[child]
+        comparison_operators: Vec<NodeRef>,
+    },
 
-    // genericCallLikeComparison
-    //     : infixOperation callSuffix*
-    //     ;
+    /// Matches `infixOperation callSuffix*`
+    #[denote(GENERIC_CALL_LIKE_COMPARISON)]
+    #[trivia(HIDDEN_WITH_NL)]
+    #[rule(infix_operation: InfixOperation call_suffix: CallSuffix*)]
+    GenericCallLikeComparison {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        infix_operation: NodeRef,
+        #[child]
+        call_suffix: Vec<NodeRef>,
+    },
 
-    // infixOperation
-    //     : elvisExpression (inOperator NL* elvisExpression | isOperator NL* type)*
-    //     ;
+    /// Matches `elvisExpression (inOperator NL* elvisExpression | isOperator NL* type)*`
+    #[denote(INFIX_OPERATION)]
+    #[trivia(HIDDEN_WITH_NL)]
+    #[rule(
+        elvis_expression: ElvisExpression
+        (
+            in_operator: InOperator elvis_expression_in: ElvisExpression
+            | is_operator: IsOperator type_ref: Type
+        )*
+    )]
+    InfixOperation {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        elvis_expression: NodeRef,
+        #[child]
+        in_operator: Vec<NodeRef>,
+        #[child]
+        elvis_expression_in: Vec<NodeRef>,
+        #[child]
+        is_operator: Vec<NodeRef>,
+        #[child]
+        type_ref: Vec<NodeRef>,
+    },
 
-    // elvisExpression
-    //     : infixFunctionCall (NL* elvis NL* infixFunctionCall)*
-    //     ;
+    /// Matches `infixFunctionCall (NL* elvis NL* infixFunctionCall)*`
+    #[denote(ELVIS_EXPRESSION)]
+    #[trivia(HIDDEN_WITH_NL)]
+    #[rule(infix_function_calls: InfixFunctionCall+{elvis: Elvis})]
+    ElvisExpression {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        infix_function_calls: Vec<NodeRef>,
+        #[child]
+        elvis: Vec<NodeRef>,
+    },
     /// Matches `QUEST_NO_WS COLON`
     #[rule($QuestNoWs $Colon)]
     #[denote(ELVIS)]
@@ -1212,25 +1536,82 @@ pub enum KotlinNode {
         parent: NodeRef,
     },
 
-    // infixFunctionCall
-    //     : rangeExpression (simpleIdentifier NL* rangeExpression)*
-    //     ;
+    /// Matches `rangeExpression (simpleIdentifier NL* rangeExpression)*`
+    #[denote(INFIX_FUNCTION_CALL)]
+    #[trivia(HIDDEN_WITH_NL)]
+    #[rule(range_expressions: RangeExpression+{simple_identifiers: SimpleIdentifier})]
+    InfixFunctionCall {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        range_expressions: Vec<NodeRef>,
+        #[child]
+        simple_identifiers: Vec<NodeRef>,
+    },
 
-    // rangeExpression
-    //     : additiveExpression ((RANGE | RANGE_UNTIL) NL* additiveExpression)*
-    //     ;
+    /// Matches `additiveExpression (($Range | $RangeUntil) additiveExpression)*`
+    #[denote(RANGE_EXPRESSION)]
+    #[trivia(HIDDEN_WITH_NL)]
+    #[rule(additive_expressions: AdditiveExpression+{($Range | $RangeUntil)})]
+    RangeExpression {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        additive_expressions: Vec<NodeRef>,
+    },
 
-    // additiveExpression
-    //     : multiplicativeExpression (additiveOperator NL* multiplicativeExpression)*
-    //     ;
+    /// Matches `multiplicativeExpression (additiveOperator multiplicativeExpression)*`
+    #[denote(ADDITIVE_EXPRESSION)]
+    #[trivia(HIDDEN_WITH_NL)]
+    #[rule(multiplicative_expressions: MultiplicativeExpression+{additive_operators: AdditiveOperator})]
+    AdditiveExpression {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        multiplicative_expressions: Vec<NodeRef>,
+        #[child]
+        additive_operators: Vec<NodeRef>,
+    },
 
-    // multiplicativeExpression
-    //     : asExpression (multiplicativeOperator NL* asExpression)*
-    //     ;
 
-    // asExpression
-    //     : prefixUnaryExpression (NL* asOperator NL* type)*
-    //     ;
+    /// Matches `asExpression (multiplicativeOperator NL* asExpression)*`
+    #[denote(MULTIPLICATIVE_EXPRESSION)]
+    #[trivia(HIDDEN_WITH_NL)]
+    #[rule(as_expressions: AsExpression+{multiplicative_operators: MultiplicativeOperator})]
+    MultiplicativeExpression {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        as_expressions: Vec<NodeRef>,
+        #[child]
+        multiplicative_operators: Vec<NodeRef>,
+    },
+
+
+    /// Matches `prefixUnaryExpression (asOperator NL* type)*`
+    #[denote(AS_EXPRESSION)]
+    #[trivia(HIDDEN_WITH_NL)]
+    #[rule(prefix_unary_expression: PrefixUnaryExpression (as_operator: AsOperator type_ref: Type)*)]
+    AsExpression {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        prefix_unary_expression: NodeRef,
+        #[child]
+        as_operator: Vec<NodeRef>,
+        #[child]
+        type_ref: Vec<NodeRef>,
+    },
 
     /// Matches `unaryPrefix* postfixUnaryExpression`
     #[rule(unary_prefix: UnaryPrefix* postfix_unary_expression: PostfixUnaryExpression)]
