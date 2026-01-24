@@ -126,8 +126,10 @@ pub enum KotlinNode {
     },
 
     #[trivia(HIDDEN_WITH_NL)]
-     #[rule(shebang_line: ShebangLine? file_annotations: FileAnnotation* package_header:PackageHeader? import_list: ImportList? (statements: Statement Semi)*)]
+    #[denote(SCRIPT)]
+    #[rule(shebang_line: ShebangLine? file_annotations: FileAnnotation* package_header:PackageHeader? import_list: ImportList? (statements: Statement Semi)+)]
     /// shebangLine? NL* fileAnnotation* packageHeader importList (statement semi)* EOF
+    /// Note that in the original grammar, statements can be empty, but here we require at least one statement because we must.
     Script {
         #[node]
         node: NodeRef,
@@ -175,7 +177,9 @@ pub enum KotlinNode {
         parent: NodeRef,
     },
 
-    #[rule(($Semicolon | $NL) $NL*)]
+    /// Matches `(SEMICOLON | NL) NL*`
+    /// Note that we removed the NL alternative here because it would conflict with other rules
+    #[rule(($Semicolon) $NL*)]
     #[secondary]
     #[describe("semi colon", ";")]
     Semi {
@@ -248,7 +252,9 @@ pub enum KotlinNode {
 
     /// Matches `classDeclaration | functionDeclaration | propertyDeclaration | typeAlias`
     #[denote(DECLARATION)]
-    #[rule(class_declaration: ClassDeclaration | function_declaration: FunctionDeclaration | property_declaration: PropertyDeclaration | type_alias: TypeAlias)]
+    #[rule(class_declaration: ClassDeclaration | function_declaration: FunctionDeclaration 
+        // | property_declaration: PropertyDeclaration 
+        | type_alias: TypeAlias)]
     Declaration {
         #[node]
         node: NodeRef,
@@ -258,8 +264,8 @@ pub enum KotlinNode {
         class_declaration: NodeRef,
         #[child]
         function_declaration: NodeRef,
-        #[child]
-        property_declaration: NodeRef,
+        // #[child]
+        // property_declaration: NodeRef,
         #[child]
         type_alias: NodeRef,
     },
@@ -541,12 +547,10 @@ pub enum KotlinNode {
         class_parameters: NodeRef,
     },
 
-    // classBody
-    //     : LCURL NL* classMemberDeclarations NL* RCURL
-    //     ;
+    /// Matches `LCURL NL* classMemberDeclarations NL* RCURL`
     #[trivia(HIDDEN_WITH_NL)]
     #[denote(CLASS_BODY)]
-    #[rule($LCurl class_member_declarations: ClassMemberDeclarations $RCurl)]
+    #[rule($LCurl class_member_declarations: ClassMemberDeclarations? $RCurl)]
     ClassBody {
         #[node]
         node: NodeRef,
@@ -611,8 +615,8 @@ pub enum KotlinNode {
         constructor_invocation: ConstructorInvocation
         | explicit_delegation: ExplicitDelegation
         | user_type: UserType
-        | function_type: FunctionType
-        | ( $Suspend $NL* suspend_function_type: FunctionType)
+        // | function_type: Type
+        | ( $Suspend $NL* suspend_function_type: Type)
     )]
     DelegationSpecifier {
         #[node]
@@ -625,8 +629,8 @@ pub enum KotlinNode {
         explicit_delegation: NodeRef,
         #[child]
         user_type: NodeRef,
-        #[child]
-        function_type: NodeRef,
+        // #[child]
+        // function_type: NodeRef,
         #[child]
         suspend_function_type: NodeRef,
     },
@@ -743,11 +747,70 @@ pub enum KotlinNode {
         type_ref: NodeRef,
     },
 
+    // SECTION: enumClasses
+
+    /// Matches `LCURL NL* enumEntries? (NL* SEMICOLON NL* classMemberDeclarations)? NL* RCURL`
+    #[trivia(HIDDEN_WITH_NL)]
+    #[denote(ENUM_CLASS_BODY)]
+    #[rule(
+        $LCurl
+        (enum_entries: EnumEntries)?
+        ($Semicolon class_member_declarations: ClassMemberDeclarations?)?
+        $RCurl
+    )]
+    EnumClassBody {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        enum_entries: NodeRef,
+        #[child]
+        class_member_declarations: NodeRef,
+    },
+
+    /// Matches `enumEntry (NL* COMMA NL* enumEntry)* (NL* COMMA)?`
+    #[trivia(HIDDEN_WITH_NL)]
+    #[denote(ENUM_ENTRIES)]
+    #[rule(enum_entry: EnumEntry+{$Comma})]
+    EnumEntries {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        enum_entry: Vec<NodeRef>,
+    },
+
+    /// Matches `(modifiers NL*)? simpleIdentifier (NL* valueArguments)? (NL* classBody)?`
+    #[trivia(HIDDEN_WITH_NL)]
+    #[denote(ENUM_ENTRY)]
+    #[rule(
+        modifiers: Modifiers?
+        identifier: SimpleIdentifier
+        (value_arguments: ValueArguments)?
+        (class_body: ClassBody)?
+    )]
+    EnumEntry {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        modifiers: NodeRef,
+        #[child]
+        identifier: NodeRef,
+        #[child]
+        value_arguments: NodeRef,
+        #[child]
+        class_body: NodeRef,
+    },
+
     // SECTION: classMembers
 
     /// Matches `(classMemberDeclaration semis?)*`
     #[denote(CLASS_MEMBER_DECLARATIONS)]
-    #[rule((class_member_declaration: ClassMemberDeclaration Semis?)*)]
+    #[rule((class_member_declaration: ClassMemberDeclaration Semis?)+)]
     ClassMemberDeclarations {
         #[node]
         node: NodeRef,
@@ -969,45 +1032,54 @@ pub enum KotlinNode {
     ///  NL* typeConstraints? 
     ///  NL* (ASSIGNMENT NL* expression | propertyDelegate)? 
     ///  NL* SEMICOLON? NL* (getter? (NL* semi? setter?) | setter? (NL* semi? getter)?)`
-    #[denote(PROPERTY_DECLARATION)]
-    #[trivia(HIDDEN_WITH_NL)]
-    #[rule(
-        modifiers: Modifiers?
-        ($Val | $Var)
-        (type_parameters: TypeParameters)?
-        (receiver_type: Type $Dot)?
-        ((multi_variable_declaration: MultiVariableDeclaration | variable_declaration: VariableDeclaration))
-        (type_constraints: TypeConstraints)?
-        (($Assignment expression: Expression | property_delegate: PropertyDelegate))?
-        ($Semicolon)?
-        ((getter: Getter (Semi? setter: Setter)? | setter: Setter (Semi? getter: Getter)?))?
-    )]
-    PropertyDeclaration {
-        #[node]
-        node: NodeRef,
-        #[parent]
-        parent: NodeRef,
-        #[child]
-        modifiers: NodeRef,
-        #[child]
-        type_parameters: NodeRef,
-        #[child]
-        receiver_type: NodeRef,
-        #[child]
-        multi_variable_declaration: NodeRef,
-        #[child]
-        variable_declaration: NodeRef,
-        #[child]
-        type_constraints: NodeRef,
-        #[child]
-        expression: NodeRef,
-        #[child]
-        property_delegate: NodeRef,
-        #[child]
-        getter: NodeRef,
-        #[child]
-        setter: NodeRef,
-    },
+    // #[denote(PROPERTY_DECLARATION)]
+    // #[trivia(HIDDEN_WITH_NL)]
+    // #[rule(
+    //     modifiers: Modifiers?
+    //     ($Val | $Var)
+    //     (type_parameters: TypeParameters)?
+    //     (receiver_type: Type $Dot)?
+    //     ((
+    //         | multi_variable_declaration: MultiVariableDeclaration 
+    //         | variable_declaration: VariableDeclaration
+    //     ))
+    //     (type_constraints: TypeConstraints)?
+    //     (($Assignment expression: Expression | property_delegate: PropertyDelegate))?
+    //     ($Semicolon)?
+    //     // (getter_or_setter_modifier: Modifiers? (getter: Getter (Semi? setter_modifier: Modifiers? setter: Setter)? | setter: Setter (Semi? getter_modifier: Modifiers? getter: Getter)?))?
+    // )]
+    // PropertyDeclaration {
+    //     #[node]
+    //     node: NodeRef,
+    //     #[parent]
+    //     parent: NodeRef,
+    //     #[child]
+    //     modifiers: NodeRef,
+    //     // #[child]
+    //     // getter_or_setter_modifier: NodeRef,
+    //     //   #[child]
+    //     // setter_modifier: NodeRef,
+    //     //   #[child]
+    //     // getter_modifier: NodeRef,
+    //     #[child]
+    //     type_parameters: NodeRef,
+    //     #[child]
+    //     receiver_type: NodeRef,
+    //     #[child]
+    //     multi_variable_declaration: NodeRef,
+    //     #[child]
+    //     variable_declaration: NodeRef,
+    //     #[child]
+    //     type_constraints: NodeRef,
+    //     #[child]
+    //     expression: NodeRef,
+    //     #[child]
+    //     property_delegate: NodeRef,
+    //     // #[child]
+    //     // getter: NodeRef,
+    //     // #[child]
+    //     // setter: NodeRef,
+    // },
     /// Matches `BY NL* expression`
     #[rule($By $NL* expression: Expression)]
     #[denote(PROPERTY_DELEGATE)]
@@ -1021,10 +1093,11 @@ pub enum KotlinNode {
     },
 
     /// Matches `modifiers? GET (NL* LPAREN NL* RPAREN (NL* COLON NL* type)? NL* functionBody)?`
+    /// Note that Modifiers are moved to use site in PropertyDeclaration
     #[denote(GETTER)]
     #[trivia(HIDDEN_WITH_NL)]
     #[rule(
-        modifiers: Modifiers? $Get
+        $Get
         ( $LParen $RParen ($Colon type_ref: Type)?  function_body: FunctionBody)?
     )]
     Getter {
@@ -1033,18 +1106,17 @@ pub enum KotlinNode {
         #[parent]
         parent: NodeRef,
         #[child]
-        modifiers: NodeRef,
-        #[child]
         type_ref: NodeRef,
         #[child]
         function_body: NodeRef,
     },
 
     /// Matches `modifiers? SET (NL* LPAREN NL* functionValueParameterWithOptionalType (NL* COMMA)? NL* RPAREN (NL* COLON NL* type)? NL* functionBody)?`
+    /// Note that Modifiers are moved to use site in PropertyDeclaration
     #[denote(SETTER)]
     #[trivia(HIDDEN_WITH_NL)]
     #[rule(
-        modifiers: Modifiers? $Set
+        $Set
         (fn_type: FunctionValueParameterWithOptionalType
             ($Comma)? $RParen
             ($Colon type_ref: Type)?  function_body: FunctionBody
@@ -1055,8 +1127,6 @@ pub enum KotlinNode {
         node: NodeRef,
         #[parent]
         parent: NodeRef,
-        #[child]
-        modifiers: NodeRef,
         #[child]
         fn_type: NodeRef,
         #[child]
@@ -2440,30 +2510,32 @@ pub enum KotlinNode {
     },
 
     /// Matches `LPAREN (annotation* NL* VAL NL* variableDeclaration NL* ASSIGNMENT NL*)? expression RPAREN`
-    #[rule(
-        $LParen
-        (annotations: Annotation* $Val variable_declaration: VariableDeclaration $Assignment)?
-        expression: Expression
-        $RParen
-    )]
-    #[denote(WHEN_SUBJECT)]
-    WhenSubject {
-        #[node]
-        node: NodeRef,
-        #[parent]
-        parent: NodeRef,
-        #[child]
-        annotations: Vec<NodeRef>,
-        #[child]
-        variable_declaration: NodeRef,
-        #[child]
-        expression: NodeRef,
-    },
+    // #[rule(
+    //     $LParen
+    //     (annotations: Annotation* $Val variable_declaration: VariableDeclaration $Assignment)?
+    //     expression: Expression
+    //     $RParen
+    // )]
+    // #[denote(WHEN_SUBJECT)]
+    // WhenSubject {
+    //     #[node]
+    //     node: NodeRef,
+    //     #[parent]
+    //     parent: NodeRef,
+    //     #[child]
+    //     annotations: Vec<NodeRef>,
+    //     #[child]
+    //     variable_declaration: NodeRef,
+    //     #[child]
+    //     expression: NodeRef,
+    // },
 
     /// Matches `WHEN NL* whenSubject? NL* LCURL NL* (whenEntry NL*)* NL* RCURL`
     #[trivia(HIDDEN_WITH_NL)]
     #[rule(
-        $When when_subject: WhenSubject? $LCurl
+        $When 
+        // when_subject: WhenSubject?
+        $LCurl
             when_entries: WhenEntry*
         $RCurl
     )]
@@ -2473,8 +2545,8 @@ pub enum KotlinNode {
         node: NodeRef,
         #[parent]
         parent: NodeRef,
-        #[child]
-        when_subject: NodeRef,
+        // #[child]
+        // when_subject: NodeRef,
         #[child]
         when_entries: Vec<NodeRef>,
     },
