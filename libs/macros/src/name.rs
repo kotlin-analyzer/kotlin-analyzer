@@ -90,7 +90,7 @@ impl NameForm<'_> {
 }
 
 impl Name<'_> {
-    fn form<'a>(&'a self) -> &'a NameForm<'a> {
+    fn form(&self) -> &NameForm<'_> {
         match self {
             Name::Single(form) | Name::Many(form) | Name::Optional(form) | Name::Choice(form) => {
                 form
