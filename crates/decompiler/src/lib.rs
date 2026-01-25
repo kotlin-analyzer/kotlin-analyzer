@@ -3,7 +3,7 @@ pub mod java;
 
 use classy::ClassFile;
 use jars::JarOptionBuilder;
-use java::{decompile_class, JClass};
+use java::{JClass, decompile_class};
 use std::{collections::HashMap, io::BufReader, path::Path};
 
 #[derive(Debug)]

@@ -1,18 +1,16 @@
 [package]
 name = "ast"
 version = "0.0.1"
-description = "TBD"
-
-authors.workspace = true
 edition.workspace = true
-license.workspace = true
 rust-version.workspace = true
+description = "TBD"
+license.workspace = true
 
 [dependencies]
 casey.workspace = true
-ron = "0.8"
-serde = { version = "1", features = ["derive"] }
-macros.workspace = true
-tokens.workspace = true
-rowan.workspace = true
 inflector-plus.workspace = true
+macros.workspace = true
+ron.workspace = true
+rowan.workspace = true
+serde.workspace = true
+tokens.workspace = true

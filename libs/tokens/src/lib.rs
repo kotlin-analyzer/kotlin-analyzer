@@ -175,8 +175,8 @@ pub enum Token {
     ERR,
 }
 
-use phf::phf_map;
 use Token::*;
+use phf::phf_map;
 
 pub fn is_keyword(slice: &str) -> bool {
     get_keyword(&slice.to_lowercase()).is_some()

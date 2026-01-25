@@ -4,7 +4,7 @@ use inflector::Inflector;
 use itertools::Itertools;
 use proc_macro2::TokenStream;
 use quote::{quote, quote_spanned};
-use syn::{parse_quote, Error, Ident, Result, Type};
+use syn::{Error, Ident, Result, Type, parse_quote};
 
 use crate::{
     name::{Name, NameCtx, NameForm, ToName},
@@ -404,7 +404,7 @@ impl Generate for BasicParseEntry {
 
 mod utils {
     use proc_macro2::Span;
-    use syn::{parse_quote, ExprPath, PathArguments, PathSegment, Result, Type};
+    use syn::{ExprPath, PathArguments, PathSegment, Result, Type, parse_quote};
 
     pub(super) fn type_to_inner_cast(ty: Type) -> Result<ExprPath> {
         match ty {

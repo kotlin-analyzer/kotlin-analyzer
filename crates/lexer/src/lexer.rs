@@ -9,7 +9,7 @@ use std::{
 };
 
 use tokens::Token::{self, *};
-use tokens::{get_keyword, OPERATORS};
+use tokens::{OPERATORS, get_keyword};
 use unicode_categories::UnicodeCategories;
 
 trait ParseFn<'a>: Fn(Step<'a>) -> Option<Step<'a>> {
@@ -168,7 +168,7 @@ impl<'a> Step<'a> {
         if let Some(pos) = self.get_till_end(incr).and_then(|s| s.find(pat)) {
             pos.checked_add(incr).unwrap_or_default()
         } else {
-            self.input.len().checked_sub(self.pos).unwrap_or_default()
+            self.input.len().saturating_sub(self.pos)
         }
     }
 

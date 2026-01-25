@@ -1,6 +1,6 @@
 use ast::syntax::{SyntaxKind, SyntaxNode};
 use ast::{nodes::Cast, syntax::Root};
-use itertools::{peek_nth, PeekNth};
+use itertools::{PeekNth, peek_nth};
 use lexer::{Lexer, SpannedWithSource};
 use parser::{ParseError, TokenSource, TreeSink};
 use rowan::{GreenNode, GreenNodeBuilder};

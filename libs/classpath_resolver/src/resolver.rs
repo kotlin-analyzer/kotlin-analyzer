@@ -37,7 +37,7 @@ impl<'a> ClasspathResolver<'a> {
         }
     }
 
-    pub fn new(workspace_root: &Path) -> ClasspathResolver {
+    pub fn new(workspace_root: &Path) -> ClasspathResolver<'_> {
         let workspace_type = detect_workspace_type(workspace_root);
 
         ClasspathResolver::new_with_type(workspace_root, workspace_type)
@@ -144,9 +144,5 @@ fn gradle_command() -> &'static str {
 }
 
 fn maven_command() -> &'static str {
-    if cfg!(windows) {
-        "mvnw.cmd"
-    } else {
-        "./mvnw"
-    }
+    if cfg!(windows) { "mvnw.cmd" } else { "./mvnw" }
 }
