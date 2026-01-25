@@ -1,8 +1,8 @@
 #![allow(unused)]
 
 use syn::{
-    parse::{Parse, ParseStream},
     Token,
+    parse::{Parse, ParseStream},
 };
 
 use crate::combinators::{InOrder, Separated};

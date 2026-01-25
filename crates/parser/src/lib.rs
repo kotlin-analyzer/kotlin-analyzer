@@ -167,7 +167,7 @@ pub fn parse<'a>(token_source: &'a mut dyn TokenSource<'_>, tree_sink: &'a mut d
             }
         }
 
-        fn take(&mut self, token: Token) -> TakeRes {
+        fn take(&mut self, token: Token) -> TakeRes<'_> {
             assert_eq!(self.current_token(), Some(&token));
             if Some(&token) == self.current_token() {
                 self.bump();

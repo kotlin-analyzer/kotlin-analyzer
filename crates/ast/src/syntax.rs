@@ -418,8 +418,8 @@ impl rowan::Language for Lang {
 
 #[cfg(test)]
 mod test {
-    use rowan::Language;
     use SyntaxKind::*;
+    use rowan::Language;
 
     use super::*;
 

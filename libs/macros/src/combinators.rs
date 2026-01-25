@@ -193,7 +193,7 @@ where
 mod test {
     use assert_panic::assert_panic;
     use syn::Ident;
-    use syn::{parse_quote, Token};
+    use syn::{Token, parse_quote};
 
     use super::*;
 

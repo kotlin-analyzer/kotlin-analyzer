@@ -608,10 +608,10 @@ fn matches_mask(flags: u16, mask: u16) -> bool {
 #[cfg(test)]
 mod tests {
     use crate::java::{
-        matches_mask, ACC_ENUM, ACC_FINAL, ACC_PRIVATE, ACC_PROTECTED, ACC_PUBLIC, ACC_STATIC,
+        ACC_ENUM, ACC_FINAL, ACC_PRIVATE, ACC_PROTECTED, ACC_PUBLIC, ACC_STATIC, matches_mask,
     };
 
-    use super::{parse_descriptor, parse_method_descriptor, JType, MethodDescriptor};
+    use super::{JType, MethodDescriptor, parse_descriptor, parse_method_descriptor};
 
     #[test]
     fn test_parse_descriptor_regular_type() {

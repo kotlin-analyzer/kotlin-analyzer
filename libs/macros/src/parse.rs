@@ -8,8 +8,8 @@ use syn::parse::{Parse, ParseStream};
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::token::{Brace, Bracket, Paren};
-use syn::{braced, bracketed, parenthesized, Ident, Lit, Result, Token};
-use syn::{parse::discouraged::Speculative, Error};
+use syn::{Error, parse::discouraged::Speculative};
+use syn::{Ident, Lit, Result, Token, braced, bracketed, parenthesized};
 
 use crate::combinators::{InOrder, Optional, Seq};
 
@@ -642,8 +642,8 @@ mod test {
             "expect"
             | "actual"
         };
-        let gen = syn::parse2::<GenAst>(stream)?;
-        dbg!(gen);
+        let generated = syn::parse2::<GenAst>(stream)?;
+        dbg!(generated);
         // assert!(
         //     matches!(&gen., [ParseEntryExt {entry, ..} ]
         //         if matches!(entry, ParseEntry::Basic(BasicParseEntry::StrLit(..))))

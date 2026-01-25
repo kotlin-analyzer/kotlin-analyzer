@@ -1,7 +1,7 @@
 use inflector::Inflector;
 use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote};
-use syn::{parse_quote, ExprPath, Ident, Result};
+use syn::{ExprPath, Ident, Result, parse_quote};
 use tokens::Token;
 
 use crate::parse::{BasicParseEntry, ParseEntry};
@@ -90,7 +90,7 @@ impl NameForm<'_> {
 }
 
 impl Name<'_> {
-    fn form(&self) -> &NameForm {
+    fn form(&self) -> &NameForm<'_> {
         match self {
             Name::Single(form) | Name::Many(form) | Name::Optional(form) | Name::Choice(form) => {
                 form
