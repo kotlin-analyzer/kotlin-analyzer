@@ -4,7 +4,7 @@
 
 use std::{
     collections::VecDeque,
-    fmt::Display,
+    fmt::{Debug, Display},
     ops::{Range, RangeInclusive},
 };
 
@@ -187,7 +187,7 @@ impl<'a> Step<'a> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct SpannedWithSource<'a> {
     token: Token,
     span: Span,
@@ -224,11 +224,17 @@ impl Display for SpannedWithSource<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            r#"{:?} => {:?}, // {:?}"#,
+            "{:?}@{:?} => {:?}",
             self.token(),
             self.span(),
             self.substring()
         )
+    }
+}
+
+impl Debug for SpannedWithSource<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self)
     }
 }
 

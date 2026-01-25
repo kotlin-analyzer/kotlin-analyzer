@@ -1,0 +1,30 @@
+---
+source: crates/lexer/tests/lexer.rs
+expression: entries
+---
+[
+    TRIPLE_QUOTE_OPEN@0..3 => "\"\"\"",
+    MULTI_LINE_STR_TEXT@3..11 => "\nsimple\n",
+    TRIPLE_QUOTE_CLOSE@11..14 => "\"\"\"",
+    NL@14..15 => "\n",
+    TRIPLE_QUOTE_OPEN@15..18 => "\"\"\"",
+    MULTI_LINE_STR_TEXT@18..27 => "\ncomplex ",
+    MULTI_STR_EXPR_START@27..29 => "${",
+    IDENTIFIER_TOKEN@29..32 => "ref",
+    R_CURL@32..33 => "}",
+    MULTI_LINE_STR_TEXT@33..34 => "\n",
+    QUOTE_OPEN@34..35 => "\"",
+    LINE_STR_TEXT@35..59 => "line string inside multi",
+    QUOTE_CLOSE@59..60 => "\"",
+    MULTI_LINE_STR_TEXT@60..61 => "\n",
+    MULTI_LINE_STRING_QUOTE@61..64 => "\"\"\"",
+    TRIPLE_QUOTE_CLOSE@64..67 => "\"\"\"",
+    NL@67..68 => "\n",
+    TRIPLE_QUOTE_OPEN@68..71 => "\"\"\"",
+    MULTI_LINE_STRING_QUOTE@71..75 => "\"\"\"\"",
+    TRIPLE_QUOTE_CLOSE@75..78 => "\"\"\"",
+    WS@78..79 => " ",
+    LINE_COMMENT@79..128 => "// open with three, 4 quotes inside and 3 closing",
+    NL@128..129 => "\n",
+    EOF@129..129 => "",
+]
