@@ -627,6 +627,7 @@ name = "parser"
 version = "0.0.1"
 dependencies = [
  "ast",
+ "insta",
  "itertools",
  "lexer",
  "pretty_assertions",
