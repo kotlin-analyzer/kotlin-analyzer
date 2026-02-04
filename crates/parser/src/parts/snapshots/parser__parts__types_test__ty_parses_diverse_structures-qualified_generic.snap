@@ -1,0 +1,20 @@
+---
+source: crates/parser/src/parts/types_test.rs
+expression: kinds
+---
+[
+    TYPE,
+    TYPE_REFERENCE,
+    USER_TYPE,
+    SIMPLE_USER_TYPE,
+    SIMPLE_IDENTIFIER,
+    SIMPLE_USER_TYPE,
+    SIMPLE_IDENTIFIER,
+    TYPE_ARGUMENTS,
+    TYPE_PROJECTION,
+    TYPE,
+    TYPE_REFERENCE,
+    USER_TYPE,
+    SIMPLE_USER_TYPE,
+    SIMPLE_IDENTIFIER,
+]
