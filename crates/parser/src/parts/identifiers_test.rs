@@ -1,4 +1,4 @@
-use super::identifiers::simple_identifier;
+use super::identifiers::{identifier, simple_identifier};
 use crate::test_utils::make_parser;
 use ast::syntax::SyntaxKind::{self, *};
 
@@ -59,4 +59,21 @@ fn simple_identifier_test(#[case] text: &str, #[case] expected_kind: SyntaxKind)
     assert_eq!(kind, SIMPLE_IDENTIFIER);
     let token = node.first_token().unwrap().kind();
     assert_eq!(token, expected_kind);
+}
+#[rstest::rstest]
+#[case::single_identifier("name", &[IDENTIFIER_TOKEN])]
+#[case::dotted_identifiers("foo.bar", &[IDENTIFIER_TOKEN, IDENTIFIER_TOKEN])]
+#[case::keywords_allowed("abstract.data", &[ABSTRACT, DATA])]
+fn identifier_parses_segments(#[case] text: &str, #[case] expected_tokens: &[SyntaxKind]) {
+    let parse = make_parser(identifier);
+    let node = parse(text).syntax();
+    assert_eq!(node.kind(), IDENTIFIER);
+
+    let segments: Vec<SyntaxKind> = node
+        .children()
+        .filter(|child| child.kind() == SIMPLE_IDENTIFIER)
+        .map(|child| child.first_token().unwrap().kind())
+        .collect();
+
+    assert_eq!(segments.as_slice(), expected_tokens);
 }

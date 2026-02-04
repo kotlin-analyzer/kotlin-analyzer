@@ -155,10 +155,12 @@ impl Parser<'_, '_> {
             .zip(self.source.lookahead_nth(1).cloned())
     }
 
-    fn type_projection(&mut self) {}
-
     fn next_two_tokens(&mut self) -> Option<(Token, Token)> {
         self.next_two().map(|(fs, snd)| (*fs.token(), *snd.token()))
+    }
+
+    pub(crate) fn lookahead_token(&mut self, n: usize) -> Option<Token> {
+        self.source.lookahead_nth(n).map(|sp| *sp.token())
     }
 
     fn bump(&mut self) {

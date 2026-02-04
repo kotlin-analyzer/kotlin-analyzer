@@ -4,6 +4,7 @@ use tokens::Token;
 use crate::Parser;
 
 pub(crate) fn simple_identifier(parser: &mut Parser<'_, '_>) {
+    parser.skip_trivia();
     match parser
         .current()
         .map(|sp| (sp.is_soft_keyword(), sp.token()))
@@ -19,4 +20,24 @@ pub(crate) fn simple_identifier(parser: &mut Parser<'_, '_>) {
         }
         _ => {}
     }
+}
+
+pub(crate) fn identifier(parser: &mut Parser<'_, '_>) {
+    parser.sink.start_node(IDENTIFIER);
+    simple_identifier(parser);
+    loop {
+        parser.skip_trivia_and_newlines();
+        match parser.current().map(|t| t.token()) {
+            Some(Token::ERR) => {
+                parser.sink.error("expected an identifier".into());
+                parser.bump();
+            }
+            Some(Token::DOT) => {
+                parser.bump(); // consume '.'
+                simple_identifier(parser);
+            }
+            _ => break,
+        }
+    }
+    parser.sink.finish_node();
 }
