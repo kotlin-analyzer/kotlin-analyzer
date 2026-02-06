@@ -3,6 +3,7 @@ use tokens::Token;
 
 use crate::Parser;
 use crate::parts::types::type_reference;
+use crate::parts::utils::{skip_trivia_tokens, starts_use_site_target};
 
 pub(crate) fn annotation(parser: &mut Parser<'_, '_>) {
     parser.skip_trivia_and_newlines();
@@ -16,7 +17,7 @@ pub(crate) fn annotation(parser: &mut Parser<'_, '_>) {
         return;
     }
 
-    parser.sink.start_node(ANNOTATION);
+    parser.start_node(ANNOTATION);
 
     if is_multi_annotation(parser) {
         multi_annotation(parser);
@@ -25,11 +26,11 @@ pub(crate) fn annotation(parser: &mut Parser<'_, '_>) {
     }
 
     parser.skip_trivia_and_newlines();
-    parser.sink.finish_node();
+    parser.finish_node(ANNOTATION);
 }
 
 fn single_annotation(parser: &mut Parser<'_, '_>) {
-    parser.sink.start_node(SINGLE_ANNOTATION);
+    parser.start_node(SINGLE_ANNOTATION);
 
     if starts_use_site_target(parser) {
         annotation_use_site_target(parser);
@@ -45,11 +46,11 @@ fn single_annotation(parser: &mut Parser<'_, '_>) {
     parser.skip_trivia_and_newlines();
     unescaped_annotation(parser);
 
-    parser.sink.finish_node();
+    parser.finish_node(SINGLE_ANNOTATION);
 }
 
 fn multi_annotation(parser: &mut Parser<'_, '_>) {
-    parser.sink.start_node(MULTI_ANNOTATION);
+    parser.start_node(MULTI_ANNOTATION);
 
     if starts_use_site_target(parser) {
         annotation_use_site_target(parser);
@@ -95,11 +96,11 @@ fn multi_annotation(parser: &mut Parser<'_, '_>) {
             .error("expected ']' to close annotation list".into());
     }
 
-    parser.sink.finish_node();
+    parser.finish_node(MULTI_ANNOTATION);
 }
 
 fn annotation_use_site_target(parser: &mut Parser<'_, '_>) {
-    parser.sink.start_node(ANNOTATION_USE_SITE_TARGET);
+    parser.start_node(ANNOTATION_USE_SITE_TARGET);
 
     match parser.current_token() {
         Some(Token::AT_NO_WS | Token::AT_PRE_WS) => parser.bump(),
@@ -136,11 +137,11 @@ fn annotation_use_site_target(parser: &mut Parser<'_, '_>) {
             .error("expected ':' after use-site target".into());
     }
 
-    parser.sink.finish_node();
+    parser.finish_node(ANNOTATION_USE_SITE_TARGET);
 }
 
 fn unescaped_annotation(parser: &mut Parser<'_, '_>) {
-    parser.sink.start_node(UNESCAPED_ANNOTATION);
+    parser.start_node(UNESCAPED_ANNOTATION);
     parser.skip_trivia_and_newlines();
 
     // Parse userType via type_reference for now.
@@ -154,7 +155,7 @@ fn unescaped_annotation(parser: &mut Parser<'_, '_>) {
         }
     }
 
-    parser.sink.finish_node();
+    parser.finish_node(UNESCAPED_ANNOTATION);
 }
 
 fn starts_user_type(parser: &mut Parser<'_, '_>) -> bool {
@@ -164,36 +165,6 @@ fn starts_user_type(parser: &mut Parser<'_, '_>) -> bool {
             .map(|sp| (sp.is_soft_keyword(), *sp.token())),
         Some((true, _)) | Some((_, Token::IDENTIFIER_TOKEN))
     )
-}
-
-fn starts_use_site_target(parser: &mut Parser<'_, '_>) -> bool {
-    if !matches!(
-        parser.current_token(),
-        Some(Token::AT_NO_WS | Token::AT_PRE_WS)
-    ) {
-        return false;
-    }
-
-    let mut idx = 1usize;
-    skip_trivia_tokens(parser, &mut idx);
-
-    match parser.lookahead_token(idx) {
-        Some(
-            Token::FIELD
-            | Token::PROPERTY
-            | Token::GET
-            | Token::SET
-            | Token::RECEIVER
-            | Token::PARAM
-            | Token::SET_PARAM
-            | Token::DELEGATE,
-        ) => {
-            idx += 1;
-            skip_trivia_tokens(parser, &mut idx);
-            matches!(parser.lookahead_token(idx), Some(Token::COLON))
-        }
-        _ => false,
-    }
 }
 
 fn is_multi_annotation(parser: &mut Parser<'_, '_>) -> bool {
@@ -226,15 +197,4 @@ fn is_multi_annotation(parser: &mut Parser<'_, '_>) -> bool {
 
     skip_trivia_tokens(parser, &mut idx);
     matches!(parser.lookahead_token(idx), Some(Token::L_SQUARE))
-}
-
-fn skip_trivia_tokens(parser: &mut Parser<'_, '_>, idx: &mut usize) {
-    loop {
-        match parser.lookahead_token(*idx) {
-            Some(Token::WS | Token::NL | Token::LINE_COMMENT | Token::DELIMITED_COMMENT) => {
-                *idx += 1;
-            }
-            _ => return,
-        }
-    }
 }

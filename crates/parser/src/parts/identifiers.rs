@@ -23,7 +23,7 @@ pub(crate) fn simple_identifier(parser: &mut Parser<'_, '_>) {
 }
 
 pub(crate) fn identifier(parser: &mut Parser<'_, '_>) {
-    parser.sink.start_node(IDENTIFIER);
+    parser.start_node(IDENTIFIER);
     simple_identifier(parser);
     loop {
         parser.skip_trivia_and_newlines();
@@ -39,5 +39,5 @@ pub(crate) fn identifier(parser: &mut Parser<'_, '_>) {
             _ => break,
         }
     }
-    parser.sink.finish_node();
+    parser.finish_node(IDENTIFIER);
 }

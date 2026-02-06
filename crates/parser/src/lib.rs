@@ -194,6 +194,21 @@ impl Parser<'_, '_> {
             sink: tree_sink,
         }
     }
+
+    fn start_node(&mut self, kind: SyntaxKind) {
+        #[cfg(debug_assertions)]
+        {
+            println!("Starting node: {:?}", kind);
+        }
+        self.sink.start_node(kind);
+    }
+    fn finish_node(&mut self, kind: SyntaxKind) {
+        #[cfg(debug_assertions)]
+        {
+            println!("Finishing node: {:?}", kind);
+        }
+        self.sink.finish_node();
+    }
 }
 
 pub fn parse<'a>(token_source: &'a mut dyn TokenSource<'_>, tree_sink: &'a mut dyn TreeSink) {

@@ -144,7 +144,7 @@ fn type_projection(parser: &mut Parser<'_, '_>) {
     parser.sink.finish_node();
 }
 
-fn type_arguments(parser: &mut Parser<'_, '_>) {
+pub(crate) fn type_arguments(parser: &mut Parser<'_, '_>) {
     parser.sink.start_node(TYPE_ARGUMENTS);
 
     if parser.current_token() != Some(&Token::L_ANGLE) {
