@@ -5,7 +5,7 @@ use super::annotations::annotation;
 use super::identifiers::simple_identifier;
 use super::types::{ty, type_arguments};
 use super::utils::{skip_trivia_tokens, starts_use_site_target};
-use crate::{Parser, debug_loop};
+use crate::{Parser, parse_loop, parse_while};
 
 pub(crate) fn expression(parser: &mut Parser<'_, '_>) {
     parser.skip_trivia_and_newlines();
@@ -19,11 +19,11 @@ fn disjunction(parser: &mut Parser<'_, '_>) {
     conjunction(parser);
     parser.skip_trivia_and_newlines();
 
-    while parser.current_token() == Some(&Token::DISJ) {
+    parse_while!(parser.current_token() == Some(&Token::DISJ), parser => {
         parser.bump();
         parser.skip_trivia_and_newlines();
         conjunction(parser);
-    }
+    });
 
     parser.finish_node(DISJUNCTION);
 }
@@ -33,11 +33,11 @@ fn conjunction(parser: &mut Parser<'_, '_>) {
     equality(parser);
     parser.skip_trivia_and_newlines();
 
-    while parser.current_token() == Some(&Token::CONJ) {
+    parse_while!(parser.current_token() == Some(&Token::CONJ), parser => {
         parser.bump();
         parser.skip_trivia_and_newlines();
         equality(parser);
-    }
+    });
 
     parser.finish_node(CONJUNCTION);
 }
@@ -47,17 +47,20 @@ fn equality(parser: &mut Parser<'_, '_>) {
     comparison(parser);
     parser.skip_trivia_and_newlines();
 
-    while matches!(
-        parser.current_token(),
-        Some(Token::EXCL_EQ | Token::EXCL_EQ_EQ | Token::EQ_EQ | Token::EQ_EQ_EQ)
-    ) {
-        parser.start_node(EQUALITY_OPERATOR);
-        parser.bump();
-        parser.finish_node(EQUALITY_OPERATOR);
+    parse_while!(
+        matches!(
+            parser.current_token(),
+            Some(Token::EXCL_EQ | Token::EXCL_EQ_EQ | Token::EQ_EQ | Token::EQ_EQ_EQ)
+        ),
+        parser => {
+            parser.start_node(EQUALITY_OPERATOR);
+            parser.bump();
+            parser.finish_node(EQUALITY_OPERATOR);
 
-        parser.skip_trivia_and_newlines();
-        comparison(parser);
-    }
+            parser.skip_trivia_and_newlines();
+            comparison(parser);
+        }
+    );
 
     parser.finish_node(EQUALITY);
 }
@@ -67,17 +70,20 @@ fn comparison(parser: &mut Parser<'_, '_>) {
     generic_call_like_comparison(parser);
     parser.skip_trivia_and_newlines();
 
-    while matches!(
-        parser.current_token(),
-        Some(Token::L_ANGLE | Token::R_ANGLE | Token::LE | Token::GE)
-    ) {
-        parser.start_node(COMPARISON_OPERATOR);
-        parser.bump();
-        parser.finish_node(COMPARISON_OPERATOR);
+    parse_while!(
+        matches!(
+            parser.current_token(),
+            Some(Token::L_ANGLE | Token::R_ANGLE | Token::LE | Token::GE)
+        ),
+        parser => {
+            parser.start_node(COMPARISON_OPERATOR);
+            parser.bump();
+            parser.finish_node(COMPARISON_OPERATOR);
 
-        parser.skip_trivia_and_newlines();
-        generic_call_like_comparison(parser);
-    }
+            parser.skip_trivia_and_newlines();
+            generic_call_like_comparison(parser);
+        }
+    );
 
     parser.finish_node(COMPARISON);
 }
@@ -87,9 +93,9 @@ fn generic_call_like_comparison(parser: &mut Parser<'_, '_>) {
     infix_operation(parser);
     parser.skip_trivia_and_newlines();
 
-    while starts_call_suffix(parser) {
+    parse_while!(starts_call_suffix(parser), parser => {
         call_suffix(parser);
-    }
+    });
 
     parser.finish_node(GENERIC_CALL_LIKE_COMPARISON);
 }
@@ -98,7 +104,7 @@ fn infix_operation(parser: &mut Parser<'_, '_>) {
     parser.start_node(INFIX_OPERATION);
     elvis_expression(parser);
 
-    debug_loop! { parser =>
+    parse_loop! { parser =>
         parser.skip_trivia_and_newlines();
         match parser.current_token() {
             Some(Token::IN | Token::NOT_IN) => {
@@ -126,11 +132,11 @@ fn elvis_expression(parser: &mut Parser<'_, '_>) {
     parser.start_node(ELVIS_EXPRESSION);
     infix_function_call(parser);
 
-    while parser.current_token() == Some(&Token::QUEST_NO_WS) {
+    parse_while!(parser.current_token() == Some(&Token::QUEST_NO_WS), parser => {
         let mut idx = 1usize;
-        while matches!(parser.lookahead_token(idx), Some(Token::WS | Token::NL)) {
+        parse_while!(matches!(parser.lookahead_token(idx), Some(Token::WS | Token::NL)), parser => {
             idx += 1;
-        }
+        });
         if parser.lookahead_token(idx) != Some(Token::COLON) {
             break;
         }
@@ -147,7 +153,7 @@ fn elvis_expression(parser: &mut Parser<'_, '_>) {
 
         parser.skip_trivia_and_newlines();
         infix_function_call(parser);
-    }
+    });
 
     parser.finish_node(ELVIS_EXPRESSION);
 }
@@ -157,7 +163,7 @@ fn infix_function_call(parser: &mut Parser<'_, '_>) {
     range_expression(parser);
     let mut i = 0;
 
-    debug_loop! { parser =>
+    parse_loop! { parser =>
         parser.skip_trivia();
         if !starts_simple_identifier(parser) {
             break;
@@ -182,15 +188,18 @@ fn range_expression(parser: &mut Parser<'_, '_>) {
     additive_expression(parser);
     parser.skip_trivia();
 
-    while matches!(
-        parser.current_token(),
-        Some(Token::RANGE | Token::RANGE_LESS)
-    ) {
-        parser.bump();
-        parser.skip_trivia_and_newlines();
-        additive_expression(parser);
-        parser.skip_trivia();
-    }
+    parse_while!(
+        matches!(
+            parser.current_token(),
+            Some(Token::RANGE | Token::RANGE_LESS)
+        ),
+        parser => {
+            parser.bump();
+            parser.skip_trivia_and_newlines();
+            additive_expression(parser);
+            parser.skip_trivia();
+        }
+    );
 
     parser.finish_node(RANGE_EXPRESSION);
 }
@@ -200,7 +209,7 @@ fn additive_expression(parser: &mut Parser<'_, '_>) {
     multiplicative_expression(parser);
     parser.skip_trivia();
 
-    while matches!(parser.current_token(), Some(Token::ADD | Token::SUB)) {
+    parse_while!(matches!(parser.current_token(), Some(Token::ADD | Token::SUB)), parser => {
         parser.start_node(ADDITIVE_OPERATOR);
         parser.bump();
         parser.finish_node(ADDITIVE_OPERATOR);
@@ -208,7 +217,7 @@ fn additive_expression(parser: &mut Parser<'_, '_>) {
         parser.skip_trivia_and_newlines();
         multiplicative_expression(parser);
         parser.skip_trivia();
-    }
+    });
 
     parser.finish_node(ADDITIVE_EXPRESSION);
 }
@@ -218,18 +227,21 @@ fn multiplicative_expression(parser: &mut Parser<'_, '_>) {
     as_expression(parser);
     parser.skip_trivia();
 
-    while matches!(
-        parser.current_token(),
-        Some(Token::MULT | Token::DIV | Token::MOD)
-    ) {
-        parser.start_node(MULTIPLICATIVE_OPERATOR);
-        parser.bump();
-        parser.finish_node(MULTIPLICATIVE_OPERATOR);
+    parse_while!(
+        matches!(
+            parser.current_token(),
+            Some(Token::MULT | Token::DIV | Token::MOD)
+        ),
+        parser => {
+            parser.start_node(MULTIPLICATIVE_OPERATOR);
+            parser.bump();
+            parser.finish_node(MULTIPLICATIVE_OPERATOR);
 
-        parser.skip_trivia_and_newlines();
-        as_expression(parser);
-        parser.skip_trivia();
-    }
+            parser.skip_trivia_and_newlines();
+            as_expression(parser);
+            parser.skip_trivia();
+        }
+    );
 
     parser.finish_node(MULTIPLICATIVE_EXPRESSION);
 }
@@ -239,13 +251,13 @@ fn as_expression(parser: &mut Parser<'_, '_>) {
     prefix_unary_expression(parser);
     parser.skip_trivia_and_newlines();
 
-    while matches!(parser.current_token(), Some(Token::AS | Token::AS_SAFE)) {
+    parse_while!(matches!(parser.current_token(), Some(Token::AS | Token::AS_SAFE)), parser => {
         parser.start_node(AS_OPERATOR);
         parser.bump();
         parser.finish_node(AS_OPERATOR);
         parser.skip_trivia_and_newlines();
         ty(parser);
-    }
+    });
 
     parser.finish_node(AS_EXPRESSION);
 }
@@ -253,9 +265,9 @@ fn as_expression(parser: &mut Parser<'_, '_>) {
 fn prefix_unary_expression(parser: &mut Parser<'_, '_>) {
     parser.start_node(PREFIX_UNARY_EXPRESSION);
 
-    while starts_unary_prefix(parser) {
+    parse_while!(starts_unary_prefix(parser), parser => {
         unary_prefix(parser);
-    }
+    });
 
     postfix_unary_expression(parser);
     parser.finish_node(PREFIX_UNARY_EXPRESSION);
@@ -280,10 +292,10 @@ fn postfix_unary_expression(parser: &mut Parser<'_, '_>) {
     primary_expression(parser);
     parser.skip_trivia_and_newlines();
 
-    while starts_postfix_unary_suffix(parser) {
+    parse_while!(starts_postfix_unary_suffix(parser), parser => {
         postfix_unary_suffix(parser);
         parser.skip_trivia_and_newlines();
-    }
+    });
 
     parser.finish_node(POSTFIX_UNARY_EXPRESSION);
 }
@@ -397,7 +409,7 @@ fn indexing_suffix(parser: &mut Parser<'_, '_>) {
     }
 
     parser.bump();
-    debug_loop! { parser =>
+    parse_loop! { parser =>
         parser.skip_trivia_and_newlines();
         if matches!(parser.current_token(), Some(Token::R_SQUARE) | None) {
             break;
@@ -462,9 +474,9 @@ fn call_suffix(parser: &mut Parser<'_, '_>) {
 fn annotated_lambda(parser: &mut Parser<'_, '_>) {
     parser.start_node(ANNOTATED_LAMBDA);
 
-    while starts_annotation(parser) {
+    parse_while!(starts_annotation(parser), parser => {
         annotation(parser);
-    }
+    });
 
     if starts_label(parser) {
         label(parser);
@@ -518,7 +530,7 @@ fn value_arguments(parser: &mut Parser<'_, '_>) {
     parser.bump();
     parser.skip_trivia_and_newlines();
 
-    debug_loop! { parser =>
+    parse_loop! { parser =>
         if matches!(parser.current_token(), Some(Token::R_PAREN) | None) {
             break;
         }
@@ -554,9 +566,9 @@ fn value_argument(parser: &mut Parser<'_, '_>) {
 
     if starts_simple_identifier(parser) {
         let mut idx = 1usize;
-        while matches!(parser.lookahead_token(idx), Some(Token::WS | Token::NL)) {
+        parse_while!(matches!(parser.lookahead_token(idx), Some(Token::WS | Token::NL)), parser => {
             idx += 1;
-        }
+        });
         if parser.lookahead_token(idx) == Some(Token::ASSIGNMENT_TOKEN) {
             simple_identifier(parser);
             parser.skip_trivia_and_newlines();
@@ -649,7 +661,7 @@ fn collection_literal(parser: &mut Parser<'_, '_>) {
     }
 
     parser.bump();
-    debug_loop! { parser =>
+    parse_loop! { parser =>
         parser.skip_trivia_and_newlines();
         if matches!(parser.current_token(), Some(Token::R_SQUARE) | None) {
             break;
@@ -788,7 +800,7 @@ fn starts_call_suffix(parser: &mut Parser<'_, '_>) -> bool {
             let mut idx = 0usize;
             let mut depth = 0i32;
 
-            debug_loop! { parser =>
+            loop {
                 match parser.lookahead_token(idx) {
                     Some(Token::L_ANGLE) => {
                         depth += 1;

@@ -10,6 +10,8 @@ use tokens::Token;
 
 pub trait TokenSource<'a> {
     fn current(&mut self) -> Option<&SpannedWithSource<'a>>;
+    #[cfg(debug_assertions)]
+    fn current_index(&mut self) -> Option<usize>;
     fn lookahead_nth(&mut self, n: usize) -> Option<&SpannedWithSource<'a>>;
     fn is_keyword(&mut self) -> bool;
 
@@ -146,6 +148,13 @@ impl Parser<'_, '_> {
     }
     fn current_token(&mut self) -> Option<&Token> {
         self.source.current().map(|sp| sp.token())
+    }
+
+    /// Returns the index of the current token, if available.
+    /// This is used for error reporting and other features that require knowledge of the token's position in the source.
+    #[cfg(debug_assertions)]
+    fn current_token_index(&mut self) -> Option<usize> {
+        self.source.current_index()
     }
 
     fn next_two(&mut self) -> Option<(SpannedWithSource<'_>, SpannedWithSource<'_>)> {

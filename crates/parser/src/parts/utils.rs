@@ -44,16 +44,35 @@ pub(crate) fn starts_use_site_target(parser: &mut Parser<'_, '_>) -> bool {
 }
 
 #[macro_export]
-macro_rules! debug_loop {
+macro_rules! parse_loop {
     ($parser:expr => $($body:tt)*) => {
+        #[cfg(debug_assertions)]
+        let start_index = $parser.current_token_index();
+        #[cfg(debug_assertions)]
         let mut counter = 0;
         loop {
-            if counter >= 100 {
-                println!("Current token: {:?}", $parser.current_token());
-                panic!("Debug loop exceeded 100 iterations");
+            #[cfg(debug_assertions)]
+            if counter >= 1 && start_index == $parser.current_token_index() {
+                println!("Infinite loop detected. Current token: {:?}", $parser.current_token());
+                break;
             }
-            counter += 1;
+            #[cfg(debug_assertions)]
+            { counter += 1; }
+
             $($body)*
         }
+    };
+}
+
+#[macro_export]
+macro_rules! parse_while {
+    ($condition:expr, $parser:expr => $($body:tt)*) => {
+        parse_loop!($parser => {
+            if $condition {
+                $($body)*
+            } else {
+                break;
+            }
+        });
     };
 }

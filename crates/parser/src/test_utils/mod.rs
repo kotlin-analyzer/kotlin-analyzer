@@ -13,7 +13,7 @@ struct TestTreeSink {
 
 struct TestSource<'a, T>
 where
-    T: Iterator<Item = SpannedWithSource<'a>> + 'a,
+    T: Iterator<Item = (usize, SpannedWithSource<'a>)> + 'a,
 {
     source: PeekNth<T>,
 }
@@ -39,14 +39,14 @@ impl TreeSink for TestTreeSink {
 
 impl<'a, T> TokenSource<'a> for TestSource<'a, T>
 where
-    T: Iterator<Item = SpannedWithSource<'a>> + 'a,
+    T: Iterator<Item = (usize, SpannedWithSource<'a>)> + 'a,
 {
     fn current(&mut self) -> Option<&SpannedWithSource<'a>> {
-        self.source.peek_nth(0)
+        self.source.peek_nth(0).map(|(_, s)| s)
     }
 
     fn lookahead_nth(&mut self, n: usize) -> Option<&SpannedWithSource<'a>> {
-        self.source.peek_nth(n)
+        self.source.peek_nth(n).map(|(_, s)| s)
     }
 
     fn is_keyword(&mut self) -> bool {
@@ -54,7 +54,12 @@ where
     }
 
     fn bump(&mut self) -> Option<SpannedWithSource<'a>> {
-        self.source.next()
+        self.source.next().map(|(_, s)| s)
+    }
+
+    #[cfg(debug_assertions)]
+    fn current_index(&mut self) -> Option<usize> {
+        self.source.peek_nth(0).map(|(idx, _)| *idx)
     }
 }
 
@@ -69,7 +74,7 @@ pub fn parse(text: &str) -> Parse {
         builder: GreenNodeBuilder::new(),
         errors: Vec::new(),
     };
-    let tokens = Lexer::new(text).spanned_with_src();
+    let tokens = Lexer::new(text).spanned_with_src().enumerate();
     let mut source = TestSource {
         source: peek_nth(tokens),
     };
@@ -98,7 +103,7 @@ pub fn make_parser(f: impl FnOnce(&mut Parser<'_, '_>)) -> impl FnOnce(&str) -> 
             builder: GreenNodeBuilder::new(),
             errors: Vec::new(),
         };
-        let tokens = Lexer::new(text).spanned_with_src();
+        let tokens = Lexer::new(text).spanned_with_src().enumerate();
         let mut source = TestSource {
             source: peek_nth(tokens),
         };
