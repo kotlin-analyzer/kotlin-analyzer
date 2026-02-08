@@ -2,6 +2,7 @@ use ast::syntax::SyntaxKind::*;
 use tokens::Token;
 
 use super::annotations::annotation;
+use super::classes::type_parameters;
 use super::expressions::{expression, value_arguments};
 use super::identifiers::simple_identifier;
 use super::modifiers::{parameter_modifiers, parse_optional_modifiers, starts_modifiers};
@@ -628,36 +629,6 @@ fn starts_class_member_declaration(parser: &mut Parser<'_, '_>) -> bool {
                     | Token::OBJECT
             )
         )
-}
-
-fn type_parameters(parser: &mut Parser<'_, '_>) {
-    parser.start_node(TYPE_PARAMETERS);
-    if parser.current_token() != Some(&Token::L_ANGLE) {
-        parser.sink.error("expected '<'".into());
-        parser.finish_node(TYPE_PARAMETERS);
-        return;
-    }
-
-    parser.bump();
-    let mut depth = 1i32;
-    while let Some(tok) = parser.current_token() {
-        match tok {
-            Token::L_ANGLE => {
-                depth += 1;
-                parser.bump();
-            }
-            Token::R_ANGLE => {
-                depth -= 1;
-                parser.bump();
-                if depth == 0 {
-                    break;
-                }
-            }
-            _ => parser.bump(),
-        }
-    }
-
-    parser.finish_node(TYPE_PARAMETERS);
 }
 
 fn looks_like_receiver_type(parser: &mut Parser<'_, '_>) -> bool {

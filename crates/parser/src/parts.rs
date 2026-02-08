@@ -31,3 +31,7 @@ mod enum_classes_test;
 pub(crate) mod statements;
 #[cfg(test)]
 mod statements_test;
+
+pub(crate) mod classes;
+#[cfg(test)]
+mod classes_test;
