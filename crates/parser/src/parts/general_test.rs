@@ -48,3 +48,40 @@ fn parses_script_with_statements() {
 	assert!(node.descendants().any(|n| n.kind() == IMPORT_LIST));
 	assert!(node.descendants().any(|n| n.kind() == STATEMENT));
 }
+
+#[test]
+fn parses_import_alias_and_star() {
+	let parse = make_parser(|parser| {
+		kotlin_file(parser);
+	});
+	let node = parse("import foo.bar as baz\nimport qux.*\nclass Foo {}").syntax();
+
+	assert!(node.descendants().any(|n| n.kind() == IMPORT_ALIAS));
+	assert!(node.descendants().any(|n| n.kind() == IMPORT_HEADER));
+}
+
+#[test]
+fn parses_multiple_top_level_objects() {
+	let parse = make_parser(|parser| {
+		kotlin_file(parser);
+	});
+	let node = parse("class A {}\nclass B {}\ntypealias C = A").syntax();
+
+	let count = node
+		.descendants()
+		.filter(|n| n.kind() == TOP_LEVEL_OBJECT)
+		.count();
+	assert_eq!(count, 3);
+}
+
+#[test]
+fn parses_various_declarations() {
+	let parse = make_parser(|parser| {
+		kotlin_file(parser);
+	});
+	let node = parse("object O {}\nfun f() {}\nval x: Int = 1").syntax();
+
+	assert!(node.descendants().any(|n| n.kind() == OBJECT_DECLARATION));
+	assert!(node.descendants().any(|n| n.kind() == FUNCTION_DECLARATION));
+	assert!(node.descendants().any(|n| n.kind() == PROPERTY_DECLARATION));
+}

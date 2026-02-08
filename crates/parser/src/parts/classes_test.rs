@@ -54,3 +54,30 @@ fn parses_enum_class_body_variant() {
 
 	assert!(node.descendants().any(|n| n.kind() == ENUM_CLASS_BODY));
 }
+
+#[test]
+fn parses_class_with_primary_constructor_modifier() {
+	let parse = make_parser(class_declaration);
+	let node = parse("class Foo private constructor(val x: Int)").syntax();
+
+	assert!(node.descendants().any(|n| n.kind() == PRIMARY_CONSTRUCTOR));
+	assert!(node.descendants().any(|n| n.kind() == MODIFIERS));
+}
+
+#[test]
+fn parses_class_parameters_without_val_var() {
+	let parse = make_parser(class_declaration);
+	let node = parse("class Foo(x: Int, y: String)").syntax();
+
+	assert!(node.descendants().any(|n| n.kind() == CLASS_PARAMETERS));
+	assert!(node.descendants().any(|n| n.kind() == CLASS_PARAMETER));
+}
+
+#[test]
+fn parses_class_with_delegation_and_body() {
+	let parse = make_parser(class_declaration);
+	let node = parse("class Foo: Bar() { val x = 1 }").syntax();
+
+	assert!(node.descendants().any(|n| n.kind() == DELEGATION_SPECIFIERS));
+	assert!(node.descendants().any(|n| n.kind() == CLASS_BODY));
+}

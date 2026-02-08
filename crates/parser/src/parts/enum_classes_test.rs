@@ -43,3 +43,20 @@ fn parses_enum_class_body_with_members() {
 		.descendants()
 		.any(|n| n.kind() == CLASS_MEMBER_DECLARATIONS));
 }
+
+#[test]
+fn parses_enum_entry_with_modifiers() {
+	let parse = make_parser(enum_entry);
+	let node = parse("data A").syntax();
+
+	assert!(node.descendants().any(|n| n.kind() == MODIFIERS));
+	assert!(node.descendants().any(|n| n.kind() == SIMPLE_IDENTIFIER));
+}
+
+#[test]
+fn parses_enum_class_body_without_members() {
+	let parse = make_parser(enum_class_body);
+	let node = parse("{ A, B }").syntax();
+
+	assert!(node.descendants().any(|n| n.kind() == ENUM_ENTRIES));
+}

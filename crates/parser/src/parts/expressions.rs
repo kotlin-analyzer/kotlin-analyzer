@@ -441,6 +441,7 @@ fn navigation_suffix(parser: &mut Parser<'_, '_>) {
     match parser.current_token() {
         Some(Token::CLASS) => parser.bump(),
         Some(Token::L_PAREN) => parenthesized_expression(parser),
+        Some(Token::L_SQUARE) => collection_literal(parser),
         _ => simple_identifier(parser),
     }
 
@@ -602,6 +603,7 @@ fn primary_expression(parser: &mut Parser<'_, '_>) {
 
     match token_only {
         Some(Token::L_PAREN) => parenthesized_expression(parser),
+        Some(Token::L_SQUARE) => collection_literal(parser),
         Some(
             Token::INTEGER_LITERAL
             | Token::REAL_LITERAL

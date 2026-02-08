@@ -115,3 +115,44 @@ fn parses_identifier() {
 
     assert!(simple_identifier.first_token().is_some());
 }
+
+#[test]
+fn parses_collection_literal() {
+    let parse = make_parser(expression);
+    let node = parse("[1, 2, 3]").syntax();
+
+    assert!(node.descendants().any(|n| n.kind() == COLLECTION_LITERAL));
+}
+
+#[test]
+fn parses_this_expression() {
+    let parse = make_parser(expression);
+    let node = parse("this").syntax();
+
+    assert!(node.descendants().any(|n| n.kind() == THIS_EXPRESSION));
+}
+
+#[test]
+fn parses_super_expression() {
+    let parse = make_parser(expression);
+    let node = parse("super").syntax();
+
+    assert!(node.descendants().any(|n| n.kind() == SUPER_EXPRESSION));
+}
+
+#[test]
+fn parses_range_expression() {
+    let parse = make_parser(expression);
+    let node = parse("1..2").syntax();
+
+    assert!(node.descendants().any(|n| n.kind() == RANGE_EXPRESSION));
+}
+
+#[test]
+fn parses_safe_navigation() {
+    let parse = make_parser(expression);
+    let node = parse("a?.b").syntax();
+
+    assert!(node.descendants().any(|n| n.kind() == SAFE_NAV));
+    assert!(node.descendants().any(|n| n.kind() == NAVIGATION_SUFFIX));
+}

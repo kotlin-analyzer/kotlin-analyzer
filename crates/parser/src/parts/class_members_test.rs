@@ -72,3 +72,40 @@ fn parses_class_member_declarations_list() {
         .collect();
     assert_eq!(kinds.len(), 3);
 }
+
+#[test]
+fn parses_property_with_getter_setter() {
+    let parse = make_parser(class_member_declaration);
+    let node = parse("var x: Int = 1").syntax();
+
+    assert!(node.descendants().any(|n| n.kind() == PROPERTY_DECLARATION));
+}
+
+#[test]
+fn parses_property_delegate() {
+    let parse = make_parser(class_member_declaration);
+    let node = parse("val x by foo()\n").syntax();
+
+    assert!(node.descendants().any(|n| n.kind() == PROPERTY_DELEGATE));
+}
+
+#[test]
+fn parses_secondary_constructor_with_block() {
+    let parse = make_parser(class_member_declaration);
+    let node = parse("constructor() { }").syntax();
+
+    assert!(
+        node.descendants()
+            .any(|n| n.kind() == SECONDARY_CONSTRUCTOR)
+    );
+    assert!(node.descendants().any(|n| n.kind() == BLOCK));
+}
+
+#[test]
+fn parses_companion_object_with_name() {
+    let parse = make_parser(class_member_declaration);
+    let node = parse("companion object Foo { }").syntax();
+
+    assert!(node.descendants().any(|n| n.kind() == COMPANION_OBJECT));
+    assert!(node.descendants().any(|n| n.kind() == SIMPLE_IDENTIFIER));
+}

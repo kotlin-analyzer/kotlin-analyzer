@@ -69,3 +69,31 @@ fn parses_statements_with_semis() {
 
     assert_eq!(count, 3);
 }
+
+#[test]
+fn parses_for_with_annotations() {
+    let parse = make_parser(statement);
+    let node = parse("for (@A i: Int in items) i").syntax();
+
+    assert!(node.descendants().any(|n| n.kind() == FOR_STATEMENT));
+    assert!(node.descendants().any(|n| n.kind() == ANNOTATION));
+}
+
+#[test]
+fn parses_for_with_multi_variable() {
+    let parse = make_parser(statement);
+    let node = parse("for ((a, b) in items) a").syntax();
+
+    assert!(node.descendants().any(|n| n.kind() == FOR_STATEMENT));
+    assert!(node
+        .descendants()
+        .any(|n| n.kind() == MULTI_VARIABLE_DECLARATION));
+}
+
+#[test]
+fn parses_while_with_semicolon_body() {
+    let parse = make_parser(statement);
+    let node = parse("while (x) ;").syntax();
+
+    assert!(node.descendants().any(|n| n.kind() == WHILE_STATEMENT));
+}
