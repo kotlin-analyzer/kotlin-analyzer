@@ -23,3 +23,7 @@ mod expressions_test;
 pub(crate) mod class_members;
 #[cfg(test)]
 mod class_members_test;
+
+pub(crate) mod enum_classes;
+#[cfg(test)]
+mod enum_classes_test;

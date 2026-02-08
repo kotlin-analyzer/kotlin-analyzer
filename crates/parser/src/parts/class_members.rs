@@ -6,7 +6,7 @@ use super::expressions::{expression, value_arguments};
 use super::identifiers::simple_identifier;
 use super::modifiers::{parameter_modifiers, parse_optional_modifiers, starts_modifiers};
 use super::types::ty;
-use super::utils::starts_annotation;
+use super::utils::{starts_annotation, starts_simple_identifier};
 use crate::{Parser, parse_loop, parse_while};
 
 pub(crate) fn class_member_declarations(parser: &mut Parser<'_, '_>) {
@@ -48,9 +48,14 @@ pub(crate) fn class_member_declaration(parser: &mut Parser<'_, '_>) {
                 .error("expected class member declaration".into());
             parser.bump();
         }
-        _ => parser
-            .sink
-            .error("expected class member declaration".into()),
+        _ => {
+            parser
+                .sink
+                .error("expected class member declaration".into());
+            if parser.current_token().is_some() {
+                parser.bump();
+            }
+        }
     }
 
     parser.finish_node(CLASS_MEMBER_DECLARATION);
@@ -492,7 +497,7 @@ fn constructor_delegation_call(parser: &mut Parser<'_, '_>) {
     parser.finish_node(CONSTRUCTOR_DELEGATION_CALL);
 }
 
-fn class_body(parser: &mut Parser<'_, '_>) {
+pub(crate) fn class_body(parser: &mut Parser<'_, '_>) {
     parser.start_node(CLASS_BODY);
     if parser.current_token() != Some(&Token::L_CURL) {
         parser.sink.error("expected '{'".into());
@@ -658,7 +663,7 @@ fn type_parameters(parser: &mut Parser<'_, '_>) {
 fn looks_like_receiver_type(parser: &mut Parser<'_, '_>) -> bool {
     let mut idx = 0usize;
     let mut depth = 0i32;
-    parse_loop! { parser =>
+    loop {
         match parser.lookahead_token(idx) {
             Some(Token::WS | Token::NL | Token::LINE_COMMENT | Token::DELIMITED_COMMENT) => {
                 idx += 1;
@@ -678,15 +683,4 @@ fn looks_like_receiver_type(parser: &mut Parser<'_, '_>) -> bool {
             _ => idx += 1,
         }
     }
-
-    false
-}
-
-fn starts_simple_identifier(parser: &mut Parser<'_, '_>) -> bool {
-    matches!(
-        parser
-            .current()
-            .map(|sp| (sp.is_soft_keyword(), *sp.token())),
-        Some((true, _)) | Some((_, Token::IDENTIFIER_TOKEN))
-    )
 }

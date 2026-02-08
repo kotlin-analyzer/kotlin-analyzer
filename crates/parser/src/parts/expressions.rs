@@ -4,7 +4,7 @@ use tokens::Token;
 use super::annotations::annotation;
 use super::identifiers::simple_identifier;
 use super::types::{ty, type_arguments};
-use super::utils::{skip_trivia_tokens, starts_annotation};
+use super::utils::{skip_trivia_tokens, starts_annotation, starts_simple_identifier};
 use crate::{Parser, parse_loop, parse_while};
 
 pub(crate) fn expression(parser: &mut Parser<'_, '_>) {
@@ -853,15 +853,6 @@ fn starts_label(parser: &mut Parser<'_, '_>) -> bool {
     matches!(
         parser.lookahead_token(idx),
         Some(Token::AT_NO_WS | Token::AT_POST_WS)
-    )
-}
-
-fn starts_simple_identifier(parser: &mut Parser<'_, '_>) -> bool {
-    matches!(
-        parser
-            .current()
-            .map(|sp| (sp.is_soft_keyword(), *sp.token())),
-        Some((true, _)) | Some((_, Token::IDENTIFIER_TOKEN))
     )
 }
 

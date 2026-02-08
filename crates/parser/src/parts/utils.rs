@@ -50,6 +50,15 @@ pub(crate) fn starts_annotation(parser: &mut Parser<'_, '_>) -> bool {
     ) || starts_use_site_target(parser)
 }
 
+pub(crate) fn starts_simple_identifier(parser: &mut Parser<'_, '_>) -> bool {
+    matches!(
+        parser
+            .current()
+            .map(|sp| (sp.is_soft_keyword(), *sp.token())),
+        Some((true, _)) | Some((_, Token::IDENTIFIER_TOKEN))
+    )
+}
+
 #[macro_export]
 macro_rules! parse_loop {
     ($parser:expr => $($body:tt)*) => {
@@ -74,7 +83,7 @@ macro_rules! parse_loop {
 #[macro_export]
 macro_rules! parse_while {
     ($condition:expr, $parser:expr => $($body:tt)*) => {
-        parse_loop!($parser => {
+        $crate::parse_loop!($parser => {
             if $condition {
                 $($body)*
             } else {
