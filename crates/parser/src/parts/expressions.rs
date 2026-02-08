@@ -4,7 +4,7 @@ use tokens::Token;
 use super::annotations::annotation;
 use super::identifiers::simple_identifier;
 use super::types::{ty, type_arguments};
-use super::utils::{skip_trivia_tokens, starts_use_site_target};
+use super::utils::{skip_trivia_tokens, starts_annotation};
 use crate::{Parser, parse_loop, parse_while};
 
 pub(crate) fn expression(parser: &mut Parser<'_, '_>) {
@@ -518,7 +518,7 @@ fn lambda_literal(parser: &mut Parser<'_, '_>) {
     parser.finish_node(LAMBDA_LITERAL);
 }
 
-fn value_arguments(parser: &mut Parser<'_, '_>) {
+pub(crate) fn value_arguments(parser: &mut Parser<'_, '_>) {
     parser.start_node(VALUE_ARGUMENTS);
 
     if parser.current_token() != Some(&Token::L_PAREN) {
@@ -840,13 +840,6 @@ fn starts_annotated_lambda(parser: &mut Parser<'_, '_>) -> bool {
         parser.current_token(),
         Some(Token::L_CURL | Token::AT_NO_WS | Token::AT_PRE_WS)
     )
-}
-
-fn starts_annotation(parser: &mut Parser<'_, '_>) -> bool {
-    matches!(
-        parser.current_token(),
-        Some(Token::AT_NO_WS | Token::AT_PRE_WS)
-    ) || starts_use_site_target(parser)
 }
 
 fn starts_label(parser: &mut Parser<'_, '_>) -> bool {

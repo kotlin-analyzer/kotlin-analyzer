@@ -3,7 +3,7 @@ use tokens::Token;
 
 use super::annotations::annotation;
 use crate::Parser;
-use crate::parts::utils::starts_use_site_target;
+use crate::parts::utils::starts_annotation;
 
 pub(crate) fn modifiers(parser: &mut Parser<'_, '_>) {
     parser.skip_trivia_and_newlines();
@@ -264,11 +264,17 @@ fn platform_modifier(parser: &mut Parser<'_, '_>) {
     parser.sink.finish_node();
 }
 
-fn starts_annotation(parser: &mut Parser<'_, '_>) -> bool {
-    matches!(
-        parser.current_token(),
-        Some(Token::AT_NO_WS | Token::AT_PRE_WS)
-    ) || starts_use_site_target(parser)
+pub(crate) fn starts_modifiers(parser: &mut Parser<'_, '_>) -> bool {
+    starts_annotation(parser) || starts_modifier(parser)
+}
+
+pub(crate) fn parse_optional_modifiers(parser: &mut Parser<'_, '_>) -> bool {
+    if starts_modifiers(parser) {
+        modifiers(parser);
+        true
+    } else {
+        false
+    }
 }
 
 fn starts_modifier(parser: &mut Parser<'_, '_>) -> bool {

@@ -43,6 +43,13 @@ pub(crate) fn starts_use_site_target(parser: &mut Parser<'_, '_>) -> bool {
     }
 }
 
+pub(crate) fn starts_annotation(parser: &mut Parser<'_, '_>) -> bool {
+    matches!(
+        parser.current_token(),
+        Some(Token::AT_NO_WS | Token::AT_PRE_WS)
+    ) || starts_use_site_target(parser)
+}
+
 #[macro_export]
 macro_rules! parse_loop {
     ($parser:expr => $($body:tt)*) => {

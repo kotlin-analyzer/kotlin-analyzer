@@ -19,3 +19,7 @@ pub(crate) mod utils;
 pub(crate) mod expressions;
 #[cfg(test)]
 mod expressions_test;
+
+pub(crate) mod class_members;
+#[cfg(test)]
+mod class_members_test;
