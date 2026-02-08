@@ -120,7 +120,7 @@ fn companion_object(parser: &mut Parser<'_, '_>) {
     parser.finish_node(COMPANION_OBJECT);
 }
 
-fn function_declaration(parser: &mut Parser<'_, '_>) {
+pub(crate) fn function_declaration(parser: &mut Parser<'_, '_>) {
     parser.start_node(FUNCTION_DECLARATION);
 
     if parser.current_token() == Some(&Token::FUN) {
@@ -243,7 +243,7 @@ fn parameter(parser: &mut Parser<'_, '_>) {
     parser.finish_node(PARAMETER);
 }
 
-fn property_declaration(parser: &mut Parser<'_, '_>) {
+pub(crate) fn property_declaration(parser: &mut Parser<'_, '_>) {
     parser.start_node(PROPERTY_DECLARATION);
 
     match parser.current_token() {
@@ -442,7 +442,7 @@ fn parameter_with_optional_type(parser: &mut Parser<'_, '_>) {
     parser.finish_node(PARAMETER_WITH_OPTIONAL_TYPE);
 }
 
-fn object_declaration(parser: &mut Parser<'_, '_>) {
+pub(crate) fn object_declaration(parser: &mut Parser<'_, '_>) {
     parser.start_node(OBJECT_DECLARATION);
     if parser.current_token() == Some(&Token::OBJECT) {
         parser.bump();

@@ -34,95 +34,17 @@ pub(crate) struct Parser<'a, 'b> {
     sink: &'a mut dyn TreeSink,
 }
 
-pub(crate) enum ParseRes {
-    Ok,
-    Eof,
-    RParen,
-}
-
-pub(crate) enum TakeRes<'a> {
-    Ok,
-    Err(&'a mut dyn TreeSink),
-}
-
-impl TakeRes<'_> {
-    fn expect(&mut self, error: &str) {
-        match self {
-            TakeRes::Ok => (),
-            TakeRes::Err(sink) => sink.error(error.to_string()),
-        }
-    }
-}
-
 impl Parser<'_, '_> {
     fn parse(mut self) {
-        self.sink.start_node(ROOT);
-        loop {
-            match self.kotlin_file() {
-                ParseRes::Eof => break,
-                ParseRes::Ok => (),
-                _ => unimplemented!(),
-            }
-        }
-
-        self.skip_ws();
-        self.skip_newlines();
-        self.sink.finish_node();
+        self.start_node(ROOT);
+        parts::general::kotlin_file(&mut self);
+        self.finish_node(ROOT);
     }
 
-    fn kotlin_file(&mut self) -> ParseRes {
-        self.skip_ws();
-        let t = match self.current_token() {
-            None | Some(Token::EOF) => return ParseRes::Eof,
-            Some(t) => t,
-        };
-
-        match t {
-            Token::SHEBANG_LINE_TOKEN => self.shebang_line(),
-            Token::ERR => self.bump(),
-            _ => unimplemented!(),
-        }
-
-        ParseRes::Ok
-    }
-    fn kotlin_script(&mut self) {}
-
-    fn shebang_line(&mut self) {
-        assert_eq!(self.current_token(), Some(&Token::SHEBANG_LINE_TOKEN));
-
-        self.sink.start_node(SHEBANG_LINE);
-        self.bump();
-        self.take(Token::NL);
-        self.skip_newlines();
-        self.sink.finish_node();
-    }
-
-    fn file_annotation(&mut self) {
-        match self.next_two_tokens() {
-            Some((Token::AT_NO_WS | Token::AT_PRE_WS, Token::FILE)) => {
-                self.sink.start_node(FILE_ANNOTATION);
-                self.bump_n(2);
-                self.skip_newlines();
-                self.take(Token::COLON).expect("expected a colon (:)");
-                self.skip_newlines()
-            }
-            Some((Token::ERR, _) | (_, Token::ERR)) => self.bump(),
-            _ => {}
-        }
-    }
-
-    fn skip_ws(&mut self) {
-        self.skip(Token::WS)
-    }
-
-    fn skip_newlines(&mut self) {
-        self.skip(Token::NL)
-    }
-
-    fn skip(&mut self, token: Token) {
-        while self.current_token() == Some(&token) {
-            self.bump()
-        }
+    fn parse_script(mut self) {
+        self.start_node(ROOT);
+        parts::general::script(&mut self);
+        self.finish_node(ROOT);
     }
 
     fn skip_trivia(&mut self) {
@@ -175,22 +97,6 @@ impl Parser<'_, '_> {
     fn bump(&mut self) {
         if let Some(next) = self.source.bump() {
             self.sink.token(*next.token(), next.substring());
-        }
-    }
-
-    fn bump_n(&mut self, count: usize) {
-        for _ in 0..count {
-            self.bump();
-        }
-    }
-
-    fn take(&mut self, token: Token) -> TakeRes<'_> {
-        assert_eq!(self.current_token(), Some(&token));
-        if Some(&token) == self.current_token() {
-            self.bump();
-            TakeRes::Ok
-        } else {
-            TakeRes::Err(self.sink)
         }
     }
 

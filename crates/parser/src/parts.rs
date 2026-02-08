@@ -35,3 +35,7 @@ mod statements_test;
 pub(crate) mod classes;
 #[cfg(test)]
 mod classes_test;
+
+pub(crate) mod general;
+#[cfg(test)]
+mod general_test;

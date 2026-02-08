@@ -140,7 +140,7 @@ fn annotation_use_site_target(parser: &mut Parser<'_, '_>) {
     parser.finish_node(ANNOTATION_USE_SITE_TARGET);
 }
 
-fn unescaped_annotation(parser: &mut Parser<'_, '_>) {
+pub(crate) fn unescaped_annotation(parser: &mut Parser<'_, '_>) {
     parser.start_node(UNESCAPED_ANNOTATION);
     parser.skip_trivia_and_newlines();
 
