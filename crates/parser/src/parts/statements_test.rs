@@ -1,0 +1,71 @@
+use super::statements::{statement, statements};
+use crate::test_utils::make_parser;
+use ast::syntax::SyntaxKind::*;
+
+#[test]
+fn parses_simple_statement_expression() {
+    let parse = make_parser(statement);
+    let node = parse("x").syntax();
+
+    assert_eq!(node.kind(), STATEMENT);
+    assert!(node.descendants().any(|n| n.kind() == EXPRESSION));
+}
+
+#[test]
+fn parses_labeled_statement() {
+    let parse = make_parser(statement);
+    let node = parse("label@ x").syntax();
+
+    assert!(node.descendants().any(|n| n.kind() == LABEL));
+    assert!(node.descendants().any(|n| n.kind() == EXPRESSION));
+}
+
+#[test]
+fn parses_assignment_statement() {
+    let parse = make_parser(statement);
+    let node = parse("a = 1").syntax();
+
+    assert!(node.descendants().any(|n| n.kind() == ASSIGNMENT));
+}
+
+#[test]
+fn parses_compound_assignment_statement() {
+    let parse = make_parser(statement);
+    let node = parse("a += 1").syntax();
+
+    assert!(
+        node.descendants()
+            .any(|n| n.kind() == ASSIGNMENT_AND_OPERATOR)
+    );
+}
+
+#[test]
+fn parses_for_statement() {
+    let parse = make_parser(statement);
+    let node = parse("for (i in items) i").syntax();
+
+    assert!(node.descendants().any(|n| n.kind() == FOR_STATEMENT));
+    assert!(
+        node.descendants()
+            .any(|n| n.kind() == CONTROL_STRUCTURE_BODY)
+    );
+}
+
+#[test]
+fn parses_while_and_do_while() {
+    let parse = make_parser(statements);
+    let node = parse("while (x) { }\ndo { } while (x)").syntax();
+
+    assert!(node.descendants().any(|n| n.kind() == WHILE_STATEMENT));
+    assert!(node.descendants().any(|n| n.kind() == DO_WHILE_STATEMENT));
+}
+
+#[test]
+fn parses_statements_with_semis() {
+    let parse = make_parser(statements);
+    let node = parse("a; b; c").syntax();
+
+    let count = node.descendants().filter(|n| n.kind() == STATEMENT).count();
+
+    assert_eq!(count, 3);
+}

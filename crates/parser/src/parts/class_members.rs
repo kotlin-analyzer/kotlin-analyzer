@@ -516,7 +516,7 @@ pub(crate) fn class_body(parser: &mut Parser<'_, '_>) {
     parser.finish_node(CLASS_BODY);
 }
 
-fn block(parser: &mut Parser<'_, '_>) {
+pub(crate) fn block(parser: &mut Parser<'_, '_>) {
     parser.start_node(BLOCK);
     if parser.current_token() != Some(&Token::L_CURL) {
         parser.sink.error("expected '{'".into());
@@ -543,7 +543,7 @@ fn block(parser: &mut Parser<'_, '_>) {
     parser.finish_node(BLOCK);
 }
 
-fn variable_declaration(parser: &mut Parser<'_, '_>) {
+pub(crate) fn variable_declaration(parser: &mut Parser<'_, '_>) {
     parser.start_node(VARIABLE_DECLARATION);
     parse_while!(starts_annotation(parser), parser => {
         annotation(parser);
@@ -559,7 +559,7 @@ fn variable_declaration(parser: &mut Parser<'_, '_>) {
     parser.finish_node(VARIABLE_DECLARATION);
 }
 
-fn multi_variable_declaration(parser: &mut Parser<'_, '_>) {
+pub(crate) fn multi_variable_declaration(parser: &mut Parser<'_, '_>) {
     parser.start_node(MULTI_VARIABLE_DECLARATION);
     if parser.current_token() != Some(&Token::L_PAREN) {
         parser.sink.error("expected '('".into());
@@ -593,7 +593,7 @@ fn multi_variable_declaration(parser: &mut Parser<'_, '_>) {
     parser.finish_node(MULTI_VARIABLE_DECLARATION);
 }
 
-fn semis(parser: &mut Parser<'_, '_>) {
+pub(crate) fn semis(parser: &mut Parser<'_, '_>) {
     parser.start_node(SEMIS);
     parse_while!(starts_semis(parser), parser => {
         semi(parser);
@@ -601,7 +601,7 @@ fn semis(parser: &mut Parser<'_, '_>) {
     parser.finish_node(SEMIS);
 }
 
-fn semi(parser: &mut Parser<'_, '_>) {
+pub(crate) fn semi(parser: &mut Parser<'_, '_>) {
     parser.start_node(SEMI);
     match parser.current_token() {
         Some(Token::SEMICOLON | Token::NL) => parser.bump(),
@@ -610,7 +610,7 @@ fn semi(parser: &mut Parser<'_, '_>) {
     parser.finish_node(SEMI);
 }
 
-fn starts_semis(parser: &mut Parser<'_, '_>) -> bool {
+pub(crate) fn starts_semis(parser: &mut Parser<'_, '_>) -> bool {
     matches!(parser.current_token(), Some(Token::SEMICOLON | Token::NL))
 }
 

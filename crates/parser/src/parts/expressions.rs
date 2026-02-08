@@ -322,7 +322,7 @@ fn postfix_unary_suffix(parser: &mut Parser<'_, '_>) {
     parser.finish_node(POSTFIX_UNARY_SUFFIX);
 }
 
-fn directly_assignable_expression(parser: &mut Parser<'_, '_>) {
+pub(crate) fn directly_assignable_expression(parser: &mut Parser<'_, '_>) {
     parser.start_node(DIRECTLY_ASSIGNABLE_EXPRESSION);
     parser.skip_trivia_and_newlines();
 
@@ -360,7 +360,7 @@ fn parenthesized_directly_assignable_expression(parser: &mut Parser<'_, '_>) {
     parser.finish_node(PARENTHESIZED_DIRECTLY_ASSIGNABLE_EXPRESSION);
 }
 
-fn assignable_expression(parser: &mut Parser<'_, '_>) {
+pub(crate) fn assignable_expression(parser: &mut Parser<'_, '_>) {
     parser.start_node(ASSIGNABLE_EXPRESSION);
     if parser.current_token() == Some(&Token::L_PAREN) {
         parenthesized_assignable_expression(parser);
@@ -735,7 +735,7 @@ fn object_literal(parser: &mut Parser<'_, '_>) {
     parser.finish_node(OBJECT_LITERAL);
 }
 
-fn label(parser: &mut Parser<'_, '_>) {
+pub(crate) fn label(parser: &mut Parser<'_, '_>) {
     parser.start_node(LABEL);
     simple_identifier(parser);
     parser.skip_trivia_and_newlines();
@@ -842,7 +842,7 @@ fn starts_annotated_lambda(parser: &mut Parser<'_, '_>) -> bool {
     )
 }
 
-fn starts_label(parser: &mut Parser<'_, '_>) -> bool {
+pub(crate) fn starts_label(parser: &mut Parser<'_, '_>) -> bool {
     if !starts_simple_identifier(parser) {
         return false;
     }
