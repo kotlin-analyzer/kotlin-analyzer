@@ -1,6 +1,7 @@
 use super::class_members::{class_member_declaration, class_member_declarations};
 use crate::test_utils::make_parser;
 use ast::syntax::SyntaxKind::*;
+use rstest::Context;
 
 #[test]
 fn parses_anonymous_initializer() {
@@ -108,4 +109,17 @@ fn parses_companion_object_with_name() {
 
     assert!(node.descendants().any(|n| n.kind() == COMPANION_OBJECT));
     assert!(node.descendants().any(|n| n.kind() == SIMPLE_IDENTIFIER));
+}
+
+#[rstest::rstest]
+#[case::no_recovery("fun foo(val x = 1")]
+#[case::valid_recovery("fun foo)val x = 1")]
+fn recovers_after_invalid_member_declaration(#[context] ctx: Context, #[case] input: &str) {
+    use crate::test_utils::ContextExt;
+
+    let parse = make_parser(class_member_declarations);
+    let parsed = parse(input);
+
+    assert!(!parsed.errors.is_empty());
+    insta::assert_snapshot!(ctx.id(), parsed.snapshot());
 }

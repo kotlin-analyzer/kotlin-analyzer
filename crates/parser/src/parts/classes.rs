@@ -10,63 +10,86 @@ use super::modifiers::{
     modifiers, parse_optional_modifiers, starts_modifiers, type_parameter_modifiers,
 };
 use super::types::{ty, type_reference};
-use super::utils::{starts_annotation, starts_simple_identifier};
+use super::utils::{LIST_ITEM_RECOVERY, starts_annotation, starts_simple_identifier};
 use crate::{Parser, parse_loop, parse_while};
+
+const DECL_RECOVERY: &[Token] = &[Token::SEMICOLON, Token::NL, Token::R_CURL, Token::EOF];
+const COLON_RECOVERY: &[Token] = &[
+    Token::SEMICOLON,
+    Token::IDENTIFIER_TOKEN,
+    Token::COMMA,
+    Token::NL,
+    Token::R_CURL,
+    Token::R_PAREN,
+    Token::EOF,
+];
+const PAREN_RECOVERY: &[Token] = &[
+    Token::R_PAREN,
+    Token::SEMICOLON,
+    Token::NL,
+    Token::R_CURL,
+    Token::EOF,
+];
+const ANGLE_RECOVERY: &[Token] = &[Token::R_ANGLE, Token::SEMICOLON, Token::NL, Token::R_CURL];
 
 pub(crate) fn class_declaration(parser: &mut Parser<'_, '_>) {
     parser.start_node(CLASS_DECLARATION);
+    parse_loop! { parser =>
+        parse_optional_modifiers(parser);
+        parser.skip_trivia_and_newlines();
 
-    parse_optional_modifiers(parser);
-    parser.skip_trivia_and_newlines();
-
-    match parser.current_token() {
-        Some(Token::CLASS) => parser.bump(),
-        Some(Token::FUN) => {
-            parser.bump();
-            parser.skip_trivia_and_newlines();
-            if parser.current_token() == Some(&Token::INTERFACE) {
+        match parser.current_token() {
+            Some(Token::CLASS) => parser.bump(),
+            Some(Token::FUN) => {
                 parser.bump();
-            } else {
-                parser.sink.error("expected 'interface'".into());
+                parser.skip_trivia_and_newlines();
+                if !parser.expect_recover(Token::INTERFACE, "expected 'interface'", DECL_RECOVERY) {
+                    break;
+                }
+            }
+            Some(Token::INTERFACE) => parser.bump(),
+            _ => {
+                parser.error("expected 'class' or 'interface'");
+                parser.recover_until(DECL_RECOVERY);
+                break;
             }
         }
-        Some(Token::INTERFACE) => parser.bump(),
-        _ => parser.sink.error("expected 'class' or 'interface'".into()),
-    }
 
-    parser.skip_trivia_and_newlines();
-    simple_identifier(parser);
-
-    parser.skip_trivia_and_newlines();
-    if parser.current_token() == Some(&Token::L_ANGLE) {
-        type_parameters(parser);
         parser.skip_trivia_and_newlines();
-    }
+        simple_identifier(parser);
 
-    if parser.current_token() == Some(&Token::L_PAREN)
-        || starts_modifiers(parser)
-        || parser.current_token() == Some(&Token::CONSTRUCTOR)
-    {
-        primary_constructor(parser);
         parser.skip_trivia_and_newlines();
-    }
+        if parser.current_token() == Some(&Token::L_ANGLE) {
+            type_parameters(parser);
+            parser.skip_trivia_and_newlines();
+        }
 
-    if parser.current_token() == Some(&Token::COLON) {
-        parser.bump();
-        parser.skip_trivia_and_newlines();
-        delegation_specifiers(parser);
-        parser.skip_trivia_and_newlines();
-    }
+        if parser.current_token() == Some(&Token::L_PAREN)
+            || starts_modifiers(parser)
+            || parser.current_token() == Some(&Token::CONSTRUCTOR)
+        {
+            primary_constructor(parser);
+            parser.skip_trivia_and_newlines();
+        }
 
-    if parser.current_token() == Some(&Token::WHERE) {
-        type_constraints(parser);
-        parser.skip_trivia_and_newlines();
-    }
+        if parser.current_token() == Some(&Token::COLON) {
+            parser.bump();
+            parser.skip_trivia_and_newlines();
+            delegation_specifiers(parser);
+            parser.skip_trivia_and_newlines();
+        }
 
-    if looks_like_enum_body(parser) {
-        enum_class_body(parser);
-    } else if parser.current_token() == Some(&Token::L_CURL) {
-        class_body(parser);
+        if parser.current_token() == Some(&Token::WHERE) {
+            type_constraints(parser);
+            parser.skip_trivia_and_newlines();
+        }
+
+        if looks_like_enum_body(parser) {
+            enum_class_body(parser);
+        } else if parser.current_token() == Some(&Token::L_CURL) {
+            class_body(parser);
+        }
+        break;
     }
 
     parser.finish_node(CLASS_DECLARATION);
@@ -91,34 +114,35 @@ pub(crate) fn primary_constructor(parser: &mut Parser<'_, '_>) {
 
 pub(crate) fn class_parameters(parser: &mut Parser<'_, '_>) {
     parser.start_node(CLASS_PARAMETERS);
-
-    if parser.current_token() != Some(&Token::L_PAREN) {
-        parser.sink.error("expected '('".into());
-        parser.finish_node(CLASS_PARAMETERS);
-        return;
-    }
-
-    parser.bump();
-    parser.skip_trivia_and_newlines();
-
     parse_loop! { parser =>
-        if matches!(parser.current_token(), Some(Token::R_PAREN) | None) {
+        if !parser.expect_recover(Token::L_PAREN, "expected '(' after class name", PAREN_RECOVERY) {
+            if parser.current_token() == Some(&Token::R_PAREN) {
+                // recover from empty parameter list without trying to parse parameters
+                parser.bump();
+            }
             break;
         }
-        class_parameter(parser);
+
         parser.skip_trivia_and_newlines();
-        if parser.current_token() == Some(&Token::COMMA) {
-            parser.bump();
+
+        parse_loop! { parser =>
+            if matches!(parser.current_token(), Some(Token::R_PAREN) | None) {
+                break;
+            }
+            class_parameter(parser);
             parser.skip_trivia_and_newlines();
-            continue;
+            if parser.current_token() == Some(&Token::COMMA) {
+                parser.bump();
+                parser.skip_trivia_and_newlines();
+                continue;
+            }
+            break;
+        }
+
+        if !parser.expect_recover(Token::R_PAREN, "expected ')'", PAREN_RECOVERY) {
+            break;
         }
         break;
-    }
-
-    if parser.current_token() == Some(&Token::R_PAREN) {
-        parser.bump();
-    } else {
-        parser.sink.error("expected ')'".into());
     }
 
     parser.finish_node(CLASS_PARAMETERS);
@@ -126,31 +150,41 @@ pub(crate) fn class_parameters(parser: &mut Parser<'_, '_>) {
 
 fn class_parameter(parser: &mut Parser<'_, '_>) {
     parser.start_node(CLASS_PARAMETER);
-    parse_optional_modifiers(parser);
-    parser.skip_trivia_and_newlines();
-
-    if matches!(parser.current_token(), Some(Token::VAL | Token::VAR)) {
-        parser.bump();
+    parse_loop! { parser =>
+        parse_optional_modifiers(parser);
         parser.skip_trivia_and_newlines();
-    }
 
-    simple_identifier(parser);
-    parser.skip_trivia_and_newlines();
+        let mut has_val_or_var = false;
+        if matches!(parser.current_token(), Some(Token::VAL | Token::VAR)) {
+            has_val_or_var = true;
+            parser.bump();
+            parser.skip_trivia_and_newlines();
+        }
 
-    if parser.current_token() == Some(&Token::COLON) {
-        parser.bump();
-    } else {
-        parser.sink.error("expected ':'".into());
-    }
-
-    parser.skip_trivia_and_newlines();
-    ty(parser);
-
-    parser.skip_trivia_and_newlines();
-    if parser.current_token() == Some(&Token::ASSIGNMENT_TOKEN) {
-        parser.bump();
+        if !simple_identifier(parser) {
+            let error_msg = if has_val_or_var {
+                "expected parameter name"
+            } else {
+                "expected parameter name or ')'"
+            };
+            parser.error(error_msg);
+            parser.recover_until(LIST_ITEM_RECOVERY);
+            break;
+        }
         parser.skip_trivia_and_newlines();
-        expression(parser);
+
+        parser.expect_recover(Token::COLON, "expected ':' before type", COLON_RECOVERY);
+
+        parser.skip_trivia_and_newlines();
+        ty(parser);
+
+        parser.skip_trivia_and_newlines();
+        if parser.current_token() == Some(&Token::ASSIGNMENT_TOKEN) {
+            parser.bump();
+            parser.skip_trivia_and_newlines();
+            expression(parser);
+        }
+        break;
     }
 
     parser.finish_node(CLASS_PARAMETER);
@@ -208,52 +242,50 @@ fn constructor_invocation(parser: &mut Parser<'_, '_>) {
 
 fn explicit_delegation(parser: &mut Parser<'_, '_>) {
     parser.start_node(EXPLICIT_DELEGATION);
-    type_reference(parser);
-    parser.skip_trivia_and_newlines();
-    if parser.current_token() == Some(&Token::BY) {
-        parser.bump();
-    } else {
-        parser.sink.error("expected 'by'".into());
+    parse_loop! { parser =>
+        type_reference(parser);
+        parser.skip_trivia_and_newlines();
+        if !parser.expect_recover(Token::BY, "expected 'by'", DECL_RECOVERY) {
+            break;
+        }
+        parser.skip_trivia_and_newlines();
+        expression(parser);
+        break;
     }
-    parser.skip_trivia_and_newlines();
-    expression(parser);
     parser.finish_node(EXPLICIT_DELEGATION);
 }
 
 pub(crate) fn type_parameters(parser: &mut Parser<'_, '_>) {
     parser.start_node(TYPE_PARAMETERS);
-    if parser.current_token() != Some(&Token::L_ANGLE) {
-        parser.sink.error("expected '<'".into());
-        parser.finish_node(TYPE_PARAMETERS);
-        return;
-    }
-
-    parser.bump();
-    parser.skip_trivia_and_newlines();
-    if parser.current_token() == Some(&Token::R_ANGLE) {
-        parser.bump();
-        parser.finish_node(TYPE_PARAMETERS);
-        return;
-    }
-
     parse_loop! { parser =>
-        type_parameter(parser);
+        if !parser.expect_recover(Token::L_ANGLE, "expected '<'", ANGLE_RECOVERY) {
+            break;
+        }
+
         parser.skip_trivia_and_newlines();
-        if parser.current_token() == Some(&Token::COMMA) {
+        if parser.current_token() == Some(&Token::R_ANGLE) {
             parser.bump();
+            break;
+        }
+
+        parse_loop! { parser =>
+            type_parameter(parser);
             parser.skip_trivia_and_newlines();
-            if parser.current_token() == Some(&Token::R_ANGLE) {
-                break;
+            if parser.current_token() == Some(&Token::COMMA) {
+                parser.bump();
+                parser.skip_trivia_and_newlines();
+                if parser.current_token() == Some(&Token::R_ANGLE) {
+                    break;
+                }
+                continue;
             }
-            continue;
+            break;
+        }
+
+        if !parser.expect_recover(Token::R_ANGLE, "expected '>'", ANGLE_RECOVERY) {
+            break;
         }
         break;
-    }
-
-    if parser.current_token() == Some(&Token::R_ANGLE) {
-        parser.bump();
-    } else {
-        parser.sink.error("expected '>'".into());
     }
 
     parser.finish_node(TYPE_PARAMETERS);
@@ -275,19 +307,20 @@ fn type_parameter(parser: &mut Parser<'_, '_>) {
 
 fn type_constraints(parser: &mut Parser<'_, '_>) {
     parser.start_node(TYPE_CONSTRAINTS);
-    if parser.current_token() == Some(&Token::WHERE) {
-        parser.bump();
-    } else {
-        parser.sink.error("expected 'where'".into());
-    }
-
     parse_loop! { parser =>
-        parser.skip_trivia_and_newlines();
-        type_constraint(parser);
-        parser.skip_trivia_and_newlines();
-        if parser.current_token() == Some(&Token::COMMA) {
-            parser.bump();
-            continue;
+        if !parser.expect_recover(Token::WHERE, "expected 'where'", DECL_RECOVERY) {
+            break;
+        }
+
+        parse_loop! { parser =>
+            parser.skip_trivia_and_newlines();
+            type_constraint(parser);
+            parser.skip_trivia_and_newlines();
+            if parser.current_token() == Some(&Token::COMMA) {
+                parser.bump();
+                continue;
+            }
+            break;
         }
         break;
     }
@@ -297,19 +330,20 @@ fn type_constraints(parser: &mut Parser<'_, '_>) {
 
 fn type_constraint(parser: &mut Parser<'_, '_>) {
     parser.start_node(TYPE_CONSTRAINT);
-    parse_while!(starts_annotation(parser), parser => {
-        annotation(parser);
+    parse_loop! { parser =>
+        parse_while!(starts_annotation(parser), parser => {
+            annotation(parser);
+            parser.skip_trivia_and_newlines();
+        });
+        simple_identifier(parser);
         parser.skip_trivia_and_newlines();
-    });
-    simple_identifier(parser);
-    parser.skip_trivia_and_newlines();
-    if parser.current_token() == Some(&Token::COLON) {
-        parser.bump();
-    } else {
-        parser.sink.error("expected ':'".into());
+        if !parser.expect_recover(Token::COLON, "expected ':'", DECL_RECOVERY) {
+            break;
+        }
+        parser.skip_trivia_and_newlines();
+        ty(parser);
+        break;
     }
-    parser.skip_trivia_and_newlines();
-    ty(parser);
     parser.finish_node(TYPE_CONSTRAINT);
 }
 

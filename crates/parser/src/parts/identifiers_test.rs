@@ -1,5 +1,5 @@
 use super::identifiers::{identifier, simple_identifier};
-use crate::test_utils::make_parser;
+use crate::test_utils::{make_bool_parser, make_parser};
 use ast::syntax::SyntaxKind::{self, *};
 
 #[rstest::rstest]
@@ -53,7 +53,7 @@ use ast::syntax::SyntaxKind::{self, *};
 #[case::identifier("name", IDENTIFIER_TOKEN)]
 #[allow(non_snake_case)]
 fn simple_identifier_test(#[case] text: &str, #[case] expected_kind: SyntaxKind) {
-    let parse = make_parser(simple_identifier);
+    let parse = make_bool_parser(simple_identifier);
     let node = parse(text).syntax();
     let kind = node.kind();
     assert_eq!(kind, SIMPLE_IDENTIFIER);

@@ -125,46 +125,23 @@ fn parses_projection_with_variance_modifier() {
 }
 
 #[rstest::rstest]
-#[case::simple("Foo", &[TYPE_REFERENCE])]
-#[case::qualified_generic("Foo.Bar<Baz>", &[USER_TYPE, SIMPLE_USER_TYPE, TYPE_ARGUMENTS])]
-#[case::nullable_chain("Foo??", &[NULLABLE_TYPE])]
-#[case::parenthesized_function("((Foo) -> Bar)?", &[PARENTHESIZED_TYPE, FUNCTION_TYPE, NULLABLE_TYPE])]
-#[case::function_no_receiver("(Foo, Bar) -> Baz", &[FUNCTION_TYPE, FUNCTION_TYPE_PARAMETERS])]
-#[case::function_with_receiver("Receiver.(Foo) -> Result", &[FUNCTION_TYPE, RECEIVER_TYPE])]
-#[case::projection_variance("Box<out Item>", &[TYPE_ARGUMENTS, TYPE_PROJECTION, TYPE_PROJECTION_MODIFIERS])]
-#[case::star_projection("List<*>", &[TYPE_ARGUMENTS, TYPE_PROJECTION])]
-#[case::complex_mix(
-    "Receiver.(List<out Foo?>, () -> Bar) -> Map<in Key, Value?>?",
-    &[FUNCTION_TYPE, RECEIVER_TYPE, TYPE_ARGUMENTS, TYPE_PROJECTION, NULLABLE_TYPE]
-)]
-fn ty_parses_diverse_structures(
-    #[context] ctx: Context,
-    #[case] text: &str,
-    #[case] expected_kinds: &[ast::syntax::SyntaxKind],
-) {
+#[case::simple("Foo")]
+#[case::qualified_generic("Foo.Bar<Baz>")]
+#[case::nullable_chain("Foo??")]
+#[case::parenthesized_function("((Foo) -> Bar)?")]
+#[case::function_no_receiver("(Foo, Bar) -> Baz")]
+#[case::function_with_receiver("Receiver.(Foo) -> Result")]
+#[case::projection_variance("Box<out Item>")]
+#[case::star_projection("List<*>")]
+#[case::complex_mix("Receiver.(List<out Foo?>, () -> Bar) -> Map<in Key, Value?>?")]
+fn ty_parses_diverse_structures(#[context] ctx: Context, #[case] text: &str) {
+    use crate::test_utils::ContextExt;
+
     let parse = make_parser(ty);
-    let node = parse(text).syntax();
+    let parsed = parse(text);
+    let node = parsed.syntax();
 
     assert_eq!(node.kind(), TYPE);
 
-    let kinds: Vec<_> = node.descendants().map(|child| child.kind()).collect();
-
-    for &expected in expected_kinds {
-        assert!(
-            kinds.iter().any(|&kind| kind == expected),
-            "expected {:?} in `{}`",
-            expected,
-            text
-        );
-    }
-
-    insta::assert_debug_snapshot!(
-        format!(
-            "{}-{}",
-            ctx.name,
-            ctx.description
-                .expect("to provide description for test case")
-        ),
-        kinds
-    );
+    insta::assert_snapshot!(ctx.id(), parsed.snapshot(), text);
 }

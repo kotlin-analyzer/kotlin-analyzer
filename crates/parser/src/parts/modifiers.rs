@@ -80,14 +80,14 @@ pub(crate) fn modifier(parser: &mut Parser<'_, '_>) {
         Some(tok) if is_parameter_modifier(tok) => parameter_modifier(parser),
         Some(tok) if is_platform_modifier(tok) => platform_modifier(parser),
         Some(Token::ERR) => {
-            parser.sink.error("expected modifier".into());
+            parser.error("expected modifier");
             parser.bump();
         }
         Some(_) => {
-            parser.sink.error("expected modifier".into());
+            parser.error("expected modifier");
             parser.bump();
         }
-        None => parser.sink.error("expected modifier".into()),
+        None => parser.error("expected modifier"),
     }
 
     parser.skip_trivia_and_newlines();
@@ -105,14 +105,14 @@ fn type_parameter_modifier(parser: &mut Parser<'_, '_>) {
             Some(Token::REIFIED) => reification_modifier(parser),
             Some(Token::IN | Token::OUT) => variance_modifier(parser),
             Some(Token::ERR) => {
-                parser.sink.error("expected type parameter modifier".into());
+                parser.error("expected type parameter modifier");
                 parser.bump();
             }
             Some(_) => {
-                parser.sink.error("expected type parameter modifier".into());
+                parser.error("expected type parameter modifier");
                 parser.bump();
             }
-            None => parser.sink.error("expected type parameter modifier".into()),
+            None => parser.error("expected type parameter modifier"),
         }
     }
 
@@ -132,10 +132,10 @@ fn class_modifier(parser: &mut Parser<'_, '_>) {
             | Token::VALUE,
         ) => parser.bump(),
         Some(Token::ERR) => {
-            parser.sink.error("expected class modifier".into());
+            parser.error("expected class modifier");
             parser.bump();
         }
-        _ => parser.sink.error("expected class modifier".into()),
+        _ => parser.error("expected class modifier"),
     }
     parser.sink.finish_node();
 }
@@ -145,10 +145,10 @@ fn member_modifier(parser: &mut Parser<'_, '_>) {
     match parser.current_token() {
         Some(Token::OVERRIDE | Token::LATEINIT) => parser.bump(),
         Some(Token::ERR) => {
-            parser.sink.error("expected member modifier".into());
+            parser.error("expected member modifier");
             parser.bump();
         }
-        _ => parser.sink.error("expected member modifier".into()),
+        _ => parser.error("expected member modifier"),
     }
     parser.sink.finish_node();
 }
@@ -158,10 +158,10 @@ fn visibility_modifier(parser: &mut Parser<'_, '_>) {
     match parser.current_token() {
         Some(Token::PUBLIC | Token::PRIVATE | Token::INTERNAL | Token::PROTECTED) => parser.bump(),
         Some(Token::ERR) => {
-            parser.sink.error("expected visibility modifier".into());
+            parser.error("expected visibility modifier");
             parser.bump();
         }
-        _ => parser.sink.error("expected visibility modifier".into()),
+        _ => parser.error("expected visibility modifier"),
     }
     parser.sink.finish_node();
 }
@@ -178,10 +178,10 @@ fn function_modifier(parser: &mut Parser<'_, '_>) {
             | Token::SUSPEND,
         ) => parser.bump(),
         Some(Token::ERR) => {
-            parser.sink.error("expected function modifier".into());
+            parser.error("expected function modifier");
             parser.bump();
         }
-        _ => parser.sink.error("expected function modifier".into()),
+        _ => parser.error("expected function modifier"),
     }
     parser.sink.finish_node();
 }
@@ -191,10 +191,10 @@ fn property_modifier(parser: &mut Parser<'_, '_>) {
     match parser.current_token() {
         Some(Token::CONST) => parser.bump(),
         Some(Token::ERR) => {
-            parser.sink.error("expected property modifier".into());
+            parser.error("expected property modifier");
             parser.bump();
         }
-        _ => parser.sink.error("expected property modifier".into()),
+        _ => parser.error("expected property modifier"),
     }
     parser.sink.finish_node();
 }
@@ -204,10 +204,10 @@ fn inheritance_modifier(parser: &mut Parser<'_, '_>) {
     match parser.current_token() {
         Some(Token::ABSTRACT | Token::FINAL | Token::OPEN) => parser.bump(),
         Some(Token::ERR) => {
-            parser.sink.error("expected inheritance modifier".into());
+            parser.error("expected inheritance modifier");
             parser.bump();
         }
-        _ => parser.sink.error("expected inheritance modifier".into()),
+        _ => parser.error("expected inheritance modifier"),
     }
     parser.sink.finish_node();
 }
@@ -217,10 +217,10 @@ fn parameter_modifier(parser: &mut Parser<'_, '_>) {
     match parser.current_token() {
         Some(Token::VAR_ARG | Token::NO_INLINE | Token::CROSS_INLINE) => parser.bump(),
         Some(Token::ERR) => {
-            parser.sink.error("expected parameter modifier".into());
+            parser.error("expected parameter modifier");
             parser.bump();
         }
-        _ => parser.sink.error("expected parameter modifier".into()),
+        _ => parser.error("expected parameter modifier"),
     }
     parser.sink.finish_node();
 }
@@ -230,10 +230,10 @@ fn reification_modifier(parser: &mut Parser<'_, '_>) {
     match parser.current_token() {
         Some(Token::REIFIED) => parser.bump(),
         Some(Token::ERR) => {
-            parser.sink.error("expected reification modifier".into());
+            parser.error("expected reification modifier");
             parser.bump();
         }
-        _ => parser.sink.error("expected reification modifier".into()),
+        _ => parser.error("expected reification modifier"),
     }
     parser.sink.finish_node();
 }
@@ -243,10 +243,10 @@ fn variance_modifier(parser: &mut Parser<'_, '_>) {
     match parser.current_token() {
         Some(Token::IN | Token::OUT) => parser.bump(),
         Some(Token::ERR) => {
-            parser.sink.error("expected variance modifier".into());
+            parser.error("expected variance modifier");
             parser.bump();
         }
-        _ => parser.sink.error("expected variance modifier".into()),
+        _ => parser.error("expected variance modifier"),
     }
     parser.sink.finish_node();
 }
@@ -256,10 +256,10 @@ fn platform_modifier(parser: &mut Parser<'_, '_>) {
     match parser.current_token() {
         Some(Token::EXPECT | Token::ACTUAL) => parser.bump(),
         Some(Token::ERR) => {
-            parser.sink.error("expected platform modifier".into());
+            parser.error("expected platform modifier");
             parser.bump();
         }
-        _ => parser.sink.error("expected platform modifier".into()),
+        _ => parser.error("expected platform modifier"),
     }
     parser.sink.finish_node();
 }

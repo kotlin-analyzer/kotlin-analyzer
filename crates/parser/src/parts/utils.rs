@@ -1,6 +1,8 @@
 use tokens::Token;
 
 use crate::Parser;
+pub const LIST_ITEM_RECOVERY: &[Token] =
+    &[Token::COMMA, Token::R_PAREN, Token::SEMICOLON, Token::NL];
 
 pub(crate) fn skip_trivia_tokens(parser: &mut Parser<'_, '_>, idx: &mut usize) {
     loop {
@@ -61,23 +63,27 @@ pub(crate) fn starts_simple_identifier(parser: &mut Parser<'_, '_>) -> bool {
 
 #[macro_export]
 macro_rules! parse_loop {
-    ($parser:expr => $($body:tt)*) => {
-        #[cfg(debug_assertions)]
-        let start_index = $parser.current_token_index();
-        #[cfg(debug_assertions)]
+    ($parser:expr => $($body:tt)*) => {{
+        let mut last_index = $parser.current_token_index();
         let mut counter = 0;
         loop {
-            #[cfg(debug_assertions)]
-            if counter >= 1 && start_index == $parser.current_token_index() {
-                println!("Infinite loop detected. Current token: {:?}", $parser.current_token());
-                break;
+
+            if counter >= 1 && last_index == $parser.current_token_index() {
+                if cfg!(debug_assertions) {
+                    panic!("Infinite loop detected. Current token: {:?}", $parser.current_token());
+                } else {
+                    break;
+                }
             }
-            #[cfg(debug_assertions)]
-            { counter += 1; }
+            #[allow(unused_assignments)]
+            {
+                counter += 1;
+                last_index = $parser.current_token_index();
+            }
 
             $($body)*
         }
-    };
+    }};
 }
 
 #[macro_export]
@@ -90,5 +96,12 @@ macro_rules! parse_while {
                 break;
             }
         });
+    };
+}
+
+#[macro_export]
+macro_rules! trivia {
+    () => {
+        Token::WS | Token::NL | Token::LINE_COMMENT | Token::DELIMITED_COMMENT
     };
 }

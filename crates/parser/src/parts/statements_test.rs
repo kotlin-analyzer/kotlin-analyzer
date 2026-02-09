@@ -63,8 +63,9 @@ fn parses_while_and_do_while() {
 #[test]
 fn parses_statements_with_semis() {
     let parse = make_parser(statements);
-    let node = parse("a; b; c").syntax();
+    let parsed = parse("a; b; c");
 
+    let node = parsed.syntax();
     let count = node.descendants().filter(|n| n.kind() == STATEMENT).count();
 
     assert_eq!(count, 3);
@@ -85,9 +86,10 @@ fn parses_for_with_multi_variable() {
     let node = parse("for ((a, b) in items) a").syntax();
 
     assert!(node.descendants().any(|n| n.kind() == FOR_STATEMENT));
-    assert!(node
-        .descendants()
-        .any(|n| n.kind() == MULTI_VARIABLE_DECLARATION));
+    assert!(
+        node.descendants()
+            .any(|n| n.kind() == MULTI_VARIABLE_DECLARATION)
+    );
 }
 
 #[test]
@@ -96,4 +98,40 @@ fn parses_while_with_semicolon_body() {
     let node = parse("while (x) ;").syntax();
 
     assert!(node.descendants().any(|n| n.kind() == WHILE_STATEMENT));
+}
+
+#[test]
+fn recovers_after_invalid_do_while_and_continues() {
+    let parse = make_parser(statements);
+    let source = "do { }\nfoo";
+    let parsed = parse(source);
+
+    assert!(!parsed.errors.is_empty());
+    let node = parsed.syntax();
+    let count = node.descendants().filter(|n| n.kind() == STATEMENT).count();
+
+    assert_eq!(count, 2);
+    insta::assert_snapshot!(
+        "recovers_after_invalid_do_while_and_continues",
+        parsed.snapshot(),
+        source
+    );
+}
+
+#[test]
+fn recovers_if_there_is_no_semis_after_statement() {
+    let parse = make_parser(statements);
+    let source = "val x = 1 val y = 2";
+    let parsed = parse(source);
+
+    assert!(!parsed.errors.is_empty());
+    let node = parsed.syntax();
+    let count = node.descendants().filter(|n| n.kind() == STATEMENT).count();
+
+    insta::assert_snapshot!(
+        "recovers_if_there_is_no_semis_after_statement",
+        parsed.snapshot(),
+        source
+    );
+    assert_eq!(count, 2);
 }

@@ -1,64 +1,96 @@
 ---
 source: crates/parser/src/parts/types_test.rs
-expression: kinds
+assertion_line: 146
+expression: "Receiver.(List<out Foo?>, () -> Bar) -> Map<in Key, Value?>?"
 ---
-[
-    TYPE,
-    FUNCTION_TYPE,
-    RECEIVER_TYPE,
-    TYPE_REFERENCE,
-    USER_TYPE,
-    SIMPLE_USER_TYPE,
-    SIMPLE_IDENTIFIER,
-    FUNCTION_TYPE_PARAMETERS,
-    TYPE,
-    TYPE_REFERENCE,
-    USER_TYPE,
-    SIMPLE_USER_TYPE,
-    SIMPLE_IDENTIFIER,
-    TYPE_ARGUMENTS,
-    TYPE_PROJECTION,
-    TYPE_PROJECTION_MODIFIERS,
-    TYPE_PROJECTION_MODIFIER,
-    VARIANCE_MODIFIER,
-    TYPE,
-    NULLABLE_TYPE,
-    TYPE_REFERENCE,
-    USER_TYPE,
-    SIMPLE_USER_TYPE,
-    SIMPLE_IDENTIFIER,
-    QUEST,
-    TYPE,
-    FUNCTION_TYPE,
-    FUNCTION_TYPE_PARAMETERS,
-    TYPE,
-    TYPE_REFERENCE,
-    USER_TYPE,
-    SIMPLE_USER_TYPE,
-    SIMPLE_IDENTIFIER,
-    TYPE,
-    NULLABLE_TYPE,
-    TYPE_REFERENCE,
-    USER_TYPE,
-    SIMPLE_USER_TYPE,
-    SIMPLE_IDENTIFIER,
-    TYPE_ARGUMENTS,
-    TYPE_PROJECTION,
-    TYPE_PROJECTION_MODIFIERS,
-    TYPE_PROJECTION_MODIFIER,
-    VARIANCE_MODIFIER,
-    TYPE,
-    TYPE_REFERENCE,
-    USER_TYPE,
-    SIMPLE_USER_TYPE,
-    SIMPLE_IDENTIFIER,
-    TYPE_PROJECTION,
-    TYPE,
-    NULLABLE_TYPE,
-    TYPE_REFERENCE,
-    USER_TYPE,
-    SIMPLE_USER_TYPE,
-    SIMPLE_IDENTIFIER,
-    QUEST,
-    QUEST,
-]
+TYPE@0..60
+  FUNCTION_TYPE@0..60
+    RECEIVER_TYPE@0..8
+      TYPE_REFERENCE@0..8
+        USER_TYPE@0..8
+          SIMPLE_USER_TYPE@0..8
+            SIMPLE_IDENTIFIER@0..8
+              IDENTIFIER_TOKEN@0..8 "Receiver"
+    DOT@8..9 "."
+    FUNCTION_TYPE_PARAMETERS@9..36
+      L_PAREN@9..10 "("
+      TYPE@10..24
+        TYPE_REFERENCE@10..24
+          USER_TYPE@10..24
+            SIMPLE_USER_TYPE@10..24
+              SIMPLE_IDENTIFIER@10..14
+                IDENTIFIER_TOKEN@10..14 "List"
+              TYPE_ARGUMENTS@14..24
+                L_ANGLE@14..15 "<"
+                TYPE_PROJECTION@15..23
+                  TYPE_PROJECTION_MODIFIERS@15..19
+                    TYPE_PROJECTION_MODIFIER@15..18
+                      VARIANCE_MODIFIER@15..18
+                        OUT@15..18 "out"
+                    WS@18..19 " "
+                  TYPE@19..23
+                    NULLABLE_TYPE@19..23
+                      TYPE_REFERENCE@19..22
+                        USER_TYPE@19..22
+                          SIMPLE_USER_TYPE@19..22
+                            SIMPLE_IDENTIFIER@19..22
+                              IDENTIFIER_TOKEN@19..22 "Foo"
+                      QUEST@22..23
+                        QUEST_NO_WS@22..23 "?"
+                R_ANGLE@23..24 ">"
+      COMMA@24..25 ","
+      WS@25..26 " "
+      TYPE@26..35
+        FUNCTION_TYPE@26..35
+          FUNCTION_TYPE_PARAMETERS@26..28
+            L_PAREN@26..27 "("
+            R_PAREN@27..28 ")"
+          WS@28..29 " "
+          ARROW@29..31 "->"
+          WS@31..32 " "
+          TYPE@32..35
+            TYPE_REFERENCE@32..35
+              USER_TYPE@32..35
+                SIMPLE_USER_TYPE@32..35
+                  SIMPLE_IDENTIFIER@32..35
+                    IDENTIFIER_TOKEN@32..35 "Bar"
+      R_PAREN@35..36 ")"
+    WS@36..37 " "
+    ARROW@37..39 "->"
+    WS@39..40 " "
+    TYPE@40..60
+      NULLABLE_TYPE@40..60
+        TYPE_REFERENCE@40..59
+          USER_TYPE@40..59
+            SIMPLE_USER_TYPE@40..59
+              SIMPLE_IDENTIFIER@40..43
+                IDENTIFIER_TOKEN@40..43 "Map"
+              TYPE_ARGUMENTS@43..59
+                L_ANGLE@43..44 "<"
+                TYPE_PROJECTION@44..50
+                  TYPE_PROJECTION_MODIFIERS@44..47
+                    TYPE_PROJECTION_MODIFIER@44..46
+                      VARIANCE_MODIFIER@44..46
+                        IN@44..46 "in"
+                    WS@46..47 " "
+                  TYPE@47..50
+                    TYPE_REFERENCE@47..50
+                      USER_TYPE@47..50
+                        SIMPLE_USER_TYPE@47..50
+                          SIMPLE_IDENTIFIER@47..50
+                            IDENTIFIER_TOKEN@47..50 "Key"
+                COMMA@50..51 ","
+                WS@51..52 " "
+                TYPE_PROJECTION@52..58
+                  TYPE@52..58
+                    NULLABLE_TYPE@52..58
+                      TYPE_REFERENCE@52..57
+                        USER_TYPE@52..57
+                          SIMPLE_USER_TYPE@52..57
+                            SIMPLE_IDENTIFIER@52..57
+                              IDENTIFIER_TOKEN@52..57 "Value"
+                      QUEST@57..58
+                        QUEST_NO_WS@57..58 "?"
+                R_ANGLE@58..59 ">"
+        QUEST@59..60
+          QUEST_NO_WS@59..60 "?"

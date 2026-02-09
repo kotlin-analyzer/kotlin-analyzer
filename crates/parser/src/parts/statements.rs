@@ -2,9 +2,7 @@ use ast::syntax::SyntaxKind::*;
 use tokens::Token;
 
 use super::annotations::annotation;
-use super::class_members::{
-    block, multi_variable_declaration, semis, starts_semis, variable_declaration,
-};
+use super::class_members::{block, multi_variable_declaration, semis, variable_declaration};
 use super::expressions::{
     assignable_expression, directly_assignable_expression, expression, label, starts_label,
 };
@@ -12,32 +10,36 @@ use super::modifiers::starts_modifiers;
 use super::utils::{starts_annotation, starts_simple_identifier};
 use crate::{Parser, parse_loop, parse_while};
 
+const STMT_RECOVERY: &[Token] = &[Token::SEMICOLON, Token::NL, Token::R_CURL, Token::EOF];
+const PAREN_RECOVERY: &[Token] = &[
+    Token::R_PAREN,
+    Token::SEMICOLON,
+    Token::NL,
+    Token::R_CURL,
+    Token::EOF,
+];
+
 pub(crate) fn statements(parser: &mut Parser<'_, '_>) {
     parser.start_node(STATEMENTS);
     parser.skip_trivia_and_newlines();
 
     if starts_statement(parser) {
         statement(parser);
-        parser.skip_trivia();
-
         parse_loop! { parser =>
-            if !starts_semis(parser) {
+            let has_semi = semis(parser);
+            let starts_stmt = starts_statement(parser);
+
+            if !starts_stmt && !has_semi {
                 break;
             }
-            semis(parser);
-            parser.skip_trivia();
-            if starts_statement(parser) {
-                statement(parser);
-                parser.skip_trivia();
-                continue;
-            }
-            break;
-        }
-    }
 
-    parser.skip_trivia();
-    if starts_semis(parser) {
-        semis(parser);
+            if !has_semi && starts_stmt {
+                parser.error("expected ';' or newline between statements");
+            }
+
+            statement(parser);
+            parser.skip_trivia();
+        }
     }
 
     parser.finish_node(STATEMENTS);
@@ -65,7 +67,7 @@ pub(crate) fn statement(parser: &mut Parser<'_, '_>) {
     } else if looks_like_assignment(parser) {
         assignment(parser);
     } else if starts_declaration(parser) {
-        // Best-effort declaration support: parse as assignment/expression when unsupported.
+        // TODO: Best-effort declaration support: parse as assignment/expression when unsupported.
         // For now, fall back to expression parsing.
         expression(parser);
     } else {
@@ -87,62 +89,64 @@ fn control_structure_body(parser: &mut Parser<'_, '_>) {
 
 fn loop_statement(parser: &mut Parser<'_, '_>) {
     parser.start_node(LOOP_STATEMENT);
-    match parser.current_token() {
-        Some(Token::FOR) => for_statement(parser),
-        Some(Token::WHILE) => while_statement(parser),
-        Some(Token::DO) => do_while_statement(parser),
-        _ => parser.sink.error("expected loop statement".into()),
+    parse_loop! { parser =>
+        match parser.current_token() {
+            Some(Token::FOR) => for_statement(parser),
+            Some(Token::WHILE) => while_statement(parser),
+            Some(Token::DO) => do_while_statement(parser),
+            _ => {
+                parser.error("expected loop statement");
+                parser.recover_until(STMT_RECOVERY);
+                break;
+            }
+        }
+        break;
     }
     parser.finish_node(LOOP_STATEMENT);
 }
 
 fn for_statement(parser: &mut Parser<'_, '_>) {
     parser.start_node(FOR_STATEMENT);
-    if parser.current_token() == Some(&Token::FOR) {
-        parser.bump();
-    } else {
-        parser.sink.error("expected 'for'".into());
-    }
+    parse_loop! { parser =>
+        if !parser.expect_recover(Token::FOR, "expected 'for'", STMT_RECOVERY) {
+            break;
+        }
 
-    parser.skip_trivia_and_newlines();
-    if parser.current_token() == Some(&Token::L_PAREN) {
-        parser.bump();
-    } else {
-        parser.sink.error("expected '('".into());
-    }
-
-    parser.skip_trivia_and_newlines();
-    parse_while!(starts_annotation(parser), parser => {
-        annotation(parser);
         parser.skip_trivia_and_newlines();
-    });
+        if !parser.expect_recover(Token::L_PAREN, "expected '('", PAREN_RECOVERY) {
+            break;
+        }
 
-    if parser.current_token() == Some(&Token::L_PAREN) {
-        multi_variable_declaration(parser);
-    } else {
-        variable_declaration(parser);
-    }
+        parser.skip_trivia_and_newlines();
+        parse_while!(starts_annotation(parser), parser => {
+            annotation(parser);
+            parser.skip_trivia_and_newlines();
+        });
 
-    parser.skip_trivia_and_newlines();
-    if parser.current_token() == Some(&Token::IN) {
-        parser.bump();
-    } else {
-        parser.sink.error("expected 'in'".into());
-    }
+        if parser.current_token() == Some(&Token::L_PAREN) {
+            multi_variable_declaration(parser);
+        } else {
+            variable_declaration(parser);
+        }
 
-    parser.skip_trivia_and_newlines();
-    expression(parser);
+        parser.skip_trivia_and_newlines();
+        if !parser.expect_recover(Token::IN, "expected 'in'", STMT_RECOVERY) {
+            break;
+        }
 
-    parser.skip_trivia_and_newlines();
-    if parser.current_token() == Some(&Token::R_PAREN) {
-        parser.bump();
-    } else {
-        parser.sink.error("expected ')'".into());
-    }
+        parser.skip_trivia_and_newlines();
+        expression(parser);
 
-    parser.skip_trivia_and_newlines();
-    if starts_statement(parser) || parser.current_token() == Some(&Token::L_CURL) {
-        control_structure_body(parser);
+        parser.skip_trivia_and_newlines();
+        if !parser.expect_recover(Token::R_PAREN, "expected ')'", PAREN_RECOVERY) {
+            break;
+        }
+
+        parser.skip_trivia_and_newlines();
+        if starts_statement(parser) || parser.current_token() == Some(&Token::L_CURL) {
+            control_structure_body(parser);
+        }
+        break;
     }
 
     parser.finish_node(FOR_STATEMENT);
@@ -150,34 +154,31 @@ fn for_statement(parser: &mut Parser<'_, '_>) {
 
 fn while_statement(parser: &mut Parser<'_, '_>) {
     parser.start_node(WHILE_STATEMENT);
-    if parser.current_token() == Some(&Token::WHILE) {
-        parser.bump();
-    } else {
-        parser.sink.error("expected 'while'".into());
-    }
+    parse_loop! { parser =>
+        if !parser.expect_recover(Token::WHILE, "expected 'while'", STMT_RECOVERY) {
+            break;
+        }
 
-    parser.skip_trivia_and_newlines();
-    if parser.current_token() == Some(&Token::L_PAREN) {
-        parser.bump();
-    } else {
-        parser.sink.error("expected '('".into());
-    }
+        parser.skip_trivia_and_newlines();
+        if !parser.expect_recover(Token::L_PAREN, "expected '('", PAREN_RECOVERY) {
+            break;
+        }
 
-    parser.skip_trivia_and_newlines();
-    expression(parser);
+        parser.skip_trivia_and_newlines();
+        expression(parser);
 
-    parser.skip_trivia_and_newlines();
-    if parser.current_token() == Some(&Token::R_PAREN) {
-        parser.bump();
-    } else {
-        parser.sink.error("expected ')'".into());
-    }
+        parser.skip_trivia_and_newlines();
+        if !parser.expect_recover(Token::R_PAREN, "expected ')'", PAREN_RECOVERY) {
+            break;
+        }
 
-    parser.skip_trivia_and_newlines();
-    if parser.current_token() == Some(&Token::SEMICOLON) {
-        parser.bump();
-    } else if starts_statement(parser) || parser.current_token() == Some(&Token::L_CURL) {
-        control_structure_body(parser);
+        parser.skip_trivia_and_newlines();
+        if parser.current_token() == Some(&Token::SEMICOLON) {
+            parser.bump();
+        } else if starts_statement(parser) || parser.current_token() == Some(&Token::L_CURL) {
+            control_structure_body(parser);
+        }
+        break;
     }
 
     parser.finish_node(WHILE_STATEMENT);
@@ -185,39 +186,33 @@ fn while_statement(parser: &mut Parser<'_, '_>) {
 
 fn do_while_statement(parser: &mut Parser<'_, '_>) {
     parser.start_node(DO_WHILE_STATEMENT);
-    if parser.current_token() == Some(&Token::DO) {
-        parser.bump();
-    } else {
-        parser.sink.error("expected 'do'".into());
-    }
+    parse_loop! { parser =>
+        if !parser.expect_recover(Token::DO, "expected 'do'", STMT_RECOVERY) {
+            break;
+        }
 
-    parser.skip_trivia_and_newlines();
-    if starts_statement(parser) || parser.current_token() == Some(&Token::L_CURL) {
-        control_structure_body(parser);
         parser.skip_trivia_and_newlines();
-    }
+        if starts_statement(parser) || parser.current_token() == Some(&Token::L_CURL) {
+            control_structure_body(parser);
+        }
 
-    if parser.current_token() == Some(&Token::WHILE) {
-        parser.bump();
-    } else {
-        parser.sink.error("expected 'while'".into());
-    }
+        if !parser.expect(Token::WHILE, "expected 'while'") {
+            break;
+        }
 
-    parser.skip_trivia_and_newlines();
-    if parser.current_token() == Some(&Token::L_PAREN) {
-        parser.bump();
-    } else {
-        parser.sink.error("expected '('".into());
-    }
+        parser.skip_trivia_and_newlines();
+        if !parser.expect_recover(Token::L_PAREN, "expected '('", PAREN_RECOVERY) {
+            break;
+        }
 
-    parser.skip_trivia_and_newlines();
-    expression(parser);
+        parser.skip_trivia_and_newlines();
+        expression(parser);
 
-    parser.skip_trivia_and_newlines();
-    if parser.current_token() == Some(&Token::R_PAREN) {
-        parser.bump();
-    } else {
-        parser.sink.error("expected ')'".into());
+        parser.skip_trivia_and_newlines();
+        if !parser.expect_recover(Token::R_PAREN, "expected ')'", PAREN_RECOVERY) {
+            break;
+        }
+        break;
     }
 
     parser.finish_node(DO_WHILE_STATEMENT);
@@ -225,42 +220,47 @@ fn do_while_statement(parser: &mut Parser<'_, '_>) {
 
 fn assignment(parser: &mut Parser<'_, '_>) {
     parser.start_node(ASSIGNMENT);
-
-    if is_direct_assignment(parser) {
-        directly_assignable_expression(parser);
-        parser.skip_trivia_and_newlines();
-        if parser.current_token() == Some(&Token::ASSIGNMENT_TOKEN) {
-            parser.bump();
+    parse_loop! { parser =>
+        if is_direct_assignment(parser) {
+            directly_assignable_expression(parser);
+            parser.skip_trivia_and_newlines();
+            if !parser.expect_recover(Token::ASSIGNMENT_TOKEN, "expected '='", STMT_RECOVERY) {
+                break;
+            }
         } else {
-            parser.sink.error("expected '='".into());
+            assignable_expression(parser);
+            parser.skip_trivia_and_newlines();
+            assignment_and_operator(parser);
         }
-    } else {
-        assignable_expression(parser);
+
         parser.skip_trivia_and_newlines();
-        assignment_and_operator(parser);
+        expression(parser);
+        break;
     }
-
-    parser.skip_trivia_and_newlines();
-    expression(parser);
-
     parser.finish_node(ASSIGNMENT);
 }
 
 fn assignment_and_operator(parser: &mut Parser<'_, '_>) {
     parser.start_node(ASSIGNMENT_AND_OPERATOR);
-    match parser.current_token() {
-        Some(
-            Token::ADD_ASSIGNMENT
-            | Token::SUB_ASSIGNMENT
-            | Token::MULT_ASSIGNMENT
-            | Token::DIV_ASSIGNMENT
-            | Token::MOD_ASSIGNMENT,
-        ) => parser.bump(),
-        _ => parser.sink.error("expected assignment operator".into()),
+    parse_loop! { parser =>
+        match parser.current_token() {
+            Some(
+                Token::ADD_ASSIGNMENT
+                | Token::SUB_ASSIGNMENT
+                | Token::MULT_ASSIGNMENT
+                | Token::DIV_ASSIGNMENT
+                | Token::MOD_ASSIGNMENT,
+            ) => parser.bump(),
+            _ => {
+                parser.error("expected assignment operator");
+                parser.recover_until(STMT_RECOVERY);
+                break;
+            }
+        }
+        break;
     }
     parser.finish_node(ASSIGNMENT_AND_OPERATOR);
 }
-
 fn assignment_operator(parser: &mut Parser<'_, '_>) -> Option<Token> {
     let mut idx = 0usize;
     let mut paren_depth = 0i32;

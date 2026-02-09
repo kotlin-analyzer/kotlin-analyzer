@@ -1,0 +1,39 @@
+---
+source: crates/parser/src/parts/statements_test.rs
+expression: "do { }\nfoo"
+---
+STATEMENTS@0..10
+  STATEMENT@0..6
+    LOOP_STATEMENT@0..6
+      DO_WHILE_STATEMENT@0..6
+        DO@0..2 "do"
+        WS@2..3 " "
+        CONTROL_STRUCTURE_BODY@3..6
+          BLOCK@3..6
+            L_CURL@3..4 "{"
+            WS@4..5 " "
+            R_CURL@5..6 "}"
+  SEMIS@6..7
+    SEMI@6..7
+      NL@6..7 "\n"
+  STATEMENT@7..10
+    EXPRESSION@7..10
+      DISJUNCTION@7..10
+        CONJUNCTION@7..10
+          EQUALITY@7..10
+            COMPARISON@7..10
+              GENERIC_CALL_LIKE_COMPARISON@7..10
+                INFIX_OPERATION@7..10
+                  ELVIS_EXPRESSION@7..10
+                    INFIX_FUNCTION_CALL@7..10
+                      RANGE_EXPRESSION@7..10
+                        ADDITIVE_EXPRESSION@7..10
+                          MULTIPLICATIVE_EXPRESSION@7..10
+                            AS_EXPRESSION@7..10
+                              PREFIX_UNARY_EXPRESSION@7..10
+                                POSTFIX_UNARY_EXPRESSION@7..10
+                                  PRIMARY_EXPRESSION@7..10
+                                    SIMPLE_IDENTIFIER@7..10
+                                      IDENTIFIER_TOKEN@7..10 "foo"
+
+Parse error at 6..7: expected 'while'

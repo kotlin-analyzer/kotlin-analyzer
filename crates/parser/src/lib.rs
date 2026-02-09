@@ -4,6 +4,8 @@ mod parts;
 #[cfg(test)]
 mod test_utils;
 
+use core::fmt;
+
 use ast::syntax::SyntaxKind::{self, *};
 use lexer::SpannedWithSource;
 use tokens::Token;
@@ -27,7 +29,36 @@ pub trait TreeSink {
     fn error(&mut self, error: ParseError);
 }
 
-pub type ParseError = String;
+#[derive(Debug)]
+pub struct ParseError {
+    message: String,
+    lo: usize,
+    hi: usize,
+}
+
+impl fmt::Display for ParseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Parse error at {}..{}: {}",
+            self.lo, self.hi, self.message
+        )
+    }
+}
+
+impl ParseError {
+    pub(crate) fn new(message: String, lo: usize) -> Self {
+        ParseError {
+            message,
+            lo,
+            hi: lo,
+        }
+    }
+    pub(crate) fn with_hi(mut self, hi: usize) -> Self {
+        self.hi = hi;
+        self
+    }
+}
 
 pub(crate) struct Parser<'a, 'b> {
     source: &'a mut dyn TokenSource<'b>,
@@ -74,7 +105,6 @@ impl Parser<'_, '_> {
 
     /// Returns the index of the current token, if available.
     /// This is used for error reporting and other features that require knowledge of the token's position in the source.
-    #[cfg(debug_assertions)]
     fn current_token_index(&mut self) -> Option<usize> {
         self.source.current_index()
     }
@@ -100,6 +130,46 @@ impl Parser<'_, '_> {
         }
     }
 
+    fn error(&mut self, error: impl Into<String>) {
+        if let Some(sp) = self.current() {
+            let lo = sp.span().start;
+            let hi = sp.span().end;
+            self.sink
+                .error(ParseError::new(error.into(), lo).with_hi(hi));
+        }
+    }
+
+    fn recover_until(&mut self, recovery: &[Token]) {
+        loop {
+            match self.current_token() {
+                None => break,
+                Some(token) if matches!(token, Token::EOF) || recovery.contains(&token) => {
+                    break;
+                }
+                _ => self.bump(),
+            }
+        }
+    }
+
+    fn expect(&mut self, token: Token, error: &str) -> bool {
+        if self.current_token() == Some(&token) {
+            self.bump();
+            true
+        } else {
+            self.error(error);
+            false
+        }
+    }
+
+    fn expect_recover(&mut self, token: Token, error: &str, recovery: &[Token]) -> bool {
+        if self.expect(token, error) {
+            true
+        } else {
+            self.recover_until(recovery);
+            false
+        }
+    }
+
     fn new<'a: 'b, 'b>(
         token_source: &'a mut dyn TokenSource<'b>,
         tree_sink: &'a mut dyn TreeSink,
@@ -111,17 +181,17 @@ impl Parser<'_, '_> {
     }
 
     fn start_node(&mut self, kind: SyntaxKind) {
-        #[cfg(debug_assertions)]
-        {
-            println!("Starting node: {:?}", kind);
-        }
+        // #[cfg(debug_assertions)]
+        // {
+        //     println!("Starting node: {:?}", kind);
+        // }
         self.sink.start_node(kind);
     }
-    fn finish_node(&mut self, kind: SyntaxKind) {
-        #[cfg(debug_assertions)]
-        {
-            println!("Finishing node: {:?}", kind);
-        }
+    fn finish_node(&mut self, _kind: SyntaxKind) {
+        // #[cfg(debug_assertions)]
+        // {
+        //     println!("Finishing node: {:?}", kind);
+        // }
         self.sink.finish_node();
     }
 }

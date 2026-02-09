@@ -67,6 +67,7 @@ pub struct Parse {
     green_node: GreenNode,
     #[allow(dead_code)]
     pub errors: Vec<ParseError>,
+    pub next: Option<Token>,
 }
 
 pub fn parse(text: &str) -> Parse {
@@ -84,6 +85,7 @@ pub fn parse(text: &str) -> Parse {
     Parse {
         green_node: sink.builder.finish(),
         errors: sink.errors,
+        next: source.source.peek_nth(0).map(|(_, s)| s.token()).copied(),
     }
 }
 
@@ -95,9 +97,27 @@ impl Parse {
     pub fn root(&self) -> Root {
         Root::cast(self.syntax()).unwrap()
     }
+
+    pub fn snapshot(&self) -> String {
+        let node = self.syntax();
+        let errors = self
+            .errors
+            .iter()
+            .map(ToString::to_string)
+            .collect::<Vec<_>>()
+            .join("\n");
+        format!("{:#?}\n{}", node, errors)
+    }
 }
 
 pub fn make_parser(f: impl FnOnce(&mut Parser<'_, '_>)) -> impl FnOnce(&str) -> Parse {
+    make_bool_parser(|p| {
+        f(p);
+        true
+    })
+}
+
+pub fn make_bool_parser(f: impl FnOnce(&mut Parser<'_, '_>) -> bool) -> impl FnOnce(&str) -> Parse {
     move |text: &str| {
         let mut sink = TestTreeSink {
             builder: GreenNodeBuilder::new(),
@@ -117,6 +137,21 @@ pub fn make_parser(f: impl FnOnce(&mut Parser<'_, '_>)) -> impl FnOnce(&str) -> 
         Parse {
             green_node: sink.builder.finish(),
             errors: sink.errors,
+            next: source.source.peek_nth(0).map(|(_, s)| s.token()).copied(),
         }
+    }
+}
+
+pub trait ContextExt {
+    fn id(&self) -> String;
+}
+
+impl ContextExt for rstest::Context {
+    fn id(&self) -> String {
+        format!(
+            "{}-{}",
+            self.name,
+            self.description.unwrap_or("no-description")
+        )
     }
 }

@@ -61,3 +61,13 @@ fn parses_multi_annotation_list() {
         assert_eq!(ann.first_token().unwrap().kind(), IDENTIFIER_TOKEN);
     }
 }
+
+#[test]
+fn recovers_from_missing_annotation_type() {
+    let parse = make_parser(annotation);
+    let parsed = parse("@");
+
+    assert!(!parsed.errors.is_empty());
+    let node = parsed.syntax();
+    assert_eq!(node.kind(), ANNOTATION);
+}

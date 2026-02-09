@@ -3,7 +3,7 @@ use tokens::Token;
 
 use super::annotations::unescaped_annotation;
 use super::class_members::{
-    function_declaration, object_declaration, property_declaration, semi, semis, starts_semis,
+    function_declaration, object_declaration, property_declaration, semi, semis,
 };
 use super::classes::{class_declaration, type_parameters};
 use super::identifiers::{identifier, simple_identifier};
@@ -11,6 +11,9 @@ use super::modifiers::{parse_optional_modifiers, starts_modifiers};
 use super::statements::statement;
 use super::types::ty;
 use crate::{Parser, parse_loop, parse_while};
+
+const TOP_LEVEL_RECOVERY: &[Token] = &[Token::SEMICOLON, Token::NL, Token::R_CURL, Token::EOF];
+const BRACKET_RECOVERY: &[Token] = &[Token::R_SQUARE, Token::SEMICOLON, Token::NL, Token::EOF];
 
 pub(crate) fn kotlin_file(parser: &mut Parser<'_, '_>) {
     parser.skip_trivia_and_newlines();
@@ -99,64 +102,66 @@ pub(crate) fn script(parser: &mut Parser<'_, '_>) {
 
 fn shebang_line(parser: &mut Parser<'_, '_>) {
     parser.start_node(SHEBANG_LINE);
-    if parser.current_token() == Some(&Token::SHEBANG_LINE_TOKEN) {
-        parser.bump();
-    } else {
-        parser.sink.error("expected shebang".into());
+    parse_loop! { parser =>
+        if !parser.expect_recover(Token::SHEBANG_LINE_TOKEN, "expected shebang", TOP_LEVEL_RECOVERY) {
+            break;
+        }
+        parse_while!(parser.current_token() == Some(&Token::NL), parser => {
+            parser.bump();
+        });
+        break;
     }
-    parse_while!(parser.current_token() == Some(&Token::NL), parser => {
-        parser.bump();
-    });
     parser.finish_node(SHEBANG_LINE);
 }
 
 fn file_annotation(parser: &mut Parser<'_, '_>) {
     parser.start_node(FILE_ANNOTATION);
-
-    if matches!(
-        parser.current_token(),
-        Some(Token::AT_NO_WS | Token::AT_PRE_WS)
-    ) {
-        parser.bump();
-    } else {
-        parser.sink.error("expected '@'".into());
-    }
-
-    parser.skip_trivia_and_newlines();
-    if parser.current_token() == Some(&Token::FILE) {
-        parser.bump();
-    } else {
-        parser.sink.error("expected 'file'".into());
-    }
-
-    parser.skip_trivia_and_newlines();
-    if parser.current_token() == Some(&Token::COLON) {
-        parser.bump();
-    } else {
-        parser.sink.error("expected ':'".into());
-    }
-
-    parser.skip_trivia_and_newlines();
-    if parser.current_token() == Some(&Token::L_SQUARE) {
-        parser.bump();
-        parser.skip_trivia_and_newlines();
-        parse_loop! { parser =>
-            if matches!(parser.current_token(), Some(Token::R_SQUARE) | None) {
-                break;
-            }
-            unescaped_annotation(parser);
-            parser.skip_trivia_and_newlines();
-        }
-        if parser.current_token() == Some(&Token::R_SQUARE) {
+    loop {
+        if matches!(
+            parser.current_token(),
+            Some(Token::AT_NO_WS | Token::AT_PRE_WS)
+        ) {
             parser.bump();
         } else {
-            parser.sink.error("expected ']'".into());
+            parser.error("expected '@'");
+            parser.recover_until(TOP_LEVEL_RECOVERY);
+            break;
         }
-    } else {
-        unescaped_annotation(parser);
-    }
 
-    parser.skip_trivia_and_newlines();
+        parser.skip_trivia_and_newlines();
+        if !parser.expect_recover(Token::FILE, "expected 'file'", TOP_LEVEL_RECOVERY) {
+            break;
+        }
+
+        parser.skip_trivia_and_newlines();
+        if !parser.expect_recover(Token::COLON, "expected ':'", TOP_LEVEL_RECOVERY) {
+            break;
+        }
+
+        parser.skip_trivia_and_newlines();
+        if parser.current_token() == Some(&Token::L_SQUARE) {
+            parser.bump();
+            parser.skip_trivia_and_newlines();
+            parse_loop! { parser =>
+                if matches!(parser.current_token(), Some(Token::R_SQUARE) | None) {
+                    break;
+                }
+                if unescaped_annotation(parser){
+                    parser.skip_trivia_and_newlines();
+                } else {
+                    break;
+                }
+            }
+            if !parser.expect_recover(Token::R_SQUARE, "expected ']'", BRACKET_RECOVERY) {
+                break;
+            }
+        } else {
+            unescaped_annotation(parser);
+        }
+
+        parser.skip_trivia_and_newlines();
+        break;
+    }
     parser.finish_node(FILE_ANNOTATION);
 }
 
@@ -166,10 +171,8 @@ fn package_header(parser: &mut Parser<'_, '_>) {
         parser.bump();
         parser.skip_trivia_and_newlines();
         identifier(parser);
-        parser.skip_trivia_and_newlines();
-        if starts_semis(parser) {
-            semis(parser);
-        }
+        parser.skip_trivia();
+        semis(parser);
     }
     parser.finish_node(PACKAGE_HEADER);
 }
@@ -185,31 +188,30 @@ fn import_list(parser: &mut Parser<'_, '_>) {
 
 fn import_header(parser: &mut Parser<'_, '_>) {
     parser.start_node(IMPORT_HEADER);
-    if parser.current_token() == Some(&Token::IMPORT) {
-        parser.bump();
-    } else {
-        parser.sink.error("expected 'import'".into());
-    }
+    parse_loop! { parser =>
+        if !parser.expect_recover(Token::IMPORT, "expected 'import'", TOP_LEVEL_RECOVERY) {
+            break;
+        }
 
-    parser.skip_trivia_and_newlines();
-    identifier(parser);
-
-    parser.skip_trivia_and_newlines();
-    if parser.current_token() == Some(&Token::DOT) {
-        parser.bump();
         parser.skip_trivia_and_newlines();
-        if parser.current_token() == Some(&Token::MULT) {
+        identifier(parser);
+
+        parser.skip_trivia_and_newlines();
+        if parser.current_token() == Some(&Token::DOT) {
             parser.bump();
+            parser.skip_trivia_and_newlines();
+            if parser.current_token() == Some(&Token::MULT) {
+                parser.bump();
+            } else if parser.current_token() == Some(&Token::AS) {
+                import_alias(parser);
+            }
         } else if parser.current_token() == Some(&Token::AS) {
             import_alias(parser);
         }
-    } else if parser.current_token() == Some(&Token::AS) {
-        import_alias(parser);
-    }
 
-    parser.skip_trivia_and_newlines();
-    if starts_semis(parser) {
+        parser.skip_trivia_and_newlines();
         semis(parser);
+        break;
     }
 
     parser.finish_node(IMPORT_HEADER);
@@ -217,12 +219,13 @@ fn import_header(parser: &mut Parser<'_, '_>) {
 
 fn import_alias(parser: &mut Parser<'_, '_>) {
     parser.start_node(IMPORT_ALIAS);
-    if parser.current_token() == Some(&Token::AS) {
-        parser.bump();
+    parse_loop! { parser =>
+        if !parser.expect_recover(Token::AS, "expected 'as'", TOP_LEVEL_RECOVERY) {
+            break;
+        }
         parser.skip_trivia_and_newlines();
         simple_identifier(parser);
-    } else {
-        parser.sink.error("expected 'as'".into());
+        break;
     }
     parser.finish_node(IMPORT_ALIAS);
 }
@@ -231,57 +234,61 @@ fn top_level_object(parser: &mut Parser<'_, '_>) {
     parser.start_node(TOP_LEVEL_OBJECT);
     declaration(parser);
     parser.skip_trivia_and_newlines();
-    if starts_semis(parser) {
-        semis(parser);
-    }
+    semis(parser);
     parser.finish_node(TOP_LEVEL_OBJECT);
 }
 
 fn type_alias(parser: &mut Parser<'_, '_>) {
     parser.start_node(TYPE_ALIAS);
-    parse_optional_modifiers(parser);
-    parser.skip_trivia_and_newlines();
-
-    if parser.current_token() == Some(&Token::TYPE_ALIAS) {
-        parser.bump();
-    } else {
-        parser.sink.error("expected 'typealias'".into());
-    }
-
-    parser.skip_trivia_and_newlines();
-    simple_identifier(parser);
-
-    parser.skip_trivia_and_newlines();
-    if parser.current_token() == Some(&Token::L_ANGLE) {
-        type_parameters(parser);
+    parse_loop! { parser =>
+        parse_optional_modifiers(parser);
         parser.skip_trivia_and_newlines();
-    }
 
-    if parser.current_token() == Some(&Token::ASSIGNMENT_TOKEN) {
-        parser.bump();
-    } else {
-        parser.sink.error("expected '='".into());
-    }
+        if !parser.expect_recover(Token::TYPE_ALIAS, "expected 'typealias'", TOP_LEVEL_RECOVERY) {
+            break;
+        }
 
-    parser.skip_trivia_and_newlines();
-    ty(parser);
+        parser.skip_trivia_and_newlines();
+        simple_identifier(parser);
+
+        parser.skip_trivia_and_newlines();
+        if parser.current_token() == Some(&Token::L_ANGLE) {
+            type_parameters(parser);
+            parser.skip_trivia_and_newlines();
+        }
+
+        if !parser.expect_recover(Token::ASSIGNMENT_TOKEN, "expected '='", TOP_LEVEL_RECOVERY) {
+            break;
+        }
+
+        parser.skip_trivia_and_newlines();
+        ty(parser);
+        break;
+    }
     parser.finish_node(TYPE_ALIAS);
 }
 
 fn declaration(parser: &mut Parser<'_, '_>) {
     parser.start_node(DECLARATION);
-    let has_modifiers = starts_modifiers(parser);
-    match parser.current_token() {
-        Some(Token::CLASS | Token::INTERFACE) => class_declaration(parser),
-        Some(Token::OBJECT) => object_declaration(parser),
-        Some(Token::FUN) => function_declaration(parser),
-        Some(Token::VAL | Token::VAR) => property_declaration(parser),
-        Some(Token::TYPE_ALIAS) => type_alias(parser),
-        _ if has_modifiers => {
-            // Best-effort: try class declaration when modifiers are present.
-            class_declaration(parser);
+    parse_loop! { parser =>
+        let has_modifiers = starts_modifiers(parser);
+        match parser.current_token() {
+            Some(Token::CLASS | Token::INTERFACE) => class_declaration(parser),
+            Some(Token::OBJECT) => object_declaration(parser),
+            Some(Token::FUN) => function_declaration(parser),
+            Some(Token::VAL | Token::VAR) => property_declaration(parser),
+            Some(Token::TYPE_ALIAS) => type_alias(parser),
+            _ if has_modifiers => {
+                // Best-effort: try class declaration when modifiers are present.
+                class_declaration(parser);
+            }
+            _ => {
+                parser.error("expected declaration");
+                parser.recover_until(TOP_LEVEL_RECOVERY);
+                break;
+            }
         }
-        _ => parser.sink.error("expected declaration".into()),
+        break;
     }
     parser.finish_node(DECLARATION);
 }

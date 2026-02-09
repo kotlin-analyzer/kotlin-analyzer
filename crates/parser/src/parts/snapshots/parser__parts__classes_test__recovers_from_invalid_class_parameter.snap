@@ -1,0 +1,61 @@
+---
+source: crates/parser/src/parts/classes_test.rs
+assertion_line: 104
+expression: "class Foo(x Int) { val y = 1 }"
+---
+CLASS_DECLARATION@0..30
+  CLASS@0..5 "class"
+  WS@5..6 " "
+  SIMPLE_IDENTIFIER@6..9
+    IDENTIFIER_TOKEN@6..9 "Foo"
+  PRIMARY_CONSTRUCTOR@9..16
+    CLASS_PARAMETERS@9..16
+      L_PAREN@9..10 "("
+      CLASS_PARAMETER@10..15
+        SIMPLE_IDENTIFIER@10..11
+          IDENTIFIER_TOKEN@10..11 "x"
+        WS@11..12 " "
+        TYPE@12..15
+          TYPE_REFERENCE@12..15
+            USER_TYPE@12..15
+              SIMPLE_USER_TYPE@12..15
+                SIMPLE_IDENTIFIER@12..15
+                  IDENTIFIER_TOKEN@12..15 "Int"
+      R_PAREN@15..16 ")"
+  WS@16..17 " "
+  CLASS_BODY@17..30
+    L_CURL@17..18 "{"
+    WS@18..19 " "
+    CLASS_MEMBER_DECLARATIONS@19..29
+      CLASS_MEMBER_DECLARATION@19..29
+        PROPERTY_DECLARATION@19..29
+          VAL@19..22 "val"
+          WS@22..23 " "
+          VARIABLE_DECLARATION@23..25
+            SIMPLE_IDENTIFIER@23..24
+              IDENTIFIER_TOKEN@23..24 "y"
+            WS@24..25 " "
+          ASSIGNMENT_TOKEN@25..26 "="
+          WS@26..27 " "
+          EXPRESSION@27..29
+            DISJUNCTION@27..29
+              CONJUNCTION@27..29
+                EQUALITY@27..29
+                  COMPARISON@27..29
+                    GENERIC_CALL_LIKE_COMPARISON@27..29
+                      INFIX_OPERATION@27..29
+                        ELVIS_EXPRESSION@27..29
+                          INFIX_FUNCTION_CALL@27..29
+                            RANGE_EXPRESSION@27..29
+                              ADDITIVE_EXPRESSION@27..29
+                                MULTIPLICATIVE_EXPRESSION@27..29
+                                  AS_EXPRESSION@27..29
+                                    PREFIX_UNARY_EXPRESSION@27..29
+                                      POSTFIX_UNARY_EXPRESSION@27..29
+                                        PRIMARY_EXPRESSION@27..28
+                                          LITERAL_CONSTANT@27..28
+                                            INTEGER_LITERAL@27..28 "1"
+                                        WS@28..29 " "
+    R_CURL@29..30 "}"
+
+Parse error at 12..15: expected ':' before type

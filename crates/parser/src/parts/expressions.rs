@@ -147,7 +147,7 @@ fn elvis_expression(parser: &mut Parser<'_, '_>) {
         if parser.current_token() == Some(&Token::COLON) {
             parser.bump();
         } else {
-            parser.sink.error("expected ':' in elvis operator".into());
+            parser.error("expected ':' in elvis operator");
         }
         parser.finish_node(ELVIS);
 
@@ -161,20 +161,12 @@ fn elvis_expression(parser: &mut Parser<'_, '_>) {
 fn infix_function_call(parser: &mut Parser<'_, '_>) {
     parser.start_node(INFIX_FUNCTION_CALL);
     range_expression(parser);
-    let mut i = 0;
 
     parse_loop! { parser =>
         parser.skip_trivia();
         if !starts_simple_identifier(parser) {
             break;
         }
-        if i > 2 {
-            // To prevent infinite loops in case of parser errors, we limit the number of infix calls.
-            println!("Too many infix calls, breaking to prevent infinite loop");
-            println!("Current token: {:?}", parser.current_token());
-            break;
-        }
-        i += 1;
         simple_identifier(parser);
         parser.skip_trivia_and_newlines();
         range_expression(parser);
@@ -351,10 +343,10 @@ fn parenthesized_directly_assignable_expression(parser: &mut Parser<'_, '_>) {
         if parser.current_token() == Some(&Token::R_PAREN) {
             parser.bump();
         } else {
-            parser.sink.error("expected ')'".into());
+            parser.error("expected ')'");
         }
     } else {
-        parser.sink.error("expected '('".into());
+        parser.error("expected '('");
     }
 
     parser.finish_node(PARENTHESIZED_DIRECTLY_ASSIGNABLE_EXPRESSION);
@@ -381,10 +373,10 @@ fn parenthesized_assignable_expression(parser: &mut Parser<'_, '_>) {
         if parser.current_token() == Some(&Token::R_PAREN) {
             parser.bump();
         } else {
-            parser.sink.error("expected ')'".into());
+            parser.error("expected ')'");
         }
     } else {
-        parser.sink.error("expected '('".into());
+        parser.error("expected '('");
     }
 
     parser.finish_node(PARENTHESIZED_ASSIGNABLE_EXPRESSION);
@@ -403,7 +395,7 @@ fn assignable_suffix(parser: &mut Parser<'_, '_>) {
 fn indexing_suffix(parser: &mut Parser<'_, '_>) {
     parser.start_node(INDEXING_SUFFIX);
     if parser.current_token() != Some(&Token::L_SQUARE) {
-        parser.sink.error("expected '['".into());
+        parser.error("expected '['");
         parser.finish_node(INDEXING_SUFFIX);
         return;
     }
@@ -427,7 +419,7 @@ fn indexing_suffix(parser: &mut Parser<'_, '_>) {
     if parser.current_token() == Some(&Token::R_SQUARE) {
         parser.bump();
     } else {
-        parser.sink.error("expected ']'".into());
+        parser.error("expected ']'");
     }
 
     parser.finish_node(INDEXING_SUFFIX);
@@ -442,7 +434,7 @@ fn navigation_suffix(parser: &mut Parser<'_, '_>) {
         Some(Token::CLASS) => parser.bump(),
         Some(Token::L_PAREN) => parenthesized_expression(parser),
         Some(Token::L_SQUARE) => collection_literal(parser),
-        _ => simple_identifier(parser),
+        _ => { simple_identifier(parser); },
     }
 
     parser.finish_node(NAVIGATION_SUFFIX);
@@ -492,7 +484,7 @@ fn annotated_lambda(parser: &mut Parser<'_, '_>) {
 fn lambda_literal(parser: &mut Parser<'_, '_>) {
     parser.start_node(LAMBDA_LITERAL);
     if parser.current_token() != Some(&Token::L_CURL) {
-        parser.sink.error("expected '{' to start lambda".into());
+        parser.error("expected '{' to start lambda");
         parser.finish_node(LAMBDA_LITERAL);
         return;
     }
@@ -523,7 +515,7 @@ pub(crate) fn value_arguments(parser: &mut Parser<'_, '_>) {
     parser.start_node(VALUE_ARGUMENTS);
 
     if parser.current_token() != Some(&Token::L_PAREN) {
-        parser.sink.error("expected '(' for value arguments".into());
+        parser.error("expected '(' for value arguments");
         parser.finish_node(VALUE_ARGUMENTS);
         return;
     }
@@ -550,7 +542,7 @@ pub(crate) fn value_arguments(parser: &mut Parser<'_, '_>) {
     if parser.current_token() == Some(&Token::R_PAREN) {
         parser.bump();
     } else {
-        parser.sink.error("expected ')' to close arguments".into());
+        parser.error("expected ')' to close arguments");
     }
 
     parser.finish_node(VALUE_ARGUMENTS);
@@ -617,12 +609,12 @@ fn primary_expression(parser: &mut Parser<'_, '_>) {
         Some(Token::QUOTE_OPEN | Token::TRIPLE_QUOTE_OPEN) => string_literal(parser),
         Some(Token::THIS | Token::THIS_AT) => this_expression(parser),
         Some(Token::SUPER | Token::SUPER_AT) => super_expression(parser),
-        _ if is_identifier_like => simple_identifier(parser),
+        _ if is_identifier_like => {simple_identifier(parser);}
         Some(Token::L_CURL) => lambda_literal(parser),
         Some(Token::DATA) => object_literal(parser),
         Some(Token::OBJECT) => object_literal(parser),
         _ => {
-            parser.sink.error("expected primary expression".into());
+            parser.error("expected primary expression");
             if parser.current_token().is_some() {
                 parser.bump();
             }
@@ -635,7 +627,7 @@ fn primary_expression(parser: &mut Parser<'_, '_>) {
 fn parenthesized_expression(parser: &mut Parser<'_, '_>) {
     parser.start_node(PARENTHESIZED_EXPRESSION);
     if parser.current_token() != Some(&Token::L_PAREN) {
-        parser.sink.error("expected '('".into());
+        parser.error("expected '('");
         parser.finish_node(PARENTHESIZED_EXPRESSION);
         return;
     }
@@ -648,7 +640,7 @@ fn parenthesized_expression(parser: &mut Parser<'_, '_>) {
     if parser.current_token() == Some(&Token::R_PAREN) {
         parser.bump();
     } else {
-        parser.sink.error("expected ')'".into());
+        parser.error("expected ')'");
     }
 
     parser.finish_node(PARENTHESIZED_EXPRESSION);
@@ -657,7 +649,7 @@ fn parenthesized_expression(parser: &mut Parser<'_, '_>) {
 fn collection_literal(parser: &mut Parser<'_, '_>) {
     parser.start_node(COLLECTION_LITERAL);
     if parser.current_token() != Some(&Token::L_SQUARE) {
-        parser.sink.error("expected '['".into());
+        parser.error("expected '['");
         parser.finish_node(COLLECTION_LITERAL);
         return;
     }
@@ -680,7 +672,7 @@ fn collection_literal(parser: &mut Parser<'_, '_>) {
     if parser.current_token() == Some(&Token::R_SQUARE) {
         parser.bump();
     } else {
-        parser.sink.error("expected ']'".into());
+        parser.error("expected ']'");
     }
 
     parser.finish_node(COLLECTION_LITERAL);
@@ -731,7 +723,7 @@ fn object_literal(parser: &mut Parser<'_, '_>) {
     if parser.current_token() == Some(&Token::OBJECT) {
         parser.bump();
     } else {
-        parser.sink.error("expected 'object'".into());
+        parser.error("expected 'object'");
     }
 
     parser.finish_node(OBJECT_LITERAL);
@@ -743,7 +735,7 @@ pub(crate) fn label(parser: &mut Parser<'_, '_>) {
     parser.skip_trivia_and_newlines();
     match parser.current_token() {
         Some(Token::AT_NO_WS | Token::AT_POST_WS) => parser.bump(),
-        _ => parser.sink.error("expected '@' in label".into()),
+        _ => parser.error("expected '@' in label"),
     }
     parser.finish_node(LABEL);
 }
@@ -753,7 +745,7 @@ fn prefix_unary_operator(parser: &mut Parser<'_, '_>) {
     match parser.current_token() {
         Some(Token::INCR | Token::DECR | Token::SUB | Token::ADD) => parser.bump(),
         Some(Token::EXCL_NO_WS | Token::EXCL_WS) => parser.bump(),
-        _ => parser.sink.error("expected prefix unary operator".into()),
+        _ => parser.error("expected prefix unary operator"),
     }
     parser.finish_node(PREFIX_UNARY_OPERATOR);
 }
@@ -766,10 +758,10 @@ fn postfix_unary_operator(parser: &mut Parser<'_, '_>) {
             parser.bump();
             match parser.current_token() {
                 Some(Token::EXCL_NO_WS | Token::EXCL_WS) => parser.bump(),
-                _ => parser.sink.error("expected second '!'".into()),
+                _ => parser.error("expected second '!'"),
             }
         }
-        _ => parser.sink.error("expected postfix unary operator".into()),
+        _ => parser.error("expected postfix unary operator"),
     }
     parser.finish_node(POSTFIX_UNARY_OPERATOR);
 }
@@ -787,10 +779,10 @@ fn member_access_operator(parser: &mut Parser<'_, '_>) {
                 parser.bump();
                 parser.finish_node(SAFE_NAV);
             } else {
-                parser.sink.error("expected '.' after '?'".into());
+                parser.error("expected '.' after '?'");
             }
         }
-        _ => parser.sink.error("expected member access".into()),
+        _ => parser.error("expected member access"),
     }
     parser.finish_node(MEMBER_ACCESS_OPERATOR);
 }

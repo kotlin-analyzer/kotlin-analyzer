@@ -2,13 +2,7 @@ use ast::syntax::SyntaxKind::*;
 use tokens::Token;
 
 use super::identifiers::simple_identifier;
-use crate::Parser;
-
-macro_rules! trivia {
-    () => {
-        Token::WS | Token::NL | Token::LINE_COMMENT | Token::DELIMITED_COMMENT
-    };
-}
+use crate::{Parser, parse_loop, trivia};
 
 pub(crate) fn ty(parser: &mut Parser<'_, '_>) {
     parser.skip_trivia();
@@ -31,7 +25,7 @@ pub(crate) fn ty(parser: &mut Parser<'_, '_>) {
         Some(Token::L_PAREN) => parenthesized_type(parser),
         _ if nullable_reference => nullable_type(parser),
         _ if starts_type_reference(parser) => type_reference(parser),
-        _ => parser.sink.error("expected a type".into()),
+        _ => parser.error("expected a type"),
     }
 
     parser.sink.finish_node();
@@ -60,26 +54,26 @@ pub(crate) fn type_reference(parser: &mut Parser<'_, '_>) {
             parser.sink.finish_node();
         }
         Some((_, Token::ERR)) => {
-            parser.sink.error("expected a type reference".into());
+            parser.error("expected a type reference");
             parser.bump();
         }
         _ => {}
     }
 }
 
-fn user_type(parser: &mut Parser<'_, '_>) {
+pub(crate) fn user_type(parser: &mut Parser<'_, '_>) {
     parser.sink.start_node(USER_TYPE);
     simple_user_type(parser);
 
-    loop {
+    parse_loop! { parser =>
         parser.skip_trivia_and_newlines();
-        match parser.current_token() {
-            Some(Token::DOT) => {
+        match parser.next_two_tokens() {
+            Some((Token::DOT, next)) if !matches!(next, Token::L_PAREN | Token::EOF) => {
                 parser.bump();
                 simple_user_type(parser);
             }
-            Some(Token::ERR) => {
-                parser.sink.error("expected a type name".into());
+            Some((Token::ERR, _)) => {
+                parser.error("expected a type name");
                 parser.bump();
             }
             _ => break,
@@ -113,10 +107,10 @@ fn simple_user_type(parser: &mut Parser<'_, '_>) {
             parser.sink.finish_node();
         }
         Some((_, Token::ERR)) => {
-            parser.sink.error("expected a type name".into());
+            parser.error("expected a type name");
             parser.bump();
         }
-        _ => parser.sink.error("expected a type name".into()),
+        _ => parser.error("expected a type name"),
     }
 }
 
@@ -135,10 +129,10 @@ fn type_projection(parser: &mut Parser<'_, '_>) {
         Some((_, Token::MULT)) => parser.bump(),
         _ if starts_type(parser) => ty(parser),
         Some((_, Token::ERR)) => {
-            parser.sink.error("expected type projection".into());
+            parser.error("expected type projection");
             parser.bump();
         }
-        _ => parser.sink.error("expected type projection".into()),
+        _ => parser.error("expected type projection"),
     }
 
     parser.sink.finish_node();
@@ -148,16 +142,14 @@ pub(crate) fn type_arguments(parser: &mut Parser<'_, '_>) {
     parser.sink.start_node(TYPE_ARGUMENTS);
 
     if parser.current_token() != Some(&Token::L_ANGLE) {
-        parser
-            .sink
-            .error("expected `<` to start type arguments".into());
+        parser.error("expected `<` to start type arguments");
         parser.sink.finish_node();
         return;
     }
 
     parser.bump();
 
-    loop {
+    parse_loop! { parser =>
         parser.skip_trivia_and_newlines();
 
         if matches!(parser.current_token(), Some(Token::R_ANGLE) | None) {
@@ -179,9 +171,7 @@ pub(crate) fn type_arguments(parser: &mut Parser<'_, '_>) {
     if parser.current_token() == Some(&Token::R_ANGLE) {
         parser.bump();
     } else {
-        parser
-            .sink
-            .error("expected `>` to close type arguments".into());
+        parser.error("expected `>` to close type arguments");
     }
 
     parser.sink.finish_node();
@@ -211,7 +201,7 @@ fn nullable_type(parser: &mut Parser<'_, '_>) {
     }
 
     if !found {
-        parser.sink.error("expected `?` for nullable type".into());
+        parser.error("expected `?` for nullable type");
     }
 
     parser.sink.finish_node();
@@ -221,7 +211,7 @@ fn parenthesized_type(parser: &mut Parser<'_, '_>) {
     parser.sink.start_node(PARENTHESIZED_TYPE);
 
     if parser.current_token() != Some(&Token::L_PAREN) {
-        parser.sink.error("expected `(`".into());
+        parser.error("expected `(`");
         parser.sink.finish_node();
         return;
     }
@@ -235,7 +225,7 @@ fn parenthesized_type(parser: &mut Parser<'_, '_>) {
     if parser.current_token() == Some(&Token::R_PAREN) {
         parser.bump();
     } else {
-        parser.sink.error("expected `)`".into());
+        parser.error("expected `)`");
     }
 
     parser.sink.finish_node();
@@ -251,7 +241,7 @@ fn function_type(parser: &mut Parser<'_, '_>) {
         if parser.current_token() == Some(&Token::DOT) {
             parser.bump();
         } else {
-            parser.sink.error("expected `.` after receiver type".into());
+            parser.error("expected `.` after receiver type");
         }
         parser.skip_trivia_and_newlines();
     }
@@ -262,7 +252,7 @@ fn function_type(parser: &mut Parser<'_, '_>) {
     if parser.current_token() == Some(&Token::ARROW) {
         parser.bump();
     } else {
-        parser.sink.error("expected `->` in function type".into());
+        parser.error("expected `->` in function type");
     }
 
     parser.skip_trivia_and_newlines();
@@ -275,9 +265,7 @@ fn function_type_parameters(parser: &mut Parser<'_, '_>) {
     parser.sink.start_node(FUNCTION_TYPE_PARAMETERS);
 
     if parser.current_token() != Some(&Token::L_PAREN) {
-        parser
-            .sink
-            .error("expected `(` to start function type parameters".into());
+        parser.error("expected `(` to start function type parameters");
         parser.sink.finish_node();
         return;
     }
@@ -291,7 +279,7 @@ fn function_type_parameters(parser: &mut Parser<'_, '_>) {
         return;
     }
 
-    loop {
+    parse_loop! { parser =>
         parser.skip_trivia_and_newlines();
 
         if looks_like_parameter(parser) {
@@ -299,7 +287,7 @@ fn function_type_parameters(parser: &mut Parser<'_, '_>) {
         } else if starts_type(parser) {
             ty(parser);
         } else {
-            parser.sink.error("expected parameter or type".into());
+            parser.error("expected parameter or type");
             if matches!(
                 parser.current_token(),
                 Some(Token::COMMA | Token::R_PAREN) | None
@@ -326,9 +314,7 @@ fn function_type_parameters(parser: &mut Parser<'_, '_>) {
     if parser.current_token() == Some(&Token::R_PAREN) {
         parser.bump();
     } else {
-        parser
-            .sink
-            .error("expected `)` to end function type parameters".into());
+        parser.error("expected `)` to end function type parameters");
     }
 
     parser.sink.finish_node();
@@ -341,7 +327,7 @@ fn parameter(parser: &mut Parser<'_, '_>) {
     if parser.current_token() == Some(&Token::COLON) {
         parser.bump();
     } else {
-        parser.sink.error("expected `:` in parameter".into());
+        parser.error("expected `:` in parameter");
     }
     parser.skip_trivia_and_newlines();
     ty(parser);
@@ -359,7 +345,7 @@ fn receiver_type(parser: &mut Parser<'_, '_>) {
         Some(Token::L_PAREN) => parenthesized_type(parser),
         _ if nullable_reference => nullable_type(parser),
         _ if starts_reference => type_reference(parser),
-        _ => parser.sink.error("expected receiver type".into()),
+        _ => parser.error("expected receiver type"),
     }
 
     parser.sink.finish_node();
@@ -369,7 +355,7 @@ fn parenthesized_user_type(parser: &mut Parser<'_, '_>) {
     parser.sink.start_node(PARENTHESIZED_USER_TYPE);
 
     if parser.current_token() != Some(&Token::L_PAREN) {
-        parser.sink.error("expected `(`".into());
+        parser.error("expected `(`");
         parser.sink.finish_node();
         return;
     }
@@ -387,7 +373,7 @@ fn parenthesized_user_type(parser: &mut Parser<'_, '_>) {
     if parser.current_token() == Some(&Token::R_PAREN) {
         parser.bump();
     } else {
-        parser.sink.error("expected `)`".into());
+        parser.error("expected `)`");
     }
 
     parser.sink.finish_node();

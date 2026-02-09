@@ -60,3 +60,13 @@ fn parses_enum_class_body_without_members() {
 
 	assert!(node.descendants().any(|n| n.kind() == ENUM_ENTRIES));
 }
+
+#[test]
+fn recovers_from_missing_enum_class_closing_brace() {
+	let parse = make_parser(enum_class_body);
+	let parsed = parse("{ A");
+
+	assert!(!parsed.errors.is_empty());
+	let node = parsed.syntax();
+	assert!(node.descendants().any(|n| n.kind() == ENUM_ENTRIES));
+}

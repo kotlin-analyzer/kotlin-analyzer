@@ -1,20 +1,25 @@
 ---
 source: crates/parser/src/parts/types_test.rs
-expression: kinds
+assertion_line: 146
+expression: Foo.Bar<Baz>
 ---
-[
-    TYPE,
-    TYPE_REFERENCE,
-    USER_TYPE,
-    SIMPLE_USER_TYPE,
-    SIMPLE_IDENTIFIER,
-    SIMPLE_USER_TYPE,
-    SIMPLE_IDENTIFIER,
-    TYPE_ARGUMENTS,
-    TYPE_PROJECTION,
-    TYPE,
-    TYPE_REFERENCE,
-    USER_TYPE,
-    SIMPLE_USER_TYPE,
-    SIMPLE_IDENTIFIER,
-]
+TYPE@0..12
+  TYPE_REFERENCE@0..12
+    USER_TYPE@0..12
+      SIMPLE_USER_TYPE@0..3
+        SIMPLE_IDENTIFIER@0..3
+          IDENTIFIER_TOKEN@0..3 "Foo"
+      DOT@3..4 "."
+      SIMPLE_USER_TYPE@4..12
+        SIMPLE_IDENTIFIER@4..7
+          IDENTIFIER_TOKEN@4..7 "Bar"
+        TYPE_ARGUMENTS@7..12
+          L_ANGLE@7..8 "<"
+          TYPE_PROJECTION@8..11
+            TYPE@8..11
+              TYPE_REFERENCE@8..11
+                USER_TYPE@8..11
+                  SIMPLE_USER_TYPE@8..11
+                    SIMPLE_IDENTIFIER@8..11
+                      IDENTIFIER_TOKEN@8..11 "Baz"
+          R_ANGLE@11..12 ">"

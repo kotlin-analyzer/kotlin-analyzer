@@ -1,0 +1,78 @@
+---
+source: crates/parser/src/parts/statements_test.rs
+expression: val x = 1 val y = 2
+---
+STATEMENTS@0..19
+  STATEMENT@0..10
+    ASSIGNMENT@0..10
+      DIRECTLY_ASSIGNABLE_EXPRESSION@0..5
+        POSTFIX_UNARY_EXPRESSION@0..4
+          PRIMARY_EXPRESSION@0..3
+            VAL@0..3 "val"
+          WS@3..4 " "
+        ASSIGNABLE_SUFFIX@4..5
+          NAVIGATION_SUFFIX@4..5
+            MEMBER_ACCESS_OPERATOR@4..4
+            SIMPLE_IDENTIFIER@4..5
+              IDENTIFIER_TOKEN@4..5 "x"
+      WS@5..6 " "
+      ASSIGNMENT_TOKEN@6..7 "="
+      WS@7..8 " "
+      EXPRESSION@8..10
+        DISJUNCTION@8..10
+          CONJUNCTION@8..10
+            EQUALITY@8..10
+              COMPARISON@8..10
+                GENERIC_CALL_LIKE_COMPARISON@8..10
+                  INFIX_OPERATION@8..10
+                    ELVIS_EXPRESSION@8..10
+                      INFIX_FUNCTION_CALL@8..10
+                        RANGE_EXPRESSION@8..10
+                          ADDITIVE_EXPRESSION@8..10
+                            MULTIPLICATIVE_EXPRESSION@8..10
+                              AS_EXPRESSION@8..10
+                                PREFIX_UNARY_EXPRESSION@8..10
+                                  POSTFIX_UNARY_EXPRESSION@8..10
+                                    PRIMARY_EXPRESSION@8..9
+                                      LITERAL_CONSTANT@8..9
+                                        INTEGER_LITERAL@8..9 "1"
+                                    WS@9..10 " "
+  STATEMENT@10..19
+    ASSIGNMENT@10..19
+      DIRECTLY_ASSIGNABLE_EXPRESSION@10..15
+        POSTFIX_UNARY_EXPRESSION@10..14
+          PRIMARY_EXPRESSION@10..13
+            VAL@10..13 "val"
+          WS@13..14 " "
+        ASSIGNABLE_SUFFIX@14..15
+          NAVIGATION_SUFFIX@14..15
+            MEMBER_ACCESS_OPERATOR@14..14
+            SIMPLE_IDENTIFIER@14..15
+              IDENTIFIER_TOKEN@14..15 "y"
+      WS@15..16 " "
+      ASSIGNMENT_TOKEN@16..17 "="
+      WS@17..18 " "
+      EXPRESSION@18..19
+        DISJUNCTION@18..19
+          CONJUNCTION@18..19
+            EQUALITY@18..19
+              COMPARISON@18..19
+                GENERIC_CALL_LIKE_COMPARISON@18..19
+                  INFIX_OPERATION@18..19
+                    ELVIS_EXPRESSION@18..19
+                      INFIX_FUNCTION_CALL@18..19
+                        RANGE_EXPRESSION@18..19
+                          ADDITIVE_EXPRESSION@18..19
+                            MULTIPLICATIVE_EXPRESSION@18..19
+                              AS_EXPRESSION@18..19
+                                PREFIX_UNARY_EXPRESSION@18..19
+                                  POSTFIX_UNARY_EXPRESSION@18..19
+                                    PRIMARY_EXPRESSION@18..19
+                                      LITERAL_CONSTANT@18..19
+                                        INTEGER_LITERAL@18..19 "2"
+
+Parse error at 0..3: expected primary expression
+Parse error at 4..5: expected member access
+Parse error at 10..13: expected ';' or newline between statements
+Parse error at 10..13: expected primary expression
+Parse error at 14..15: expected member access
