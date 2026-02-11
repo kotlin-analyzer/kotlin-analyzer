@@ -533,10 +533,7 @@ fn looks_like_parameter(parser: &mut Parser<'_, '_>) -> bool {
         return false;
     }
 
-    match next_non_trivia(parser, 1) {
-        Some(Token::COLON) => true,
-        _ => false,
-    }
+    matches!(next_non_trivia(parser, 1), Some(Token::COLON))
 }
 
 fn next_non_trivia(parser: &mut Parser<'_, '_>, mut offset: usize) -> Option<Token> {

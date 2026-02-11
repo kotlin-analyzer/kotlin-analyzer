@@ -434,7 +434,9 @@ fn navigation_suffix(parser: &mut Parser<'_, '_>) {
         Some(Token::CLASS) => parser.bump(),
         Some(Token::L_PAREN) => parenthesized_expression(parser),
         Some(Token::L_SQUARE) => collection_literal(parser),
-        _ => { simple_identifier(parser); },
+        _ => {
+            simple_identifier(parser);
+        }
     }
 
     parser.finish_node(NAVIGATION_SUFFIX);
@@ -609,7 +611,9 @@ fn primary_expression(parser: &mut Parser<'_, '_>) {
         Some(Token::QUOTE_OPEN | Token::TRIPLE_QUOTE_OPEN) => string_literal(parser),
         Some(Token::THIS | Token::THIS_AT) => this_expression(parser),
         Some(Token::SUPER | Token::SUPER_AT) => super_expression(parser),
-        _ if is_identifier_like => {simple_identifier(parser);}
+        _ if is_identifier_like => {
+            simple_identifier(parser);
+        }
         Some(Token::L_CURL) => lambda_literal(parser),
         Some(Token::DATA) => object_literal(parser),
         Some(Token::OBJECT) => object_literal(parser),
@@ -880,7 +884,7 @@ fn starts_postfix_unary_suffix(parser: &mut Parser<'_, '_>) -> bool {
                 | Token::COLON_COLON
                 | Token::QUEST_NO_WS
         )
-    ) && 
+    ) &&
     // To avoid ambiguity with the elvis operator, we need to ensure that a '?' is not followed by a ':'.
     !matches!(
         parser.next_two_tokens(),

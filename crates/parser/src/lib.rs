@@ -143,7 +143,7 @@ impl Parser<'_, '_> {
         loop {
             match self.current_token() {
                 None => break,
-                Some(token) if matches!(token, Token::EOF) || recovery.contains(&token) => {
+                Some(token) if matches!(token, Token::EOF) || recovery.contains(token) => {
                     break;
                 }
                 _ => self.bump(),

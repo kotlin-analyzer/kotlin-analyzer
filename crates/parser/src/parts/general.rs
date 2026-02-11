@@ -116,7 +116,7 @@ fn shebang_line(parser: &mut Parser<'_, '_>) {
 
 fn file_annotation(parser: &mut Parser<'_, '_>) {
     parser.start_node(FILE_ANNOTATION);
-    loop {
+    parse_loop! { parser =>
         if matches!(
             parser.current_token(),
             Some(Token::AT_NO_WS | Token::AT_PRE_WS)

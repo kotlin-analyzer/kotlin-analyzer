@@ -24,7 +24,7 @@ fn multi_line_str_test() {
 #[test]
 fn nested_str_test() {
     let source = r#""hey ${echo("test")} stranger""#;
-    let lexer = lexer::Lexer::new(&source).spanned_with_src();
+    let lexer = lexer::Lexer::new(source).spanned_with_src();
     let entries: Vec<_> = lexer.collect();
 
     insta::assert_debug_snapshot!(entries);
