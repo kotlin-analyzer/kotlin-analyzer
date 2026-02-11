@@ -12,7 +12,6 @@ use tokens::Token;
 
 pub trait TokenSource<'a> {
     fn current(&mut self) -> Option<&SpannedWithSource<'a>>;
-    #[cfg(debug_assertions)]
     fn current_index(&mut self) -> Option<usize>;
     fn lookahead_nth(&mut self, n: usize) -> Option<&SpannedWithSource<'a>>;
     fn is_keyword(&mut self) -> bool;
@@ -181,17 +180,17 @@ impl Parser<'_, '_> {
     }
 
     fn start_node(&mut self, kind: SyntaxKind) {
-        // #[cfg(debug_assertions)]
-        // {
-        //     println!("Starting node: {:?}", kind);
-        // }
+        #[cfg(feature = "verbose")]
+        {
+            println!("Starting node: {:?}", kind);
+        }
         self.sink.start_node(kind);
     }
     fn finish_node(&mut self, _kind: SyntaxKind) {
-        // #[cfg(debug_assertions)]
-        // {
-        //     println!("Finishing node: {:?}", kind);
-        // }
+        #[cfg(feature = "verbose")]
+        {
+            println!("Finishing node: {:?}", _kind);
+        }
         self.sink.finish_node();
     }
 }

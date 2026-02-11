@@ -294,10 +294,6 @@ fn postfix_unary_expression(parser: &mut Parser<'_, '_>) {
 
 fn postfix_unary_suffix(parser: &mut Parser<'_, '_>) {
     parser.start_node(POSTFIX_UNARY_SUFFIX);
-    println!(
-        "Checking for postfix unary suffix at token: {:?}",
-        parser.current_token()
-    );
 
     if starts_postfix_unary_operator(parser) {
         postfix_unary_operator(parser);

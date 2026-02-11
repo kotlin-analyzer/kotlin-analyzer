@@ -57,8 +57,8 @@ fn single_annotation(parser: &mut Parser<'_, '_>) {
         }
 
         parser.skip_trivia_and_newlines();
-         if ! unescaped_annotation(parser) {
-            parser.error("expected at least one annotation inside brackets");
+         if !unescaped_annotation(parser) {
+            parser.error("expected annotation");
         }
         break;
     }
