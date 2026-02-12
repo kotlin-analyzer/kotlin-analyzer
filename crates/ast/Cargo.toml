@@ -13,4 +13,4 @@ macros.workspace = true
 ron.workspace = true
 rowan.workspace = true
 serde.workspace = true
-tokens.workspace = true
+syntax.workspace = true

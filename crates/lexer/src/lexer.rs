@@ -8,8 +8,7 @@ use std::{
     ops::{Range, RangeInclusive},
 };
 
-use tokens::Token::{self, *};
-use tokens::{OPERATORS, get_keyword};
+use syntax::Token::{self, *};
 use unicode_categories::UnicodeCategories;
 
 trait ParseFn<'a>: Fn(Step<'a>) -> Option<Step<'a>> {
@@ -208,15 +207,15 @@ impl SpannedWithSource<'_> {
     }
 
     pub fn is_keyword(&self) -> bool {
-        tokens::is_keyword(self.substring())
+        Token::from_keyword(self.substring()).is_some()
     }
 
     pub fn is_soft_keyword(&self) -> bool {
-        tokens::is_soft_keyword(self.substring())
+        Token::from_soft_keyword(self.substring()).is_some()
     }
 
     pub fn is_operator(&self) -> bool {
-        tokens::is_operator(self.substring())
+        Token::from_operator(self.substring()).is_some()
     }
 }
 
@@ -390,9 +389,9 @@ fn parse_operator(step: Step<'_>) -> Option<Step<'_>> {
         let slice = step.get_until(size.into());
 
         if let Some(key) = slice {
-            let matched = OPERATORS.get(key);
+            let matched = Token::from_operator(key);
             if let Some(token) = matched {
-                return handle_operator(step.advance_with(size.into(), *token), token);
+                return handle_operator(step.advance_with(size.into(), token), &token);
             }
         }
     }
@@ -475,8 +474,8 @@ fn parse_keyword(step: Step<'_>) -> Option<Step<'_>> {
                 continue;
             }
 
-            if let Some(token) = get_keyword(key) {
-                return handle_keyword(step.advance_with(size.into(), *token), token);
+            if let Some(token) = Token::from_keyword(key) {
+                return handle_keyword(step.advance_with(size.into(), token), &token);
             }
         }
     }
@@ -517,7 +516,7 @@ fn hidden(step: Step<'_>) -> Option<Step<'_>> {
 fn shebang(step: Step<'_>) -> Option<Step<'_>> {
     tag("#!")
         .and(many0(not(tag("\u{000A}").or(tag("\u{000D}")))))
-        .with(SHEBANG_LINE_TOKEN)(step)
+        .with(SHEBANG_LINE)(step)
 }
 
 fn line_comment(step: Step<'_>) -> Option<Step<'_>> {
@@ -658,7 +657,7 @@ fn tag<'a>(pattern: &'static str) -> impl ParseFn<'a> {
             .map(|t| t == pattern)
             .unwrap_or_default()
         {
-            Some(step.advance_with(pattern.len(), IDENTIFIER_TOKEN))
+            Some(step.advance_with(pattern.len(), IDENTIFIER))
         } else {
             None
         }
@@ -747,7 +746,7 @@ fn quoted_symbol(step: Step<'_>) -> Option<Step<'_>> {
 fn parse_identifier(step: Step<'_>) -> Option<Step<'_>> {
     quoted_symbol
         .or(letter.and(many0(when(|ch| ch.can_be_in_ident()))))
-        .with(IDENTIFIER_TOKEN)(step)
+        .with(IDENTIFIER)(step)
 }
 
 fn double_lit(step: Step<'_>) -> Option<Step<'_>> {
@@ -908,15 +907,15 @@ mod test {
 
     #[test]
     fn shebang_test() {
-        assert_success!(shebang, "#!", 2, SHEBANG_LINE_TOKEN);
-        assert_success!(shebang, "#!\n", 2, SHEBANG_LINE_TOKEN);
-        assert_success!(shebang, "#! sh echo", 10, SHEBANG_LINE_TOKEN);
-        assert_success!(shebang, "#! comment // nested", 20, SHEBANG_LINE_TOKEN);
+        assert_success!(shebang, "#!", 2, SHEBANG_LINE);
+        assert_success!(shebang, "#!\n", 2, SHEBANG_LINE);
+        assert_success!(shebang, "#! sh echo", 10, SHEBANG_LINE);
+        assert_success!(shebang, "#! comment // nested", 20, SHEBANG_LINE);
         assert_success!(
             shebang,
             "#! comment // nested #! deep /* more */",
             39,
-            SHEBANG_LINE_TOKEN
+            SHEBANG_LINE
         );
 
         assert_failure!(shebang, "// comment");

@@ -1,0 +1,10 @@
+---
+source: crates/parser/src/grammar/types_test.rs
+expression: Foo
+---
+TYPE@0..3
+  TYPE_REFERENCE@0..3
+    USER_TYPE@0..3
+      SIMPLE_USER_TYPE@0..3
+        SIMPLE_IDENTIFIER@0..3
+          IDENTIFIER@0..3 "Foo"

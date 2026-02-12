@@ -8,13 +8,14 @@ license.workspace = true
 
 [dependencies]
 ast.workspace = true
-insta.workspace = true
+drop_bomb.workspace = true
 # todo: remove dependency on lexer: move to dev dependencies
 lexer.workspace = true
-tokens = { workspace = true }
+syntax.workspace = true
 
 [dev-dependencies]
 ast.workspace = true
+insta.workspace = true
 itertools.workspace = true
 pretty_assertions.workspace = true
 rowan.workspace = true

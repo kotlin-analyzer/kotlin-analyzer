@@ -7,7 +7,7 @@ description = "TBD"
 license.workspace = true
 
 [dependencies]
-tokens = { workspace = true }
+syntax = { workspace = true }
 unicode_categories = "0.1.1"
 
 [dev-dependencies]

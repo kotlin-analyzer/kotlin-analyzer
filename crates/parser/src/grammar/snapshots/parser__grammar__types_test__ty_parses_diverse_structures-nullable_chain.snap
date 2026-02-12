@@ -1,0 +1,15 @@
+---
+source: crates/parser/src/grammar/types_test.rs
+expression: Foo??
+---
+TYPE@0..5
+  NULLABLE_TYPE@0..5
+    TYPE_REFERENCE@0..3
+      USER_TYPE@0..3
+        SIMPLE_USER_TYPE@0..3
+          SIMPLE_IDENTIFIER@0..3
+            IDENTIFIER@0..3 "Foo"
+    QUEST@3..4
+      QUEST_NO_WS@3..4 "?"
+    QUEST@4..5
+      QUEST_NO_WS@4..5 "?"

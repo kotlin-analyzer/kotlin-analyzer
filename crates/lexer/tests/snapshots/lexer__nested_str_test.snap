@@ -6,7 +6,7 @@ expression: entries
     QUOTE_OPEN@0..1 => "\"",
     LINE_STR_TEXT@1..5 => "hey ",
     LINE_STR_EXPR_START@5..7 => "${",
-    IDENTIFIER_TOKEN@7..11 => "echo",
+    IDENTIFIER@7..11 => "echo",
     L_PAREN@11..12 => "(",
     QUOTE_OPEN@12..13 => "\"",
     LINE_STR_TEXT@13..17 => "test",

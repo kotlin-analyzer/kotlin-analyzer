@@ -1,14 +1,14 @@
 #![allow(dead_code)]
-mod parts;
+mod grammar;
 
 #[cfg(test)]
 mod test_utils;
 
 use core::fmt;
 
-use ast::syntax::SyntaxKind::{self, *};
 use lexer::SpannedWithSource;
-use tokens::Token;
+use syntax::SyntaxKind::{self, *};
+use syntax::Token;
 
 pub trait TokenSource<'a> {
     fn current(&mut self) -> Option<&SpannedWithSource<'a>>;
@@ -67,13 +67,13 @@ pub(crate) struct Parser<'a, 'b> {
 impl Parser<'_, '_> {
     fn parse(mut self) {
         self.start_node(ROOT);
-        parts::general::kotlin_file(&mut self);
+        grammar::general::kotlin_file(&mut self);
         self.finish_node(ROOT);
     }
 
     fn parse_script(mut self) {
         self.start_node(ROOT);
-        parts::general::script(&mut self);
+        grammar::general::script(&mut self);
         self.finish_node(ROOT);
     }
 

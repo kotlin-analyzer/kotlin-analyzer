@@ -34,7 +34,7 @@ impl ops::Add for Config {
 #[derive(Clone, derive_more::Debug)]
 pub(crate) enum BasicParseEntry {
     Token {
-        token: tokens::Token,
+        token: syntax::Token,
         span: Span,
         config: Config,
     },
@@ -242,8 +242,8 @@ impl Parse for Field {
     }
 }
 
-fn resolve_token(name: &str, span: Span) -> Result<tokens::Token> {
-    tokens::resolve_token(name).ok_or_else(|| Error::new(span, "No matching Token variant"))
+fn resolve_token(name: &str, span: Span) -> Result<syntax::Token> {
+    syntax::Token::resolve_token(name).ok_or_else(|| Error::new(span, "No matching Token variant"))
 }
 
 fn parse_lits(input: ParseStream) -> Result<BasicParseEntry> {

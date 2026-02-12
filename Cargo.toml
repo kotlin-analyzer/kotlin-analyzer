@@ -14,6 +14,7 @@ ast = { path = "./crates/ast" }
 casey = "0.4.0"
 classpath_resolver = { path = "./libs/classpath_resolver" }
 derive_more = { version = "2.1.1", features = ["debug"] }
+drop_bomb = "0.1.5"
 inflector-plus = "0.11.7"
 insta = { version = "1.37.0", features = ["ron"] }
 itertools = "0.14.0"
@@ -30,7 +31,7 @@ rowan = "0.16.1"
 rstest = "0.26.1"
 serde = { version = "1", features = ["derive"] }
 syn = "2.0.90"
-tokens = { path = "./libs/tokens" }
+syntax = { path = "./libs/syntax" }
 
 [profile.dev.package]
 insta.opt-level = 3

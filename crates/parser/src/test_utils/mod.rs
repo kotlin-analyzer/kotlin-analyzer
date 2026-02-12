@@ -1,10 +1,9 @@
 use crate::{ParseError, Parser, TokenSource, TreeSink};
-use ast::syntax::{SyntaxKind, SyntaxNode};
-use ast::{nodes::Cast, syntax::Root};
 use itertools::{PeekNth, peek_nth};
 use lexer::{Lexer, SpannedWithSource};
 use rowan::{GreenNode, GreenNodeBuilder};
-use tokens::Token;
+use syntax::{Cast, Root, Token};
+use syntax::{SyntaxKind, SyntaxNode};
 
 struct TestTreeSink {
     errors: Vec<ParseError>,
