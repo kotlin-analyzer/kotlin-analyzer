@@ -1,0 +1,11 @@
+---
+source: crates/parser/src/parts/types_test.rs
+assertion_line: 146
+expression: Foo
+---
+TYPE@0..3
+  TYPE_REFERENCE@0..3
+    USER_TYPE@0..3
+      SIMPLE_USER_TYPE@0..3
+        SIMPLE_IDENTIFIER@0..3
+          IDENTIFIER_TOKEN@0..3 "Foo"

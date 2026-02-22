@@ -1,0 +1,32 @@
+---
+source: crates/parser/src/parts/types_test.rs
+assertion_line: 146
+expression: ((Foo) -> Bar)?
+---
+TYPE@0..15
+  NULLABLE_TYPE@0..15
+    PARENTHESIZED_TYPE@0..14
+      L_PAREN@0..1 "("
+      TYPE@1..13
+        FUNCTION_TYPE@1..13
+          FUNCTION_TYPE_PARAMETERS@1..6
+            L_PAREN@1..2 "("
+            TYPE@2..5
+              TYPE_REFERENCE@2..5
+                USER_TYPE@2..5
+                  SIMPLE_USER_TYPE@2..5
+                    SIMPLE_IDENTIFIER@2..5
+                      IDENTIFIER_TOKEN@2..5 "Foo"
+            R_PAREN@5..6 ")"
+          WS@6..7 " "
+          ARROW@7..9 "->"
+          WS@9..10 " "
+          TYPE@10..13
+            TYPE_REFERENCE@10..13
+              USER_TYPE@10..13
+                SIMPLE_USER_TYPE@10..13
+                  SIMPLE_IDENTIFIER@10..13
+                    IDENTIFIER_TOKEN@10..13 "Bar"
+      R_PAREN@13..14 ")"
+    QUEST@14..15
+      QUEST_NO_WS@14..15 "?"

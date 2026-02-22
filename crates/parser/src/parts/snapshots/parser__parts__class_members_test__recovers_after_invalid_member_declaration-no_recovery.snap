@@ -1,0 +1,26 @@
+---
+source: crates/parser/src/parts/class_members_test.rs
+assertion_line: 129
+expression: "format!(\"{:#?}\\n{}\", node, errors)"
+---
+CLASS_MEMBER_DECLARATIONS@0..17
+  CLASS_MEMBER_DECLARATION@0..17
+    FUNCTION_DECLARATION@0..17
+      FUN@0..3 "fun"
+      WS@3..4 " "
+      SIMPLE_IDENTIFIER@4..7
+        IDENTIFIER_TOKEN@4..7 "foo"
+      FUNCTION_VALUE_PARAMETERS@7..17
+        L_PAREN@7..8 "("
+        FUNCTION_VALUE_PARAMETER@8..17
+          PARAMETER@8..17
+            VAL@8..11 "val"
+            WS@11..12 " "
+            IDENTIFIER_TOKEN@12..13 "x"
+            WS@13..14 " "
+            ASSIGNMENT_TOKEN@14..15 "="
+            WS@15..16 " "
+            INTEGER_LITERAL@16..17 "1"
+
+Parse error at 8..11: expected parameter name or ')'
+Parse error at 17..17: expected ')'

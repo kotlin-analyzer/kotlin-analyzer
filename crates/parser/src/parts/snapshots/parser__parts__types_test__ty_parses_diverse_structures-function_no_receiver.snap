@@ -1,0 +1,33 @@
+---
+source: crates/parser/src/parts/types_test.rs
+assertion_line: 146
+expression: "(Foo, Bar) -> Baz"
+---
+TYPE@0..17
+  FUNCTION_TYPE@0..17
+    FUNCTION_TYPE_PARAMETERS@0..10
+      L_PAREN@0..1 "("
+      TYPE@1..4
+        TYPE_REFERENCE@1..4
+          USER_TYPE@1..4
+            SIMPLE_USER_TYPE@1..4
+              SIMPLE_IDENTIFIER@1..4
+                IDENTIFIER_TOKEN@1..4 "Foo"
+      COMMA@4..5 ","
+      WS@5..6 " "
+      TYPE@6..9
+        TYPE_REFERENCE@6..9
+          USER_TYPE@6..9
+            SIMPLE_USER_TYPE@6..9
+              SIMPLE_IDENTIFIER@6..9
+                IDENTIFIER_TOKEN@6..9 "Bar"
+      R_PAREN@9..10 ")"
+    WS@10..11 " "
+    ARROW@11..13 "->"
+    WS@13..14 " "
+    TYPE@14..17
+      TYPE_REFERENCE@14..17
+        USER_TYPE@14..17
+          SIMPLE_USER_TYPE@14..17
+            SIMPLE_IDENTIFIER@14..17
+              IDENTIFIER_TOKEN@14..17 "Baz"

@@ -1,0 +1,26 @@
+---
+source: crates/parser/src/parts/types_test.rs
+assertion_line: 146
+expression: Box<out Item>
+---
+TYPE@0..13
+  TYPE_REFERENCE@0..13
+    USER_TYPE@0..13
+      SIMPLE_USER_TYPE@0..13
+        SIMPLE_IDENTIFIER@0..3
+          IDENTIFIER_TOKEN@0..3 "Box"
+        TYPE_ARGUMENTS@3..13
+          L_ANGLE@3..4 "<"
+          TYPE_PROJECTION@4..12
+            TYPE_PROJECTION_MODIFIERS@4..8
+              TYPE_PROJECTION_MODIFIER@4..7
+                VARIANCE_MODIFIER@4..7
+                  OUT@4..7 "out"
+              WS@7..8 " "
+            TYPE@8..12
+              TYPE_REFERENCE@8..12
+                USER_TYPE@8..12
+                  SIMPLE_USER_TYPE@8..12
+                    SIMPLE_IDENTIFIER@8..12
+                      IDENTIFIER_TOKEN@8..12 "Item"
+          R_ANGLE@12..13 ">"

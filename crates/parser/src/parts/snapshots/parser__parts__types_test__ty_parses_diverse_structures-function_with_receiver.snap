@@ -1,0 +1,32 @@
+---
+source: crates/parser/src/parts/types_test.rs
+assertion_line: 146
+expression: Receiver.(Foo) -> Result
+---
+TYPE@0..24
+  FUNCTION_TYPE@0..24
+    RECEIVER_TYPE@0..8
+      TYPE_REFERENCE@0..8
+        USER_TYPE@0..8
+          SIMPLE_USER_TYPE@0..8
+            SIMPLE_IDENTIFIER@0..8
+              IDENTIFIER_TOKEN@0..8 "Receiver"
+    DOT@8..9 "."
+    FUNCTION_TYPE_PARAMETERS@9..14
+      L_PAREN@9..10 "("
+      TYPE@10..13
+        TYPE_REFERENCE@10..13
+          USER_TYPE@10..13
+            SIMPLE_USER_TYPE@10..13
+              SIMPLE_IDENTIFIER@10..13
+                IDENTIFIER_TOKEN@10..13 "Foo"
+      R_PAREN@13..14 ")"
+    WS@14..15 " "
+    ARROW@15..17 "->"
+    WS@17..18 " "
+    TYPE@18..24
+      TYPE_REFERENCE@18..24
+        USER_TYPE@18..24
+          SIMPLE_USER_TYPE@18..24
+            SIMPLE_IDENTIFIER@18..24
+              IDENTIFIER_TOKEN@18..24 "Result"

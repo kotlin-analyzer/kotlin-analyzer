@@ -1,0 +1,22 @@
+---
+source: crates/lexer/tests/lexer.rs
+expression: entries
+---
+[
+    NL@0..1 => "\n",
+    TRIPLE_QUOTE_OPEN@1..4 => "\"\"\"",
+    MULTI_LINE_STR_TEXT@4..32 => "\nCan multiline strings\nhave ",
+    MULTI_STR_EXPR_START@32..34 => "${",
+    TRIPLE_QUOTE_OPEN@34..37 => "\"\"\"",
+    MULTI_LINE_STR_TEXT@37..62 => "\nother multiline strings\n",
+    TRIPLE_QUOTE_CLOSE@62..65 => "\"\"\"",
+    DOT@65..66 => ".",
+    IDENTIFIER_TOKEN@66..76 => "trimIndent",
+    L_PAREN@76..77 => "(",
+    R_PAREN@77..78 => ")",
+    R_CURL@78..79 => "}",
+    MULTI_LINE_STR_TEXT@79..92 => "\nI think yes\n",
+    TRIPLE_QUOTE_CLOSE@92..95 => "\"\"\"",
+    NL@95..96 => "\n",
+    EOF@96..96 => "",
+]

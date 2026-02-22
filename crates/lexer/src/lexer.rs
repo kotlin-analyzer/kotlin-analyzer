@@ -4,7 +4,7 @@
 
 use std::{
     collections::VecDeque,
-    fmt::Display,
+    fmt::{Debug, Display},
     ops::{Range, RangeInclusive},
 };
 
@@ -187,7 +187,7 @@ impl<'a> Step<'a> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct SpannedWithSource<'a> {
     token: Token,
     span: Span,
@@ -224,11 +224,17 @@ impl Display for SpannedWithSource<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            r#"{:?} => {:?}, // {:?}"#,
+            "{:?}@{:?} => {:?}",
             self.token(),
             self.span(),
             self.substring()
         )
+    }
+}
+
+impl Debug for SpannedWithSource<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self)
     }
 }
 
@@ -652,7 +658,7 @@ fn tag<'a>(pattern: &'static str) -> impl ParseFn<'a> {
             .map(|t| t == pattern)
             .unwrap_or_default()
         {
-            Some(step.advance_with(pattern.len(), IDENTIFIER))
+            Some(step.advance_with(pattern.len(), IDENTIFIER_TOKEN))
         } else {
             None
         }
@@ -741,7 +747,7 @@ fn quoted_symbol(step: Step<'_>) -> Option<Step<'_>> {
 fn parse_identifier(step: Step<'_>) -> Option<Step<'_>> {
     quoted_symbol
         .or(letter.and(many0(when(|ch| ch.can_be_in_ident()))))
-        .with(IDENTIFIER)(step)
+        .with(IDENTIFIER_TOKEN)(step)
 }
 
 fn double_lit(step: Step<'_>) -> Option<Step<'_>> {

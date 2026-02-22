@@ -8,6 +8,7 @@ license.workspace = true
 
 [dependencies]
 ast.workspace = true
+insta.workspace = true
 # todo: remove dependency on lexer: move to dev dependencies
 lexer.workspace = true
 tokens = { workspace = true }
@@ -18,3 +19,6 @@ itertools.workspace = true
 pretty_assertions.workspace = true
 rowan.workspace = true
 rstest.workspace = true
+
+[features]
+verbose = []

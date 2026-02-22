@@ -1,0 +1,44 @@
+---
+source: crates/parser/src/parts/class_members_test.rs
+assertion_line: 129
+expression: "format!(\"{:#?}\\n{}\", node, errors)"
+---
+CLASS_MEMBER_DECLARATIONS@0..17
+  CLASS_MEMBER_DECLARATION@0..8
+    FUNCTION_DECLARATION@0..8
+      FUN@0..3 "fun"
+      WS@3..4 " "
+      SIMPLE_IDENTIFIER@4..7
+        IDENTIFIER_TOKEN@4..7 "foo"
+      FUNCTION_VALUE_PARAMETERS@7..8
+        R_PAREN@7..8 ")"
+  CLASS_MEMBER_DECLARATION@8..17
+    PROPERTY_DECLARATION@8..17
+      VAL@8..11 "val"
+      WS@11..12 " "
+      VARIABLE_DECLARATION@12..14
+        SIMPLE_IDENTIFIER@12..13
+          IDENTIFIER_TOKEN@12..13 "x"
+        WS@13..14 " "
+      ASSIGNMENT_TOKEN@14..15 "="
+      WS@15..16 " "
+      EXPRESSION@16..17
+        DISJUNCTION@16..17
+          CONJUNCTION@16..17
+            EQUALITY@16..17
+              COMPARISON@16..17
+                GENERIC_CALL_LIKE_COMPARISON@16..17
+                  INFIX_OPERATION@16..17
+                    ELVIS_EXPRESSION@16..17
+                      INFIX_FUNCTION_CALL@16..17
+                        RANGE_EXPRESSION@16..17
+                          ADDITIVE_EXPRESSION@16..17
+                            MULTIPLICATIVE_EXPRESSION@16..17
+                              AS_EXPRESSION@16..17
+                                PREFIX_UNARY_EXPRESSION@16..17
+                                  POSTFIX_UNARY_EXPRESSION@16..17
+                                    PRIMARY_EXPRESSION@16..17
+                                      LITERAL_CONSTANT@16..17
+                                        INTEGER_LITERAL@16..17 "1"
+
+Parse error at 7..8: expected '(' after function name
