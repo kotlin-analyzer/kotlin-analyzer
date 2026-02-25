@@ -12,6 +12,7 @@ drop_bomb.workspace = true
 # todo: remove dependency on lexer: move to dev dependencies
 lexer.workspace = true
 syntax.workspace = true
+tracing.workspace = true
 
 [dev-dependencies]
 ast.workspace = true
