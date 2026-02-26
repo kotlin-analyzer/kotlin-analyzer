@@ -224,7 +224,7 @@ fn assignment(parser: &mut Parser<'_, '_>) {
         if is_direct_assignment(parser) {
             directly_assignable_expression(parser);
             parser.skip_trivia_and_newlines();
-            if !parser.expect_recover(Token::ASSIGNMENT, "expected '='", STMT_RECOVERY) {
+            if !parser.expect_recover(Token::ASSIGNMENT_TOKEN, "expected '='", STMT_RECOVERY) {
                 break;
             }
         } else {
@@ -291,8 +291,8 @@ fn assignment_operator(parser: &mut Parser<'_, '_>) -> Option<Token> {
                 }
                 idx += 1;
             }
-            Some(Token::ASSIGNMENT) if paren_depth == 0 && bracket_depth == 0 => {
-                return Some(Token::ASSIGNMENT);
+            Some(Token::ASSIGNMENT_TOKEN) if paren_depth == 0 && bracket_depth == 0 => {
+                return Some(Token::ASSIGNMENT_TOKEN);
             }
             Some(
                 Token::ADD_ASSIGNMENT
@@ -309,7 +309,7 @@ fn assignment_operator(parser: &mut Parser<'_, '_>) -> Option<Token> {
 }
 
 fn is_direct_assignment(parser: &mut Parser<'_, '_>) -> bool {
-    matches!(assignment_operator(parser), Some(Token::ASSIGNMENT))
+    matches!(assignment_operator(parser), Some(Token::ASSIGNMENT_TOKEN))
 }
 
 fn starts_loop_statement(parser: &mut Parser<'_, '_>) -> bool {

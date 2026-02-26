@@ -10,37 +10,38 @@ macro_rules! define_syntax {
     (
         $(#[$attr:meta])*
         $vis:vis enum $name:ident {
-            common {
-                $($common_t:ident),+
-            }
             $token_vis:vis  enum $token_name:ident {
-                $($token:ident),+
+                $(
+                    $(#[$token_attr:meta])*
+                    $token:ident
+                ),+
             }
             syntax {
-                $($syntax:ident),+
+                $(
+                    $(#[$syntax_attr:meta])*
+                    $syntax:ident
+                ),+
             }
         }
     ) => {
         $(#[$attr])*
         $vis enum $name {
-            $($common_t),*,
-            $($token),*,
-            $($syntax),*
+            $(
+                $(#[$token_attr])*
+                $token
+            ),*,
+            $(
+                $(#[$syntax_attr])*
+                $syntax
+            ),*
         }
 
         $(#[$attr])*
         $token_vis enum $token_name {
-            $($common_t),*,
-            $($token),*,
-        }
-
-        impl From<Token> for $name {
-            fn from(value: Token) -> Self {
-                match value {
-                    $(Token::$common_t => $name::$common_t),*,
-                    $(Token::$token => $name::$token),*
-                }
-            }
+            $(
+                $(#[$token_attr])*
+                $token
+            ),*
         }
 
         $(define_syntax!($token in $name);)*
@@ -72,14 +73,10 @@ define_syntax! {
     #[allow(non_camel_case_types)]
     #[repr(u16)]
     pub enum SyntaxKind {
-        common {
-            SHEBANG_LINE,
-            ASSIGNMENT,
-            IDENTIFIER
-        }
         pub enum Token {
             DELIMITED_COMMENT,
             LINE_COMMENT,
+            SHEBANG_LINE_TOKEN,
             WS,
             NL,
             RESERVED,
@@ -104,6 +101,7 @@ define_syntax! {
             EXCL_NO_WS,
             COLON,
             SEMICOLON,
+            ASSIGNMENT_TOKEN,
             ADD_ASSIGNMENT,
             SUB_ASSIGNMENT,
             MULT_ASSIGNMENT,
@@ -219,6 +217,7 @@ define_syntax! {
             BOOLEAN_LITERAL,
             NULL_LITERAL,
             CHARACTER_LITERAL,
+            IDENTIFIER_TOKEN,
             QUOTE_OPEN,
             QUOTE_CLOSE,
             TRIPLE_QUOTE_OPEN,
@@ -231,10 +230,16 @@ define_syntax! {
             LINE_STR_ESCAPED_CHAR,
             LINE_STR_EXPR_START,
             MULTI_STR_EXPR_START,
+            #[doc(hidden)]
             EOF,
             ERR
         }
         syntax {
+            #[doc(hidden)]
+            TOMBSTONE,
+            SHEBANG_LINE,
+            ASSIGNMENT,
+            IDENTIFIER,
             SIMPLE_IDENTIFIER,
             UNESCAPED_ANNOTATION,
             ANNOTATION_USE_SITE_TARGET,
@@ -404,7 +409,9 @@ define_syntax! {
             FILE_ANNOTATION,
             SCRIPT,
             KOTLIN_FILE,
-            ROOT
+            ROOT,
+            ERROR,
+            __LAST
         }
     }
 }
@@ -427,13 +434,36 @@ pub struct Lang;
 impl rowan::Language for Lang {
     type Kind = SyntaxKind;
     fn kind_from_raw(raw: rowan::SyntaxKind) -> Self::Kind {
-        assert!(raw.0 <= SyntaxKind::ROOT as u16);
-        // safety: SyntaxKind is repr u16
-        unsafe { std::mem::transmute::<u16, SyntaxKind>(raw.0) }
+        Self::Kind::from(raw.0)
     }
 
     fn kind_to_raw(kind: Self::Kind) -> rowan::SyntaxKind {
         kind.into()
+    }
+}
+
+impl From<u16> for SyntaxKind {
+    #[inline]
+    fn from(d: u16) -> SyntaxKind {
+        assert!(d <= (SyntaxKind::__LAST as u16));
+        // safety: SyntaxKind is repr u16
+        unsafe { std::mem::transmute::<u16, SyntaxKind>(d) }
+    }
+}
+
+impl From<Token> for SyntaxKind {
+    fn from(value: Token) -> Self {
+        Self::from(value as u16)
+    }
+}
+
+impl SyntaxKind {
+    #[inline]
+    pub fn is_trivia(self) -> bool {
+        matches!(
+            self,
+            SyntaxKind::WS | SyntaxKind::DELIMITED_COMMENT | SyntaxKind::LINE_COMMENT
+        )
     }
 }
 

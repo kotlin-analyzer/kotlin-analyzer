@@ -560,10 +560,10 @@ fn value_argument(parser: &mut Parser<'_, '_>) {
         parse_while!(matches!(parser.lookahead_token(idx), Some(Token::WS | Token::NL)), parser => {
             idx += 1;
         });
-        if parser.lookahead_token(idx) == Some(Token::ASSIGNMENT) {
+        if parser.lookahead_token(idx) == Some(Token::ASSIGNMENT_TOKEN) {
             simple_identifier(parser);
             parser.skip_trivia_and_newlines();
-            if parser.current_token() == Some(&Token::ASSIGNMENT) {
+            if parser.current_token() == Some(&Token::ASSIGNMENT_TOKEN) {
                 parser.bump();
             }
             parser.skip_trivia_and_newlines();
@@ -586,7 +586,10 @@ fn primary_expression(parser: &mut Parser<'_, '_>) {
         .current()
         .map(|sp| (sp.is_soft_keyword(), *sp.token()));
     let token_only = current.map(|(_, tok)| tok);
-    let is_identifier_like = matches!(current, Some((true, _)) | Some((_, Token::IDENTIFIER)));
+    let is_identifier_like = matches!(
+        current,
+        Some((true, _)) | Some((_, Token::IDENTIFIER_TOKEN))
+    );
 
     match token_only {
         Some(Token::L_PAREN) => parenthesized_expression(parser),

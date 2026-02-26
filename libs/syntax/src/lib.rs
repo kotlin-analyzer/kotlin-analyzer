@@ -1,4 +1,5 @@
 mod entries;
+mod t;
 
 pub use entries::Cast;
 pub use entries::*;
@@ -51,7 +52,7 @@ impl Token {
 
             ";" => Some(SEMICOLON),
 
-            "=" => Some(ASSIGNMENT),
+            "=" => Some(ASSIGNMENT_TOKEN),
 
             "+=" => Some(ADD_ASSIGNMENT),
 

@@ -158,7 +158,7 @@ pub(crate) fn function_declaration(parser: &mut Parser<'_, '_>) {
 
         parser.skip_trivia_and_newlines();
         if parser.current_token() == Some(&Token::L_CURL)
-            || parser.current_token() == Some(&Token::ASSIGNMENT)
+            || parser.current_token() == Some(&Token::ASSIGNMENT_TOKEN)
         {
             function_body(parser);
         }
@@ -173,7 +173,7 @@ fn function_body(parser: &mut Parser<'_, '_>) {
     parse_loop! { parser =>
         match parser.current_token() {
             Some(Token::L_CURL) => block(parser),
-            Some(Token::ASSIGNMENT) => {
+            Some(Token::ASSIGNMENT_TOKEN) => {
                 parser.bump();
                 parser.skip_trivia_and_newlines();
                 expression(parser);
@@ -232,7 +232,7 @@ fn function_value_parameter(parser: &mut Parser<'_, '_>) {
     parameter(parser);
 
     parser.skip_trivia_and_newlines();
-    if parser.current_token() == Some(&Token::ASSIGNMENT) {
+    if parser.current_token() == Some(&Token::ASSIGNMENT_TOKEN) {
         parser.bump();
         parser.skip_trivia_and_newlines();
         expression(parser);
@@ -294,7 +294,7 @@ pub(crate) fn property_declaration(parser: &mut Parser<'_, '_>) {
         }
 
         parser.skip_trivia_and_newlines();
-        if parser.current_token() == Some(&Token::ASSIGNMENT) {
+        if parser.current_token() == Some(&Token::ASSIGNMENT_TOKEN) {
             parser.bump();
             parser.skip_trivia_and_newlines();
             expression(parser);
@@ -366,7 +366,7 @@ fn getter(parser: &mut Parser<'_, '_>) {
 
             parser.skip_trivia_and_newlines();
             if parser.current_token() == Some(&Token::L_CURL)
-                || parser.current_token() == Some(&Token::ASSIGNMENT)
+                || parser.current_token() == Some(&Token::ASSIGNMENT_TOKEN)
             {
                 function_body(parser);
             }
@@ -396,7 +396,7 @@ fn setter(parser: &mut Parser<'_, '_>) {
             }
             parser.skip_trivia_and_newlines();
             if parser.current_token() == Some(&Token::L_CURL)
-                || parser.current_token() == Some(&Token::ASSIGNMENT)
+                || parser.current_token() == Some(&Token::ASSIGNMENT_TOKEN)
             {
                 function_body(parser);
             }
@@ -444,7 +444,7 @@ fn function_value_parameter_with_optional_type(parser: &mut Parser<'_, '_>) {
     parser.skip_trivia_and_newlines();
     parameter_with_optional_type(parser);
     parser.skip_trivia_and_newlines();
-    if parser.current_token() == Some(&Token::ASSIGNMENT) {
+    if parser.current_token() == Some(&Token::ASSIGNMENT_TOKEN) {
         parser.bump();
         parser.skip_trivia_and_newlines();
         expression(parser);

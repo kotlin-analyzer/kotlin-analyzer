@@ -25,7 +25,7 @@ pub(crate) fn kotlin_file(parser: &mut Parser<'_, '_>) {
 
     parser.start_node(KOTLIN_FILE);
 
-    if parser.current_token() == Some(&Token::SHEBANG_LINE) {
+    if parser.current_token() == Some(&Token::SHEBANG_LINE_TOKEN) {
         shebang_line(parser);
         parser.skip_trivia_and_newlines();
     }
@@ -65,7 +65,7 @@ pub(crate) fn script(parser: &mut Parser<'_, '_>) {
 
     parser.start_node(SCRIPT);
 
-    if parser.current_token() == Some(&Token::SHEBANG_LINE) {
+    if parser.current_token() == Some(&Token::SHEBANG_LINE_TOKEN) {
         shebang_line(parser);
         parser.skip_trivia_and_newlines();
     }
@@ -103,7 +103,7 @@ pub(crate) fn script(parser: &mut Parser<'_, '_>) {
 fn shebang_line(parser: &mut Parser<'_, '_>) {
     parser.start_node(SHEBANG_LINE);
     parse_loop! { parser =>
-        if !parser.expect_recover(Token::SHEBANG_LINE, "expected shebang", TOP_LEVEL_RECOVERY) {
+        if !parser.expect_recover(Token::SHEBANG_LINE_TOKEN, "expected shebang", TOP_LEVEL_RECOVERY) {
             break;
         }
         parse_while!(parser.current_token() == Some(&Token::NL), parser => {
@@ -257,7 +257,7 @@ fn type_alias(parser: &mut Parser<'_, '_>) {
             parser.skip_trivia_and_newlines();
         }
 
-        if !parser.expect_recover(Token::ASSIGNMENT, "expected '='", TOP_LEVEL_RECOVERY) {
+        if !parser.expect_recover(Token::ASSIGNMENT_TOKEN, "expected '='", TOP_LEVEL_RECOVERY) {
             break;
         }
 

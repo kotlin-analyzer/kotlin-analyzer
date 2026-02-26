@@ -37,7 +37,10 @@ pub(crate) fn type_reference(parser: &mut Parser<'_, '_>) {
     let current = parser
         .current()
         .map(|sp| (sp.is_soft_keyword(), *sp.token()));
-    let is_identifier_like = matches!(current, Some((true, _)) | Some((_, Token::IDENTIFIER)));
+    let is_identifier_like = matches!(
+        current,
+        Some((true, _)) | Some((_, Token::IDENTIFIER_TOKEN))
+    );
 
     match current {
         Some((_, Token::DYNAMIC)) => {
@@ -86,7 +89,10 @@ fn simple_user_type(parser: &mut Parser<'_, '_>) {
     let current = parser
         .current()
         .map(|sp| (sp.is_soft_keyword(), *sp.token()));
-    let is_identifier_like = matches!(current, Some((true, _)) | Some((_, Token::IDENTIFIER)));
+    let is_identifier_like = matches!(
+        current,
+        Some((true, _)) | Some((_, Token::IDENTIFIER_TOKEN))
+    );
 
     match current {
         _ if is_identifier_like => {
@@ -378,7 +384,7 @@ fn starts_type_reference(parser: &mut Parser<'_, '_>) -> bool {
         parser
             .current()
             .map(|sp| (sp.is_soft_keyword(), *sp.token())),
-        Some((_, Token::DYNAMIC)) | Some((true, _)) | Some((_, Token::IDENTIFIER))
+        Some((_, Token::DYNAMIC)) | Some((true, _)) | Some((_, Token::IDENTIFIER_TOKEN))
     )
 }
 
@@ -519,7 +525,10 @@ fn looks_like_parameter(parser: &mut Parser<'_, '_>) -> bool {
     let current = parser
         .current()
         .map(|sp| (sp.is_soft_keyword(), *sp.token()));
-    let ident_like = matches!(current, Some((true, _)) | Some((_, Token::IDENTIFIER)));
+    let ident_like = matches!(
+        current,
+        Some((true, _)) | Some((_, Token::IDENTIFIER_TOKEN))
+    );
     if !ident_like {
         return false;
     }

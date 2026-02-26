@@ -9,7 +9,7 @@ pub(crate) fn simple_identifier(parser: &mut Parser<'_, '_>) -> bool {
         .current()
         .map(|sp| (sp.is_soft_keyword(), sp.token()))
     {
-        Some((true, _) | (_, Token::IDENTIFIER)) => {
+        Some((true, _) | (_, Token::IDENTIFIER_TOKEN)) => {
             parser.start_node(SIMPLE_IDENTIFIER);
             parser.bump();
             parser.finish_node(SIMPLE_IDENTIFIER);

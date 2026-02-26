@@ -16,7 +16,7 @@ use crate::{Parser, parse_loop, parse_while};
 const DECL_RECOVERY: &[Token] = &[Token::SEMICOLON, Token::NL, Token::R_CURL, Token::EOF];
 const COLON_RECOVERY: &[Token] = &[
     Token::SEMICOLON,
-    Token::IDENTIFIER,
+    Token::IDENTIFIER_TOKEN,
     Token::COMMA,
     Token::NL,
     Token::R_CURL,
@@ -179,7 +179,7 @@ fn class_parameter(parser: &mut Parser<'_, '_>) {
         ty(parser);
 
         parser.skip_trivia_and_newlines();
-        if parser.current_token() == Some(&Token::ASSIGNMENT) {
+        if parser.current_token() == Some(&Token::ASSIGNMENT_TOKEN) {
             parser.bump();
             parser.skip_trivia_and_newlines();
             expression(parser);
@@ -392,7 +392,9 @@ fn looks_like_enum_body(parser: &mut Parser<'_, '_>) -> bool {
             Some(Token::WS | Token::NL | Token::LINE_COMMENT | Token::DELIMITED_COMMENT) => {
                 idx += 1
             }
-            Some(Token::IDENTIFIER | Token::AT_NO_WS | Token::AT_PRE_WS | Token::AT_BOTH_WS) => {
+            Some(
+                Token::IDENTIFIER_TOKEN | Token::AT_NO_WS | Token::AT_PRE_WS | Token::AT_BOTH_WS,
+            ) => {
                 return true;
             }
             _ => return false,

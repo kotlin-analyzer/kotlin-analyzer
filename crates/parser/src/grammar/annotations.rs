@@ -181,7 +181,7 @@ fn starts_user_type(parser: &mut Parser<'_, '_>) -> bool {
         parser
             .current()
             .map(|sp| (sp.is_soft_keyword(), *sp.token())),
-        Some((true, _)) | Some((_, Token::IDENTIFIER))
+        Some((true, _)) | Some((_, Token::IDENTIFIER_TOKEN))
     )
 }
 
