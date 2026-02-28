@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 mod grammar;
+mod grammar2;
 mod ra;
 mod version;
 

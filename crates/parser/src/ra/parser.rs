@@ -135,6 +135,13 @@ impl<'t> Parser<'t> {
         self.do_bump(kind, 1);
     }
 
+    /// Eats new lines. Since in Kotlin, new lines are not trivia, we need to be able to consume them when we expect them.
+    pub(crate) fn eat_newlines(&mut self) {
+        while let SyntaxKind::NL = self.nth(0) {
+            self.bump_any();
+        }
+    }
+
     /// Advances the parser by one token, remapping its kind.
     /// This is useful to create contextual keywords from
     /// identifiers. For example, the lexer creates a `union`

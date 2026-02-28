@@ -10,7 +10,7 @@ expression: entries
     TRIPLE_QUOTE_OPEN@15..18 => "\"\"\"",
     MULTI_LINE_STR_TEXT@18..27 => "\ncomplex ",
     MULTI_STR_EXPR_START@27..29 => "${",
-    IDENTIFIER@29..32 => "ref",
+    IDENTIFIER_TOKEN@29..32 => "ref",
     R_CURL@32..33 => "}",
     MULTI_LINE_STR_TEXT@33..34 => "\n",
     QUOTE_OPEN@34..35 => "\"",

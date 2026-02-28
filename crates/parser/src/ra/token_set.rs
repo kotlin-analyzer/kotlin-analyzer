@@ -52,8 +52,13 @@ impl TokenSet {
 #[test]
 fn token_set_works_for_tokens() {
     use crate::SyntaxKind::*;
-    let ts = TokenSet::new(&[EOF, SHEBANG_LINE]);
+    let ts = TokenSet::new(&[EOF, SHEBANG_LINE_TOKEN]);
     assert!(ts.contains(EOF));
-    assert!(ts.contains(SHEBANG_LINE));
+    assert!(ts.contains(SHEBANG_LINE_TOKEN));
     assert!(!ts.contains(ADD));
+    assert!(!ts.contains(DELIMITED_COMMENT));
+
+    for token in ts.0 {
+        dbg!(token);
+    }
 }

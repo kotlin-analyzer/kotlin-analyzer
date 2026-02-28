@@ -12,3 +12,9 @@ pub enum KtVersion {
     V2_2,
     V2_3,
 }
+
+impl KtVersion {
+    pub const DEFAULT: KtVersion = KtVersion::V1_8;
+    pub const LATEST: KtVersion = KtVersion::V2_3;
+    pub const CURRENT: KtVersion = KtVersion::V2_2;
+}

@@ -25,7 +25,8 @@ impl<'a> LexedStr<'a> {
     pub fn new(version: KtVersion, text: &'a str) -> LexedStr<'a> {
         let _p = tracing::info_span!("LexedStr::new").entered();
         let mut conv = Converter::new(version, text);
-        while let Some((token, offset)) = Lexer::new(text).next() {
+        let mut lexer = Lexer::new(text);
+        while let Some((token, offset)) = lexer.next() {
             match token {
                 Token::ERR => conv.push_err(format!(
                     "Invalid token: {}",
