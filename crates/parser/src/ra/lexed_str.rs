@@ -25,14 +25,16 @@ impl<'a> LexedStr<'a> {
     pub fn new(version: KtVersion, text: &'a str) -> LexedStr<'a> {
         let _p = tracing::info_span!("LexedStr::new").entered();
         let mut conv = Converter::new(version, text);
-        let mut lexer = Lexer::new(text);
-        while let Some((token, offset)) = lexer.next() {
+        let mut lexer = Lexer::new(text).spanned();
+        while let Some(token_info) = lexer.next() {
+            let offset = token_info.span().start;
+            let token = token_info.token();
             match token {
                 Token::ERR => conv.push_err(format!(
                     "Invalid token: {}",
                     conv.res.text[offset..].chars().next().unwrap_or_default()
                 )),
-                _ => conv.push(SyntaxKind::from(token), offset),
+                _ => conv.push(SyntaxKind::from(*token), offset),
             }
         }
         conv.res

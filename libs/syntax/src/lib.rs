@@ -98,6 +98,8 @@ impl Token {
 
             "'" => Some(SINGLE_QUOTE),
 
+            "&" => Some(AMP),
+
             // activates string mode
             "\"" => Some(QUOTE_OPEN),
 
@@ -213,6 +215,61 @@ impl Token {
     }
     pub fn from_keyword(key: &str) -> Option<Self> {
         Self::from_hard_keyword(key).or_else(|| Self::from_soft_keyword(key))
+    }
+}
+
+impl SyntaxKind {
+    pub fn is_soft_keyword(&self) -> bool {
+        matches!(
+            self,
+            Self::ABSTRACT
+                | Self::ACTUAL
+                | Self::ANNOTATION
+                | Self::BY
+                | Self::CATCH
+                | Self::COMPANION
+                | Self::CONST
+                | Self::CONSTRUCTOR
+                | Self::CROSS_INLINE
+                | Self::DATA
+                | Self::DELEGATE
+                | Self::DYNAMIC
+                | Self::ENUM
+                | Self::EXPECT
+                | Self::EXTERNAL
+                | Self::FIELD
+                | Self::FILE
+                | Self::FINAL
+                | Self::FINALLY
+                | Self::GET
+                | Self::IMPORT
+                | Self::INFIX
+                | Self::INIT
+                | Self::INLINE
+                | Self::INNER
+                | Self::INTERNAL
+                | Self::LATEINIT
+                | Self::NO_INLINE
+                | Self::OPEN
+                | Self::OPERATOR
+                | Self::OUT
+                | Self::OVERRIDE
+                | Self::PARAM
+                | Self::PRIVATE
+                | Self::PROPERTY
+                | Self::PROTECTED
+                | Self::PUBLIC
+                | Self::RECEIVER
+                | Self::REIFIED
+                | Self::SEALED
+                | Self::SET
+                | Self::SET_PARAM
+                | Self::SUSPEND
+                | Self::TAILREC
+                | Self::VALUE
+                | Self::VAR_ARG
+                | Self::WHERE,
+        )
     }
 }
 

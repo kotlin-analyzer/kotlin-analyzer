@@ -5,7 +5,6 @@ macro_rules! panic_context {
     }
 }
 
-
 use std::{
     fmt::Write,
     fs,
@@ -14,7 +13,12 @@ use std::{
 
 use expect_test::expect_file;
 
-use crate::{grammar2::annotations::annotation, ra::{self, lexed_str::LexedStr, parser, shortcuts::StrStep}, version::KtVersion};
+use crate::{
+    grammar2::annotations::annotation,
+    grammar2::types::ty,
+    ra::{self, lexed_str::LexedStr, parser, shortcuts::StrStep},
+    version::KtVersion,
+};
 
 // use expect_test::expect_file;
 
@@ -70,8 +74,12 @@ mod runner;
 fn parse_ok() {
     for case in TestCase::list("parser/ok") {
         let _guard = panic_context!("{:?}", case.kt);
-        let (actual, errors) = parse(annotation, &case.text, KtVersion::V2_3);
-        assert!(!errors, "errors in an OK file {}:\n{actual}", case.kt.display());
+        let (actual, errors) = parse(ty, &case.text, KtVersion::V2_3);
+        assert!(
+            !errors,
+            "errors in an OK file {}:\n{actual}",
+            case.kt.display()
+        );
         expect_file![case.kast].assert_eq(&actual);
     }
 }
@@ -86,11 +94,13 @@ fn parse_ok() {
 //     }
 // }
 
-pub fn parse<T>(entry_point: fn(&'_ mut parser::Parser<'_>) -> T, text: &str, version: KtVersion) -> (String, bool) {
+pub fn parse<T>(
+    entry_point: fn(&'_ mut parser::Parser<'_>) -> T,
+    text: &str,
+    version: KtVersion,
+) -> (String, bool) {
     let lexed = LexedStr::new(version, text);
-    dbg!("lexed: {:?}", lexed.kind(0));
     let input = lexed.to_input(version);
-    dbg!("input len: {}", input.len());
     let output = ra::parse(entry_point, &input);
 
     let mut buf = String::new();
@@ -100,27 +110,23 @@ pub fn parse<T>(entry_point: fn(&'_ mut parser::Parser<'_>) -> T, text: &str, ve
     let mut len = 0;
     lexed.intersperse_trivia(&output, &mut |step| match step {
         StrStep::Token { kind, text } => {
-            dbg!("token: {:?} {:?} (depth {})", kind, text, depth);
             assert!(depth > 0);
             len += text.len();
             writeln!(buf, "{indent}{kind:?} {text:?}").unwrap();
         }
         StrStep::Enter { kind } => {
-            dbg!("enter: {:?} (depth {})", kind, depth);
             assert!(depth > 0 || len == 0);
             depth += 1;
             writeln!(buf, "{indent}{kind:?}").unwrap();
             indent.push_str("  ");
         }
         StrStep::Exit => {
-            dbg!("exit (depth {})", depth);
             assert!(depth > 0);
             depth -= 1;
             indent.pop();
             indent.pop();
         }
         StrStep::Error { msg, pos } => {
-            dbg!("error: {} at {} (depth {})", msg, pos, depth);
             assert!(depth > 0);
             errors.push(format!("error {pos}: {msg}\n"))
         }
@@ -128,9 +134,10 @@ pub fn parse<T>(entry_point: fn(&'_ mut parser::Parser<'_>) -> T, text: &str, ve
     assert_eq!(
         len,
         text.len(),
-        "didn't parse all text.\nParsed:\n{}\n\nAll:\n{}\n",
+        "didn't parse all text.\nParsed:\n{}\n\nAll:\n{}\nTree:\n{}",
         &text[..len],
-        text
+        text,
+        buf
     );
 
     for (token, msg) in lexed.errors() {
@@ -191,7 +198,11 @@ fn run_and_expect_no_errors_with_version(path: &str, version: KtVersion) {
     let path = PathBuf::from(path);
     let text = std::fs::read_to_string(&path).unwrap();
     let (actual, errors) = parse(annotation, &text, version);
-    assert!(!errors, "errors in an OK file {}:\n{actual}", path.display());
+    assert!(
+        !errors,
+        "errors in an OK file {}:\n{actual}",
+        path.display()
+    );
     let mut p = PathBuf::from("..");
     p.push(path);
     p.set_extension("kast");
@@ -203,7 +214,11 @@ fn run_and_expect_errors_with_version(path: &str, version: KtVersion) {
     let path = PathBuf::from(path);
     let text = std::fs::read_to_string(&path).unwrap();
     let (actual, errors) = parse(annotation, &text, version);
-    assert!(errors, "no errors in an ERR file {}:\n{actual}", path.display());
+    assert!(
+        errors,
+        "no errors in an ERR file {}:\n{actual}",
+        path.display()
+    );
     let mut p = PathBuf::from("..");
     p.push(path);
     p.set_extension("kast");

@@ -15,8 +15,10 @@ mod tests;
 pub(crate) use parser::*;
 pub(crate) use token_set::*;
 
-use crate::{ra::{input::Input, output::{Output, Step}}};
-
+use crate::ra::{
+    input::Input,
+    output::{Output, Step},
+};
 
 /// Parse the whole of the input as a given syntactic construct.
 ///
@@ -47,34 +49,34 @@ use crate::{ra::{input::Input, output::{Output, Step}}};
 // }
 
 // impl TopEntryPoint {
-    pub fn parse<T>(entry_point: fn(&'_ mut parser::Parser<'_>) -> T, input: &Input) -> Output {
-        let _p = tracing::info_span!("parse").entered();
-        // let entry_point: fn(&'_ mut parser::Parser<'_>) = match self {
-        //     TopEntryPoint::SourceFile => grammar2::annotations::annotation,
-        //     // TopEntryPoint::Type => grammar2::entry::top::type_,
-        //     // TopEntryPoint::Expr => grammar2::entry::top::expr,
-        // };
-        let mut p = parser::Parser::new(input);
-        entry_point(&mut p);
-        let events = p.finish();
-        let res = event::process(events);
+pub fn parse<T>(entry_point: fn(&'_ mut parser::Parser<'_>) -> T, input: &Input) -> Output {
+    let _p = tracing::info_span!("parse").entered();
+    // let entry_point: fn(&'_ mut parser::Parser<'_>) = match self {
+    //     TopEntryPoint::SourceFile => grammar2::annotations::annotation,
+    //     // TopEntryPoint::Type => grammar2::entry::top::type_,
+    //     // TopEntryPoint::Expr => grammar2::entry::top::expr,
+    // };
+    let mut p = parser::Parser::new(input);
+    entry_point(&mut p);
+    let events = p.finish();
+    let res = event::process(events);
 
-        if cfg!(debug_assertions) {
-            let mut depth = 0;
-            let mut first = true;
-            for step in res.iter() {
-                assert!(depth > 0 || first);
-                first = false;
-                match step {
-                    Step::Enter { .. } => depth += 1,
-                    Step::Exit => depth -= 1,
-                    Step::Token { .. } | Step::Error { .. } => (),
-                }
+    if cfg!(debug_assertions) {
+        let mut depth = 0;
+        let mut first = true;
+        for step in res.iter() {
+            assert!(depth > 0 || first);
+            first = false;
+            match step {
+                Step::Enter { .. } => depth += 1,
+                Step::Exit => depth -= 1,
+                Step::Token { .. } | Step::Error { .. } => (),
             }
-            assert!(!first, "no tree at all");
-            assert_eq!(depth, 0, "unbalanced tree");
         }
-
-        res
+        assert!(!first, "no tree at all");
+        assert_eq!(depth, 0, "unbalanced tree");
     }
+
+    res
+}
 // }

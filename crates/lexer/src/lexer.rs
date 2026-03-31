@@ -65,6 +65,9 @@ impl TokenInfo {
     pub fn token(&self) -> &Token {
         &self.token
     }
+    pub fn span(&self) -> &Span {
+        &self.span
+    }
 }
 
 impl Display for TokenInfo {

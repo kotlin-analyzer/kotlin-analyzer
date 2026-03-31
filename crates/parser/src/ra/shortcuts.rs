@@ -29,9 +29,16 @@ pub enum StrStep<'a> {
 }
 
 impl LexedStr<'_> {
-    pub fn to_input(&self, _version: KtVersion) -> Input {
+    pub fn to_input(&self, version: KtVersion) -> Input {
         let _p = tracing::info_span!("LexedStr::to_input").entered();
-        Input::with_capacity(self.len())
+        let mut res = Input::with_capacity(self.len());
+        for i in 0..self.len() {
+            let kind = self.kind(i);
+            if !kind.is_trivia() {
+                res.push(kind, version);
+            }
+        }
+        res
     }
 
     /// NB: only valid to call with Output from Reparser/TopLevelEntry.
@@ -108,10 +115,7 @@ impl Builder<'_, '_> {
         }
 
         let n_trivias = (self.pos..self.lexed.len())
-            .take_while(|&it| {
-                let kind = self.lexed.kind(it);
-                kind.is_trivia() || kind == NL
-            })
+            .take_while(|&it| self.lexed.kind(it).is_trivia())
             .count();
         let leading_trivias = self.pos..self.pos + n_trivias;
         let n_attached_trivias = n_attached_trivias(

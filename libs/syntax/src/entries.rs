@@ -130,6 +130,7 @@ define_syntax! {
             EQ_EQ,
             EQ_EQ_EQ,
             SINGLE_QUOTE,
+            AMP,
             RETURN_AT,
             CONTINUE_AT,
             BREAK_AT,
@@ -462,7 +463,10 @@ impl SyntaxKind {
     pub fn is_trivia(self) -> bool {
         matches!(
             self,
-            SyntaxKind::WS | SyntaxKind::DELIMITED_COMMENT | SyntaxKind::LINE_COMMENT
+            SyntaxKind::WS
+                | SyntaxKind::DELIMITED_COMMENT
+                | SyntaxKind::LINE_COMMENT
+                | SyntaxKind::NL
         )
     }
 }

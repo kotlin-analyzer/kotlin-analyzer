@@ -1,40 +1,27 @@
-use syntax::SyntaxKind::*;
+use syntax::{SyntaxKind::*, T};
 
-// use super::types::user_type;
+use super::types::user_type;
 use crate::ra::{CompletedMarker, Parser, TokenSet};
 
 const ANNO_RECOVERY: TokenSet = TokenSet::new(&[R_SQUARE, SEMICOLON, NL, R_CURL, EOF]);
 
 pub(crate) fn annotation(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    if !starts_annotation(parser) {
+        return None;
+    }
     let m = parser.start();
-    dbg!("annotation: {:?}", parser.current());
-    if single_and_multi_annotation(parser).is_none() {
+    if single_or_multi_annotation(parser).is_none() {
         m.abandon(parser);
         return None;
     }
     Some(m.complete(parser, ANNOTATION))
 }
 
-// test multi_annotation
-// fun foo() {
-//    @get:[Anno1 Anno2]
-//    val x: Int
-//    @set:[Anno3]
-//    var y: Int
-// }
-fn single_and_multi_annotation(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+fn single_or_multi_annotation(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     let m = parser.start();
-    if annotation_use_site_target(parser).is_none() {
-        if let AT_NO_WS | AT_PRE_WS = parser.current() {
-            parser.bump_any()
-        } else {
-            m.abandon(parser);
-            return None;
-        }
-    } else {
-        parser.eat_newlines();
-    }
-    if !parser.eat(L_SQUARE) {
+    annotation_use_site_target_or_at(parser);
+
+    if !parser.eat(T!['[']) {
         // test single_annotation
         // fun foo() {
         //    @get:Anno1
@@ -42,12 +29,20 @@ fn single_and_multi_annotation(parser: &mut Parser<'_>) -> Option<CompletedMarke
         //    @CustomAnno
         //    var y: Int
         // }
-       unescaped_annotation(parser);
-       return Some(m.complete(parser, SINGLE_ANNOTATION));
+        unescaped_annotation(parser);
+        return Some(m.complete(parser, SINGLE_ANNOTATION));
     }
 
+    // test multi_annotation
+    // fun foo() {
+    //    @get:[Anno1 Anno2]
+    //    val x: Int
+    //    @set:[Anno3]
+    //    var y: Int
+    // }
+
     let mut parsed = 0;
-    while !matches!(parser.current(), R_SQUARE | EOF) {
+    while !matches!(parser.current(), T![']'] | EOF) {
         if unescaped_annotation(parser).is_some() {
             parsed += 1;
         } else {
@@ -59,22 +54,25 @@ fn single_and_multi_annotation(parser: &mut Parser<'_>) -> Option<CompletedMarke
         parser.error("expected at least one annotation inside brackets");
     }
 
-    if !parser.eat(R_SQUARE) {
+    if !parser.eat(T![']']) {
         parser.err_recover("expected ']' to close annotation list", ANNO_RECOVERY);
     }
 
     Some(m.complete(parser, MULTI_ANNOTATION))
 }
 
-fn annotation_use_site_target(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    let m = parser.start();
+enum AnnStep {
+    At,
+    Receiver,
+}
 
-    if let AT_NO_WS | AT_PRE_WS = parser.current() {
-        parser.bump_any()
-    } else {
-        m.abandon(parser);
-        return None;
-    }
+fn starts_annotation(parser: &mut Parser<'_>) -> bool {
+    matches!(parser.current(), AT_NO_WS | AT_PRE_WS)
+}
+
+fn annotation_use_site_target_or_at(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    let m = parser.start();
+    parser.bump_any();
 
     if matches!(
         parser.current(),
@@ -85,19 +83,18 @@ fn annotation_use_site_target(parser: &mut Parser<'_>) -> Option<CompletedMarker
         m.abandon(parser);
         return None;
     }
-
-    parser.eat_newlines();
-
     if !parser.eat(COLON) {
         parser.err_recover("expected ':' after use-site target", ANNO_RECOVERY);
     }
-
     Some(m.complete(parser, ANNOTATION_USE_SITE_TARGET))
 }
 
 pub(crate) fn unescaped_annotation(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     let m = parser.start();
     // FIXME: handle constructor invocation
-    // user_type(parser);
+    if user_type(parser).is_none() {
+        m.abandon(parser);
+        return None;
+    }
     Some(m.complete(parser, UNESCAPED_ANNOTATION))
 }
