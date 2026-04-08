@@ -2,8 +2,7 @@ use crate::{ParseError, Parser, TokenSource, TreeSink};
 use itertools::{PeekNth, peek_nth};
 use lexer::{Lexer, SpannedWithSource};
 use rowan::{GreenNode, GreenNodeBuilder};
-use syntax::{Cast, Root, Token};
-use syntax::{SyntaxKind, SyntaxNode};
+use syntax::{SyntaxKind, SyntaxNode, Token};
 
 struct TestTreeSink {
     errors: Vec<ParseError>,
@@ -93,6 +92,7 @@ impl Parse {
         SyntaxNode::new_root(self.green_node.clone())
     }
 
+    #[cfg(tests)]
     pub fn root(&self) -> Root {
         Root::cast(self.syntax()).unwrap()
     }

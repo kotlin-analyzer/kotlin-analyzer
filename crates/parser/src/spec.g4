@@ -613,8 +613,8 @@ superExpression
 
 ifExpression
     : IF NL* LPAREN NL* expression NL* RPAREN NL*
-      ( controlStructureBody
-      | controlStructureBody? NL* SEMICOLON? NL* ELSE NL* (controlStructureBody | SEMICOLON)
+      ( controlStructureBody 
+      | controlStructureBody? NL* SEMICOLON? NL* ELSE NL* (controlStructureBody | SEMICOLON) 
       | SEMICOLON)
     ;
 

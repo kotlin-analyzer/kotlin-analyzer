@@ -2,14 +2,13 @@ use syntax::{SyntaxKind::*, T};
 
 use crate::ra::{CompletedMarker, Parser};
 
-pub(crate) fn simple_identifier(parser: &mut Parser<'_>) -> bool {
+pub(crate) fn simple_identifier(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     if is_simple_identifier(parser) {
         let m = parser.start();
         parser.bump_any();
-        m.complete(parser, SIMPLE_IDENTIFIER);
-        true
+        Some(m.complete(parser, SIMPLE_IDENTIFIER))
     } else {
-        false
+        None
     }
 }
 
@@ -29,7 +28,7 @@ pub(crate) fn is_simple_ident_at(parser: &mut Parser<'_>, n: usize) -> bool {
 pub(crate) fn identifier(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     let m = parser.start();
 
-    if !simple_identifier(parser) {
+    if simple_identifier(parser).is_none() {
         m.abandon(parser);
         return None;
     };

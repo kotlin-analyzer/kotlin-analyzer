@@ -1,8 +1,11 @@
 mod entries;
 mod t;
 
+#[cfg(feature = "cast")]
 pub use entries::Cast;
-pub use entries::*;
+pub use entries::SyntaxKind;
+pub use entries::SyntaxNode;
+pub use entries::Token;
 
 use Token::*;
 
@@ -68,7 +71,7 @@ impl Token {
 
             ".." => Some(RANGE),
 
-            "..<" => Some(RANGE_LESS),
+            "..<" => Some(RANGE_UNTIL),
 
             "::" => Some(COLON_COLON),
 

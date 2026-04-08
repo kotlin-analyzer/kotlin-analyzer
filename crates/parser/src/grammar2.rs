@@ -5,7 +5,7 @@ pub(crate) mod types;
 
 // pub(crate) mod utils;
 
-// pub(crate) mod expressions;
+pub(crate) mod expressions;
 // #[cfg(test)]
 // mod expressions_test;
 

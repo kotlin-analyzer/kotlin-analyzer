@@ -233,7 +233,7 @@ fn simple_user_type(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     }
 }
 
-fn type_projection(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+pub(crate) fn type_projection(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     if parser.at(T![*]) {
         let m = parser.start();
         parser.bump(T![*]);
@@ -393,12 +393,15 @@ fn parameter(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     }
 }
 
-enum RecvType {
+pub(crate) enum RecvType {
     Dotted,
     NotDotted,
 }
 
-fn receiver_type(parser: &mut Parser<'_>, recv_type: RecvType) -> Option<CompletedMarker> {
+pub(crate) fn receiver_type(
+    parser: &mut Parser<'_>,
+    recv_type: RecvType,
+) -> Option<CompletedMarker> {
     let m = parser.start();
     type_modifiers(parser);
 

@@ -1,5 +1,6 @@
 use casey::pascal;
 
+#[cfg(feature = "cast")]
 pub trait Cast {
     fn cast(node: SyntaxNode) -> Option<Self>
     where
@@ -55,7 +56,7 @@ macro_rules! define_syntax {
             #[allow(unused)]
             pub struct $id(pub SyntaxNode);
         }
-
+        #[cfg(feature = "cast")]
         impl Cast for pascal!($id) {
             fn cast(node: SyntaxNode) -> Option<Self> {
                 if node.kind() == $name::$id {
@@ -110,7 +111,7 @@ define_syntax! {
             ARROW,
             DOUBLE_ARROW,
             RANGE,
-            RANGE_LESS,
+            RANGE_UNTIL,
             COLON_COLON,
             DOUBLE_SEMICOLON,
             HASH,
@@ -215,6 +216,7 @@ define_syntax! {
             HEX_LITERAL,
             BIN_LITERAL,
             LONG_LITERAL,
+            UNSIGNED_LITERAL,
             BOOLEAN_LITERAL,
             NULL_LITERAL,
             CHARACTER_LITERAL,

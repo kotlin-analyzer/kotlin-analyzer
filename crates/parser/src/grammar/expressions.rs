@@ -183,7 +183,7 @@ fn range_expression(parser: &mut Parser<'_, '_>) {
     parse_while!(
         matches!(
             parser.current_token(),
-            Some(Token::RANGE | Token::RANGE_LESS)
+            Some(Token::RANGE | Token::RANGE_UNTIL)
         ),
         parser => {
             parser.bump();

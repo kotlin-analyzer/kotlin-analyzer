@@ -15,7 +15,7 @@ macro_rules ! T {
     [#] => { $ crate :: SyntaxKind :: HASH };
     [?] => { $ crate :: SyntaxKind :: QUEST_NO_WS };
     [&] => { $ crate :: SyntaxKind :: AMP };
-    [+] => { $ crate :: SyntaxKind :: PLUS };
+    [+] => { $ crate :: SyntaxKind :: ADD };
     [*] => { $ crate :: SyntaxKind :: MULT };
     [/] => { $ crate :: SyntaxKind :: DIV };
     [%] => { $ crate :: SyntaxKind :: MOD };
@@ -26,7 +26,7 @@ macro_rules ! T {
     [==] => { $ crate :: SyntaxKind :: EQ_EQ };
     [===] => { $ crate :: SyntaxKind :: EQ_EQ_EQ };
     [=>] => { $ crate :: SyntaxKind :: FAT_ARROW };
-    [!] => { $ crate :: SyntaxKind :: EXCL };
+    [!] => { $ crate :: SyntaxKind :: EXCL_NO_WS };
     [!=] => { $ crate :: SyntaxKind :: EXCL_EQ };
     [!==] => { $ crate :: SyntaxKind :: EXCL_EQ_EQ };
     [-] => { $ crate :: SyntaxKind :: SUB };
@@ -37,12 +37,19 @@ macro_rules ! T {
     [-=] => { $ crate :: SyntaxKind :: SUB_ASSIGNMENT };
     [/=] => { $ crate :: SyntaxKind :: DIV_ASSIGNMENT };
     [*=] => { $ crate :: SyntaxKind :: MULT_ASSIGNMENT };
+    [++] => { $ crate :: SyntaxKind :: INCR };
+    [--] => { $ crate :: SyntaxKind :: DECR };
     [%=] => { $ crate :: SyntaxKind :: MOD_ASSIGNMENT };
     [&&] => { $ crate :: SyntaxKind :: CONJ };
     [||] => { $ crate :: SyntaxKind :: DISJ };
+    [..] => { $ crate :: SyntaxKind :: RANGE };
+    [..<] => { $ crate :: SyntaxKind :: RANGE_UNTIL };
     [this] => { $ crate :: SyntaxKind :: THIS };
+    [this@] => { $ crate :: SyntaxKind :: THIS_AT };
+    [class] => { $ crate :: SyntaxKind :: CLASS };
     [abstract] => { $ crate :: SyntaxKind :: ABSTRACT };
     [as] => { $ crate :: SyntaxKind :: AS };
+    [as?] => { $ crate :: SyntaxKind :: AS_SAFE };
     [break] => { $ crate :: SyntaxKind :: BREAK };
     [const] => { $ crate :: SyntaxKind :: CONST };
     [continue] => { $ crate :: SyntaxKind :: CONTINUE };
@@ -57,11 +64,15 @@ macro_rules ! T {
     [if] => { $ crate :: SyntaxKind :: IF };
     [in] => { $ crate :: SyntaxKind :: IN };
     [!in] => { $ crate :: SyntaxKind :: NOT_IN };
+    [is] => { $ crate :: SyntaxKind :: IS };
+    [!is] => { $ crate :: SyntaxKind :: NOT_IS };
     [val] => { $ crate :: SyntaxKind :: VAL };
     [var] => { $ crate :: SyntaxKind :: VAR };
     [loop] => { $ crate :: SyntaxKind :: LOOP };
+    [throw] => { $ crate :: SyntaxKind :: THROW };
     [try] => { $ crate :: SyntaxKind :: TRY };
     [catch] => { $ crate :: SyntaxKind :: CATCH };
+    [finally] => { $ crate :: SyntaxKind :: FINALLY };
     [when] => { $ crate :: SyntaxKind :: WHEN };
     [mut] => { $ crate :: SyntaxKind :: MUT };
     [override] => { $ crate :: SyntaxKind :: OVERRIDE };
@@ -73,6 +84,9 @@ macro_rules ! T {
     [static] => { $ crate :: SyntaxKind :: STATIC };
     [class] => { $ crate :: SyntaxKind :: CLASS };
     [super] => { $ crate :: SyntaxKind :: SUPER };
+    [super@] => { $ crate :: SyntaxKind :: SUPER_AT };
+    [object] => { $ crate :: SyntaxKind :: OBJECT };
+    [data] => { $ crate :: SyntaxKind :: DATA };
     [true] => { $ crate :: SyntaxKind :: TRUE };
     [type] => { $ crate :: SyntaxKind :: TYPE };
     [typeof] => { $ crate :: SyntaxKind :: TYPEOF };
@@ -84,8 +98,11 @@ macro_rules ! T {
     [label] => { $ crate :: SyntaxKind :: LABEL };
     [readonly] => { $ crate :: SyntaxKind :: READONLY };
     [suspend] => { $ crate :: SyntaxKind :: SUSPEND };
-    [ident] => { $ crate :: SyntaxKind :: IDENTIFIER };
-    [line_str] => { $ crate :: SyntaxKind :: LINE_STRING_LITERAL };
-    [multiline_str] => { $ crate :: SyntaxKind :: MULTI_LINE_STRING_LITERAL };
     [shebang] => { $ crate :: SyntaxKind :: SHEBANG };
+    [continue] => { $ crate :: SyntaxKind :: CONTINUE };
+    [continue@] => { $ crate :: SyntaxKind :: CONTINUE_AT };
+    [break] => { $ crate :: SyntaxKind :: BREAK };
+    [break@] => { $ crate :: SyntaxKind :: BREAK_AT };
+    [return] => { $ crate :: SyntaxKind :: RETURN };
+    [return@] => { $ crate :: SyntaxKind :: RETURN_AT };
 }

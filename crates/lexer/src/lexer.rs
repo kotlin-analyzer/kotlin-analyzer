@@ -726,7 +726,13 @@ fn repeat<'a, const N: usize>(p1: impl ParseFn<'a>) -> impl ParseFn<'a> {
 }
 
 fn long_lit(step: Step<'_>) -> Option<Step<'_>> {
-    and(or(bin_or_hex_lit, int_lit), tag("L")).with(LONG_LITERAL)(step)
+    or(bin_or_hex_lit, int_lit).and(or(
+        tag("l").or(tag("L")).with(LONG_LITERAL),
+        tag("u")
+            .or(tag("U"))
+            .and(opt(or(tag("l"), tag("L"))))
+            .with(UNSIGNED_LITERAL),
+    ))(step)
 }
 
 fn exponent_lit(step: Step<'_>) -> Option<Step<'_>> {
@@ -1045,6 +1051,18 @@ mod test {
     fn long_literals() {
         assert_success!(long_lit, "23419L", 6, LONG_LITERAL);
         assert_success!(long_lit, "2_341_567L", 10, LONG_LITERAL);
+        assert_success!(long_lit, "23419l", 6, LONG_LITERAL);
+        assert_success!(long_lit, "2_341_567l", 10, LONG_LITERAL);
+
+        assert_success!(long_lit, "23419U", 6, UNSIGNED_LITERAL);
+        assert_success!(long_lit, "2_341_567U", 10, UNSIGNED_LITERAL);
+        assert_success!(long_lit, "23419u", 6, UNSIGNED_LITERAL);
+        assert_success!(long_lit, "2_341_567u", 10, UNSIGNED_LITERAL);
+
+        assert_success!(long_lit, "23419UL", 7, UNSIGNED_LITERAL);
+        assert_success!(long_lit, "2_341_567Ul", 11, UNSIGNED_LITERAL);
+        assert_success!(long_lit, "23419uL", 7, UNSIGNED_LITERAL);
+        assert_success!(long_lit, "2_341_567ul", 11, UNSIGNED_LITERAL);
 
         assert_failure!(long_lit, "23419");
         assert_failure!(long_lit, "2_341_567");
