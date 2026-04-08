@@ -274,7 +274,7 @@ pub(crate) fn type_arguments(parser: &mut Parser<'_>) -> Option<CompletedMarker>
     }
     if !parser.eat(T![>]) {
         // TODO: recover
-        parser.error("expected `>` to close type arguments");
+        parser.error("expected `>`");
     }
 
     Some(m.complete(parser, TYPE_ARGUMENTS))

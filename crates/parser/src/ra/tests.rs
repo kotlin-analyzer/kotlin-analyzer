@@ -84,15 +84,19 @@ fn parse_ok() {
     }
 }
 
-// #[test]
-// fn parse_err() {
-//     for case in TestCase::list("parser/err") {
-//         let _guard = panic_context!("{:?}", case.kt);
-//         let (actual, errors) = parse(annotation, &case.text, KtVersion::V2_3);
-//         assert!(errors, "no errors in an ERR file {}:\n{actual}", case.kt.display());
-//         expect_file![case.kast].assert_eq(&actual)
-//     }
-// }
+#[test]
+fn parse_err() {
+    for case in TestCase::list("parser/err") {
+        let _guard = panic_context!("{:?}", case.kt);
+        let (actual, errors) = parse(ty, &case.text, KtVersion::V2_3);
+        assert!(
+            errors,
+            "no errors in an ERR file {}:\n{actual}",
+            case.kt.display()
+        );
+        expect_file![case.kast].assert_eq(&actual)
+    }
+}
 
 pub fn parse<T>(
     entry_point: fn(&'_ mut parser::Parser<'_>) -> T,
