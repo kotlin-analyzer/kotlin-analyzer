@@ -1,96 +1,75 @@
-use syntax::SyntaxKind::*;
-use syntax::Token;
+use syntax::{SyntaxKind::*, T};
 
-use super::class_members::{class_body, class_member_declarations};
-use super::expressions::value_arguments;
-use super::identifiers::simple_identifier;
-use super::modifiers::{parse_optional_modifiers, starts_modifiers};
-use super::utils::starts_simple_identifier;
-use crate::{Parser, parse_loop, parse_while};
+use crate::{
+    grammar2::{
+        class_members::class_member_declarations, classes::class_body,
+        expressions::value_arguments, identifiers::simple_identifier, modifiers::modifiers,
+    },
+    ra::{CompletedMarker, Marker, Parser},
+};
 
-const ENUM_RECOVERY: &[Token] = &[Token::R_CURL, Token::SEMICOLON, Token::NL, Token::EOF];
+pub(crate) enum BodyResult {
+    None(Marker),
+    EnumClassBody(CompletedMarker),
+}
 
-pub(crate) fn enum_class_body(parser: &mut Parser<'_, '_>) {
-    parser.start_node(ENUM_CLASS_BODY);
+pub(crate) fn enum_class_body(
+    parser: &mut Parser<'_>,
+    opening_brace: Marker,
+    modifiers_marker: Option<CompletedMarker>,
+) -> BodyResult {
+    let m = opening_brace;
 
-    parse_loop! { parser =>
-        if !parser.expect_recover(Token::L_CURL, "expected '{'", ENUM_RECOVERY) {
-            break;
-        }
-
-        parser.skip_trivia_and_newlines();
-
-        if starts_enum_entry(parser) {
-            enum_entries(parser);
-            parser.skip_trivia_and_newlines();
-        }
-
-        if parser.current_token() == Some(&Token::SEMICOLON) {
-            parser.bump();
-            parser.skip_trivia_and_newlines();
-            class_member_declarations(parser);
-            parser.skip_trivia_and_newlines();
-        }
-
-        if !parser.expect_recover(Token::R_CURL, "expected '}'", ENUM_RECOVERY) {
-            break;
-        }
-        break;
+    if enum_entries(parser, modifiers_marker.clone()).is_none() {
+        return BodyResult::None(m); // so classBody can handle it
     }
 
-    parser.finish_node(ENUM_CLASS_BODY);
-}
-
-pub(crate) fn enum_entries(parser: &mut Parser<'_, '_>) {
-    parser.start_node(ENUM_ENTRIES);
-
-    enum_entry(parser);
-    parser.skip_trivia_and_newlines();
-
-    parse_while!(parser.current_token() == Some(&Token::COMMA), parser => {
-        parser.bump();
-        parser.skip_trivia_and_newlines();
-        if starts_enum_entry(parser) {
-            enum_entry(parser);
-            parser.skip_trivia_and_newlines();
-        } else {
-            break;
+    if !parser.at(T!['}']) {
+        if !parser.eat(T![;]) {
+            parser.error("expected ';' after enum variants");
         }
-    });
-
-    parser.finish_node(ENUM_ENTRIES);
-}
-
-pub(crate) fn enum_entry(parser: &mut Parser<'_, '_>) {
-    parser.start_node(ENUM_ENTRY);
-
-    parse_loop! { parser =>
-        parse_optional_modifiers(parser);
-        parser.skip_trivia_and_newlines();
-
-        if starts_simple_identifier(parser) {
-            simple_identifier(parser);
-        } else {
-            parser.error("expected enum entry name");
-            parser.recover_until(ENUM_RECOVERY);
-            break;
-        }
-
-        parser.skip_trivia_and_newlines();
-        if parser.current_token() == Some(&Token::L_PAREN) {
-            value_arguments(parser);
-            parser.skip_trivia_and_newlines();
-        }
-
-        if parser.current_token() == Some(&Token::L_CURL) {
-            class_body(parser);
-        }
-        break;
+        class_member_declarations(parser, modifiers_marker);
     }
 
-    parser.finish_node(ENUM_ENTRY);
+    if !parser.eat(T!['}']) {
+        parser.error("expected '}'");
+    }
+    BodyResult::EnumClassBody(m.complete(parser, ENUM_CLASS_BODY))
 }
 
-fn starts_enum_entry(parser: &mut Parser<'_, '_>) -> bool {
-    starts_modifiers(parser) || starts_simple_identifier(parser)
+fn enum_entries(
+    parser: &mut Parser<'_>,
+    modifiers_marker: Option<CompletedMarker>,
+) -> Option<CompletedMarker> {
+    if let Some(cm) = enum_entry(parser, modifiers_marker) {
+        let m = cm.precede(parser);
+        while parser.eat(T![,]) {
+            if enum_entry(parser, None).is_none() {
+                break;
+            }
+        }
+        Some(m.complete(parser, ENUM_ENTRIES))
+    } else {
+        None
+    }
+}
+fn enum_entry(
+    parser: &mut Parser<'_>,
+    modifiers_marker: Option<CompletedMarker>,
+) -> Option<CompletedMarker> {
+    let has_modifiers = modifiers_marker.is_some();
+    let m = modifiers_marker
+        .map(|cm| cm.precede(parser))
+        .unwrap_or_else(|| parser.start());
+
+    if !has_modifiers {
+        modifiers(parser);
+    }
+    if simple_identifier(parser).is_none() {
+        m.abandon(parser);
+        return None;
+    }
+    value_arguments(parser);
+    class_body(parser, None, None);
+    Some(m.complete(parser, ENUM_ENTRY))
 }

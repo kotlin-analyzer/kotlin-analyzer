@@ -47,6 +47,11 @@ macro_rules ! T {
     [this] => { $ crate :: SyntaxKind :: THIS };
     [this@] => { $ crate :: SyntaxKind :: THIS_AT };
     [class] => { $ crate :: SyntaxKind :: CLASS };
+    [interface] => { $ crate :: SyntaxKind :: INTERFACE };
+    [object] => { $ crate :: SyntaxKind :: OBJECT };
+    [companion] => { $ crate :: SyntaxKind :: COMPANION };
+    [constructor] => { $ crate :: SyntaxKind :: CONSTRUCTOR };
+    [init] => { $ crate :: SyntaxKind :: INIT };
     [abstract] => { $ crate :: SyntaxKind :: ABSTRACT };
     [as] => { $ crate :: SyntaxKind :: AS };
     [as?] => { $ crate :: SyntaxKind :: AS_SAFE };
@@ -85,7 +90,6 @@ macro_rules ! T {
     [class] => { $ crate :: SyntaxKind :: CLASS };
     [super] => { $ crate :: SyntaxKind :: SUPER };
     [super@] => { $ crate :: SyntaxKind :: SUPER_AT };
-    [object] => { $ crate :: SyntaxKind :: OBJECT };
     [data] => { $ crate :: SyntaxKind :: DATA };
     [true] => { $ crate :: SyntaxKind :: TRUE };
     [type] => { $ crate :: SyntaxKind :: TYPE };
@@ -105,4 +109,5 @@ macro_rules ! T {
     [break@] => { $ crate :: SyntaxKind :: BREAK_AT };
     [return] => { $ crate :: SyntaxKind :: RETURN };
     [return@] => { $ crate :: SyntaxKind :: RETURN_AT };
+    [by] => { $ crate :: SyntaxKind :: BY };
 }

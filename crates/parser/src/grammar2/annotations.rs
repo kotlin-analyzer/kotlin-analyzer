@@ -1,7 +1,10 @@
 use syntax::{SyntaxKind::*, T};
 
 use super::types::user_type;
-use crate::ra::{CompletedMarker, Parser, TokenSet};
+use crate::{
+    grammar2::classes::constructor_invocation,
+    ra::{CompletedMarker, Parser, TokenSet},
+};
 
 const ANNO_RECOVERY: TokenSet = TokenSet::new(&[R_SQUARE, SEMICOLON, NL, R_CURL, EOF]);
 
@@ -91,10 +94,11 @@ fn annotation_use_site_target_or_at(parser: &mut Parser<'_>) -> Option<Completed
 
 pub(crate) fn unescaped_annotation(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     let m = parser.start();
-    // FIXME: handle constructor invocation
-    if user_type(parser).is_none() {
+    if let Some(user_type_marker) = user_type(parser) {
+        constructor_invocation(parser, user_type_marker);
+        Some(m.complete(parser, UNESCAPED_ANNOTATION))
+    } else {
         m.abandon(parser);
-        return None;
+        None
     }
-    Some(m.complete(parser, UNESCAPED_ANNOTATION))
 }

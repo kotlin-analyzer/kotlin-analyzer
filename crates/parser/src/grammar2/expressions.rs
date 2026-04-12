@@ -3,8 +3,13 @@ use syntax::{SyntaxKind::*, T};
 use crate::{
     grammar2::{
         annotations::annotation,
-        class_members::{multi_variable_declaration, variable_declaration},
+        class_members::{
+            function_body, multi_variable_declaration, parameters_with_opt_type,
+            variable_declaration,
+        },
+        classes::{class_body, delegation_specifiers, type_constraints},
         identifiers::{is_simple_identifier, simple_identifier},
+        statements::{block, control_structure_body, label, semi, statements},
         types::{RecvType, receiver_type, ty, type_projection},
     },
     ra::{CompletedMarker, Parser},
@@ -297,7 +302,7 @@ fn prefix_unary_expression(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
 fn unary_prefix(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     annotation(parser)
         .or_else(|| prefix_unary_operator(parser))
-        // FIXME: label
+        .or_else(|| label(parser))
         .map(|cm| cm.precede(parser).complete(parser, UNARY_PREFIX))
 }
 
@@ -376,8 +381,7 @@ fn call_suffix(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
 fn annotated_lambda(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     let m = parser.start();
     while annotation(parser).is_some() {}
-    let has_label = true;
-    // FIXME: lable optional
+    let has_label = label(parser).is_some();
     if lambda_literal(parser).is_none() && !has_label {
         m.abandon(parser);
         return None;
@@ -603,7 +607,7 @@ fn lambda_literal(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
             parser.error("expected `->`");
         }
     }
-    // FIXME: statements
+    statements(parser);
     if !parser.eat(T!['}']) {
         parser.error("expected `}`");
     }
@@ -640,7 +644,9 @@ fn anonymous_function(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
             parser.error("expected `.`");
         }
     }
-    // FIXME: parametersWithOptionalType
+    if parameters_with_opt_type(parser).is_none() {
+        parser.error("expected `(`");
+    }
     if parser.at(T![:]) {
         parser.bump(T![:]);
         if ty(parser).is_none() {
@@ -648,8 +654,8 @@ fn anonymous_function(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
         }
     }
 
-    // FIXME: typeConstraints optional
-    // FIXME: functionBody optional
+    type_constraints(parser);
+    function_body(parser);
     Some(m.complete(parser, ANONYMOUS_FUNCTION))
 }
 
@@ -664,10 +670,10 @@ fn object_literal(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
 
     if parser.at(T![:]) {
         parser.bump(T![:]);
-        // FIXME: delegationSpecifiers
+        delegation_specifiers(parser);
     }
 
-    // FIXME: classBody
+    class_body(parser, None, None);
     Some(m.complete(parser, OBJECT_LITERAL))
 }
 
@@ -725,11 +731,11 @@ fn if_expression(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
         parser.error("expected `)`");
     }
 
-    // FIXME: controlStructureBody(parser); optional
+    control_structure_body(parser);
     parser.eat(T![;]);
     if parser.eat(T![else]) {
         if !parser.eat(T![;]) {
-            // FIXME: controlStructureBody(parser);
+            control_structure_body(parser);
         }
     }
     Some(m.complete(parser, IF_EXPRESSION))
@@ -761,7 +767,9 @@ fn when_subject(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     while annotation(parser).is_some() {}
     if parser.at(T![val]) {
         parser.bump(T![val]);
-        // FIXME: variableDeclaration
+        if variable_declaration(parser).is_none() {
+            parser.error("expected an identifier");
+        }
         if !parser.eat(T![=]) {
             parser.error("expected `=`");
         }
@@ -781,15 +789,15 @@ fn when_entry(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     if parser.at(T![else]) {
         parser.bump(T![else]);
         if parser.eat(T![->]) {
-            // FIXME: controlStructureBody(parser);  FIXME: import from statements.rs when it's implemented
+            control_structure_body(parser);
         }
-        // FIXME: opt semi
+        semi(parser);
     } else if when_condition(parser).is_some() {
         while parser.eat(T![,]) && when_condition(parser).is_some() {}
         if parser.eat(T![->]) {
-            // controlStructureBody(parser);  FIXME: import from statements.rs when it's implemented
+            control_structure_body(parser);
         }
-        // FIXME: opt semi
+        semi(parser);
     } else {
         m.abandon(parser);
         return None;
@@ -839,7 +847,10 @@ fn try_expression(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     }
     let m = parser.start();
     parser.bump(T![try]);
-    // block(parser);  FIXME: import from statements.rs when it's implemented
+
+    if block(parser).is_none() {
+        parser.error("expected `{`");
+    }
     let mut catch_or_finally = 0;
     while catch_block(parser).is_some() {
         catch_or_finally += 1;
@@ -877,7 +888,9 @@ fn catch_block(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
             parser.error("expected `)`");
         }
     }
-    // block(parser);  FIXME: import from statements.rs when it's implemented
+    if block(parser).is_none() {
+        parser.error("expected `{`");
+    }
     Some(m.complete(parser, CATCH_BLOCK))
 }
 
@@ -887,7 +900,9 @@ fn finally_block(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     }
     let m = parser.start();
     parser.bump(T![finally]);
-    // block(parser);  FIXME: import from statements.rs when it's implemented
+    if block(parser).is_none() {
+        parser.error("expected `{`");
+    }
     Some(m.complete(parser, FINALLY_BLOCK))
 }
 

@@ -246,12 +246,12 @@ impl Marker {
 
     /// Abandons the syntax tree node. All its children
     /// are attached to its parent instead.
-    pub(crate) fn abandon(mut self, p: &mut Parser<'_>) {
+    pub(crate) fn abandon(mut self, parser: &mut Parser<'_>) {
         self.bomb.defuse();
         let idx = self.pos as usize;
-        if idx == p.events.len() - 1 {
+        if idx == parser.events.len() - 1 {
             assert!(matches!(
-                p.events.pop(),
+                parser.events.pop(),
                 Some(Event::Start {
                     kind: TOMBSTONE,
                     forward_parent: None
@@ -261,6 +261,7 @@ impl Marker {
     }
 }
 
+#[derive(Clone)]
 pub(crate) struct CompletedMarker {
     start_pos: u32,
     end_pos: u32,
@@ -289,10 +290,10 @@ impl CompletedMarker {
     /// Append a new `START` events as `[START, FINISH, NEWSTART]`,
     /// then mark `NEWSTART` as `START`'s parent with saving its relative
     /// distance to `NEWSTART` into forward_parent(=2 in this case);
-    pub(crate) fn precede(self, p: &mut Parser<'_>) -> Marker {
-        let new_pos = p.start();
+    pub(crate) fn precede(self, parser: &mut Parser<'_>) -> Marker {
+        let new_pos = parser.start();
         let idx = self.start_pos as usize;
-        match &mut p.events[idx] {
+        match &mut parser.events[idx] {
             Event::Start { forward_parent, .. } => {
                 *forward_parent = Some(new_pos.pos - self.start_pos);
             }
@@ -302,10 +303,10 @@ impl CompletedMarker {
     }
 
     /// Extends this completed marker *to the left* up to `m`.
-    pub(crate) fn extend_to(self, p: &mut Parser<'_>, mut m: Marker) -> CompletedMarker {
+    pub(crate) fn extend_to(self, parser: &mut Parser<'_>, mut m: Marker) -> CompletedMarker {
         m.bomb.defuse();
         let idx = m.pos as usize;
-        match &mut p.events[idx] {
+        match &mut parser.events[idx] {
             Event::Start { forward_parent, .. } => {
                 *forward_parent = Some(self.start_pos - m.pos);
             }
@@ -318,10 +319,10 @@ impl CompletedMarker {
         self.kind
     }
 
-    pub(crate) fn last_token(&self, p: &Parser<'_>) -> Option<SyntaxKind> {
+    pub(crate) fn last_token(&self, parser: &Parser<'_>) -> Option<SyntaxKind> {
         let end_pos = self.end_pos as usize;
-        debug_assert_eq!(p.events[end_pos - 1], Event::Finish);
-        p.events[..end_pos]
+        debug_assert_eq!(parser.events[end_pos - 1], Event::Finish);
+        parser.events[..end_pos]
             .iter()
             .rev()
             .find_map(|event| match event {
