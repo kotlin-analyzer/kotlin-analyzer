@@ -13,20 +13,29 @@ use crate::{
     ra::{CompletedMarker, Marker, Parser},
 };
 
-pub(crate) fn class_declaration(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    let m = parser.start();
-    modifiers(parser);
+pub(crate) fn starts_class_declaration(parser: &mut Parser<'_>) -> bool {
+    parser.at(T![class])
+        || parser.at(T![interface])
+        || (parser.at(T![fun]) && parser.nth_at(1, T![interface]))
+}
 
-    if !(parser.at(T![class]) || parser.at(T![interface]) || parser.at(T![fun])) {
+pub(crate) fn class_declaration(
+    parser: &mut Parser<'_>,
+    modifiers_marker: Option<CompletedMarker>,
+) -> Option<CompletedMarker> {
+    if !starts_class_declaration(parser) {
         return None;
     }
 
-    if parser.eat(T![class]) {
-    } else if parser.eat(T![interface]) {
-    } else if parser.eat(T![fun]) {
-        if !parser.eat(T![interface]) {
-            parser.error("expected 'interface'");
-        }
+    let m = modifiers_marker
+        .map(|cm| cm.precede(parser))
+        .unwrap_or_else(|| parser.start());
+
+    if parser.at(T![class]) || parser.at(T![interface]) {
+        parser.bump_any();
+    } else if parser.at(T![fun]) {
+        parser.bump(T![fun]);
+        parser.bump(T![interface]);
     }
 
     if simple_identifier(parser).is_none() {

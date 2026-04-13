@@ -3,6 +3,7 @@ use syntax::{SyntaxKind::*, T};
 use crate::{
     grammar2::{
         classes::{class_body, delegation_specifiers, type_constraints},
+        general::declaration,
         identifiers::is_simple_identifier,
         statements::{block, semi, semis},
         types::{RecvType, receiver_type, user_type},
@@ -45,15 +46,15 @@ fn class_member_declaration(
     let modifiers_marker = modifiers_marker.or_else(|| modifiers(parser));
 
     if parser.at(T![companion]) {
-        companion_object(parser, modifiers_marker)
+        companion_object(parser, modifiers_marker);
     } else if parser.at(T![constructor]) {
-        secondary_constructor(parser, modifiers_marker)
-    }
-    // FIXME: declaration from general
-    else {
+        secondary_constructor(parser, modifiers_marker);
+    } else if declaration(parser, modifiers_marker).is_some() {
+    } else {
         m.abandon(parser);
-        None
+        return None;
     }
+    Some(m.complete(parser, CLASS_MEMBER_DECLARATION))
 }
 
 fn anonymous_initializer(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
@@ -71,7 +72,9 @@ fn companion_object(
     parser: &mut Parser<'_>,
     modifiers_marker: Option<CompletedMarker>,
 ) -> Option<CompletedMarker> {
-    assert!(parser.at(T![companion]), "expected 'companion' keyword");
+    if !parser.at(T![companion]) {
+        return None;
+    }
 
     let m = modifiers_marker
         .map(|cm| cm.precede(parser))
@@ -87,17 +90,21 @@ fn companion_object(
     simple_identifier(parser);
 
     if parser.eat(T![:]) {
-        // delegation_specifier_list(parser);
+        if delegation_specifiers(parser).is_none() {
+            parser.error("expected delegation specifiers");
+        }
     }
-    // classBody(parser);
+    class_body(parser, None, None);
     Some(m.complete(parser, COMPANION_OBJECT))
 }
 
-fn function_declaration(
+pub(crate) fn function_declaration(
     parser: &mut Parser<'_>,
     modifiers_marker: Option<CompletedMarker>,
 ) -> Option<CompletedMarker> {
-    assert!(parser.at(T![fun]), "expected 'fun' keyword");
+    if !(parser.at(T![fun]) && !parser.nth_at(1, T![interface])) {
+        return None;
+    }
 
     let m = modifiers_marker
         .map(|cm| cm.precede(parser))
@@ -140,11 +147,13 @@ pub(crate) fn function_body(parser: &mut Parser<'_>) -> Option<CompletedMarker> 
     }
 }
 
-fn object_declaration(
+pub(crate) fn object_declaration(
     parser: &mut Parser<'_>,
     modifiers_marker: Option<CompletedMarker>,
 ) -> Option<CompletedMarker> {
-    assert!(parser.at(T![object]), "expected 'object' keyword");
+    if !parser.at(T![object]) {
+        return None;
+    }
     let m = modifiers_marker
         .map(|cm| cm.precede(parser))
         .unwrap_or_else(|| parser.start());
@@ -154,7 +163,9 @@ fn object_declaration(
         parser.error("expected an identifier");
     }
     if parser.eat(T![:]) {
-        delegation_specifiers(parser);
+        if delegation_specifiers(parser).is_none() {
+            parser.error("expected delegation specifiers");
+        }
     }
     class_body(parser, None, None);
 
@@ -223,14 +234,13 @@ pub(crate) fn variable_declaration(parser: &mut Parser<'_>) -> Option<CompletedM
 }
 
 /// Starts with either 'val' or 'var' keyword
-fn property_declaration(
+pub(crate) fn property_declaration(
     parser: &mut Parser<'_>,
     modifiers_marker: Option<CompletedMarker>,
 ) -> Option<CompletedMarker> {
-    assert!(
-        parser.at_ts(PROPERTY_DECLARATION_START),
-        "expected 'val' or 'var' keyword"
-    );
+    if !parser.at_ts(PROPERTY_DECLARATION_START) {
+        return None;
+    }
     let m = modifiers_marker
         .map(|cm| cm.precede(parser))
         .unwrap_or_else(|| parser.start());
@@ -273,7 +283,9 @@ fn getter(
     parser: &mut Parser<'_>,
     modifiers_marker: Option<CompletedMarker>,
 ) -> Option<CompletedMarker> {
-    assert!(parser.at(GET), "expected 'get' keyword");
+    if !parser.at(GET) {
+        return None;
+    }
     let m = modifiers_marker
         .map(|cm| cm.precede(parser))
         .unwrap_or_else(|| parser.start());
@@ -298,7 +310,9 @@ fn setter(
     parser: &mut Parser<'_>,
     modifiers_marker: Option<CompletedMarker>,
 ) -> Option<CompletedMarker> {
-    assert!(parser.at(SET), "expected 'set' keyword");
+    if !parser.at(SET) {
+        return None;
+    }
     let m = modifiers_marker
         .map(|cm| cm.precede(parser))
         .unwrap_or_else(|| parser.start());
@@ -372,7 +386,9 @@ fn secondary_constructor(
     parser: &mut Parser<'_>,
     modifiers_marker: Option<CompletedMarker>,
 ) -> Option<CompletedMarker> {
-    assert!(parser.at(T![constructor]), "expected 'constructor' keyword");
+    if !parser.at(T![constructor]) {
+        return None;
+    }
     let m = modifiers_marker
         .map(|cm| cm.precede(parser))
         .unwrap_or_else(|| parser.start());

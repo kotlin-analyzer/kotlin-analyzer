@@ -59,6 +59,7 @@ macro_rules ! T {
     [const] => { $ crate :: SyntaxKind :: CONST };
     [continue] => { $ crate :: SyntaxKind :: CONTINUE };
     [package] => { $ crate :: SyntaxKind :: PACKAGE };
+    [import] => { $ crate :: SyntaxKind :: IMPORT };
     [do] => { $ crate :: SyntaxKind :: DO };
     [else] => { $ crate :: SyntaxKind :: ELSE };
     [enum] => { $ crate :: SyntaxKind :: ENUM };

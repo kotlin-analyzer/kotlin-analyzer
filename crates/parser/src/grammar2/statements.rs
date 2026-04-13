@@ -5,7 +5,9 @@ use crate::{
         annotations::annotation,
         class_members::{multi_variable_declaration, variable_declaration},
         expressions::expression,
+        general::declaration,
         identifiers::is_simple_identifier,
+        modifiers::modifiers,
     },
     ra::{CompletedMarker, Parser},
 };
@@ -49,13 +51,17 @@ pub(crate) fn statements(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     }
 }
 
-fn statement(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+pub(crate) fn statement(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     let m = parser.start();
     while label(parser).or_else(|| annotation(parser)).is_some() {}
 
-    // FIXME: handle declaration | assignment
+    // FIXME: | assignment
     if loop_statement(parser)
-        .or_else(|| expression(parser))
+        .or_else(|| {
+            let modifiers = modifiers(parser);
+            declaration(parser, modifiers)
+        })
+        .or_else(|| expression(parser)) // TODO: verify that expression doesn't have a modifier
         .is_none()
     {
         m.abandon(parser);
