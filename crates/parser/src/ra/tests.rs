@@ -135,14 +135,6 @@ pub fn parse<T>(
             errors.push(format!("error {pos}: {msg}\n"))
         }
     });
-    assert_eq!(
-        len,
-        text.len(),
-        "didn't parse all text.\nParsed:\n{}\n\nAll:\n{}\nTree:\n{}",
-        &text[..len],
-        text,
-        buf
-    );
 
     for (token, msg) in lexed.errors() {
         let pos = lexed.text_start(token);
@@ -153,6 +145,15 @@ pub fn parse<T>(
     for e in errors {
         buf.push_str(&e);
     }
+    assert_eq!(
+        len,
+        text.len(),
+        "didn't parse all text.\nParsed:\n{}\n\nAll:\n{}\nTree:\n{}\n",
+        &text[..len],
+        text,
+        buf,
+    );
+
     (buf, has_errors)
 }
 

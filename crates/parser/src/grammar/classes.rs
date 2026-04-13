@@ -238,13 +238,12 @@ pub(crate) fn constructor_invocation(
     parser: &mut Parser<'_>,
     user_type_marker: CompletedMarker,
 ) -> Option<CompletedMarker> {
-    let m = user_type_marker.precede(parser);
-    if value_arguments(parser).is_some() {
-        Some(m.complete(parser, CONSTRUCTOR_INVOCATION))
-    } else {
-        m.abandon(parser);
-        None
+    if !parser.at(T!['(']) {
+        return None;
     }
+    let m = user_type_marker.precede(parser);
+    value_arguments(parser);
+    Some(m.complete(parser, CONSTRUCTOR_INVOCATION))
 }
 
 fn type_parameter(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
