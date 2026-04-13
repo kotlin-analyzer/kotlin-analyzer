@@ -277,8 +277,8 @@ fn parenthesized_assignable_expression(parser: &mut Parser<'_>) -> Option<Comple
 }
 
 fn assignable_expression(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    prefix_unary_expression(parser)
-        .or_else(|| parenthesized_assignable_expression(parser))
+    parenthesized_assignable_expression(parser)
+        .or_else(|| prefix_unary_expression(parser))
         .map(|cm| cm.precede(parser).complete(parser, ASSIGNABLE_EXPRESSION))
 }
 
