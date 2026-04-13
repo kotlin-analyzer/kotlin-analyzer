@@ -1,9 +1,9 @@
 //! See [`Parser`].
 
-use crate::SyntaxKind::{self, EOF, ERROR, TOMBSTONE};
 use crate::version::KtVersion;
 use drop_bomb::DropBomb;
 use std::cell::Cell;
+use syntax::SyntaxKind::{self, EOF, ERROR, TOMBSTONE};
 use syntax::T;
 
 use super::{event::Event, input::Input, token_set::TokenSet};

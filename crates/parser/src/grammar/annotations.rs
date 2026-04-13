@@ -1,218 +1,102 @@
-use syntax::SyntaxKind::*;
-use syntax::Token;
+use syntax::{SyntaxKind::*, T};
 
+use super::classes::constructor_invocation;
 use super::types::user_type;
-use super::utils::{skip_trivia_tokens, starts_use_site_target};
-use crate::{Parser, parse_loop};
+use crate::ra::{CompletedMarker, Parser, TokenSet};
 
-const ANNO_RECOVERY: &[Token] = &[
-    Token::R_SQUARE,
-    Token::SEMICOLON,
-    Token::NL,
-    Token::R_CURL,
-    Token::EOF,
-];
+const ANNO_RECOVERY: TokenSet = TokenSet::new(&[R_SQUARE, SEMICOLON, NL, R_CURL, EOF]);
 
-pub(crate) fn annotation(parser: &mut Parser<'_, '_>) {
-    parser.skip_trivia_and_newlines();
-
-    parser.start_node(ANNOTATION);
-    parse_loop! { parser =>
-        if !matches!(
-            parser.current_token(),
-            Some(Token::AT_NO_WS | Token::AT_PRE_WS)
-        ) && !starts_use_site_target(parser)
-        {
-            parser.error("expected annotation");
-            parser.recover_until(ANNO_RECOVERY);
-            break;
-        }
-
-        if is_multi_annotation(parser) {
-            multi_annotation(parser);
-        } else {
-            single_annotation(parser);
-        }
-
-        parser.skip_trivia_and_newlines();
-        break;
+pub(crate) fn annotation(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    if !starts_annotation(parser) {
+        return None;
     }
-    parser.finish_node(ANNOTATION);
+    let m = parser.start();
+    if single_or_multi_annotation(parser).is_none() {
+        m.abandon(parser);
+        return None;
+    }
+    Some(m.complete(parser, ANNOTATION))
 }
 
-fn single_annotation(parser: &mut Parser<'_, '_>) {
-    parser.start_node(SINGLE_ANNOTATION);
-    parse_loop! { parser =>
-        if starts_use_site_target(parser) {
-            annotation_use_site_target(parser);
-        } else if matches!(
-            parser.current_token(),
-            Some(Token::AT_NO_WS | Token::AT_PRE_WS)
-        ) {
-            parser.bump();
-        } else {
-            parser.error("expected '@'");
-            parser.recover_until(ANNO_RECOVERY);
-            break;
-        }
+fn single_or_multi_annotation(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    let m = parser.start();
+    annotation_use_site_target_or_at(parser);
 
-        parser.skip_trivia_and_newlines();
-         if !unescaped_annotation(parser) {
-            parser.error("expected annotation");
-        }
-        break;
+    if !parser.eat(T!['[']) {
+        // test single_annotation
+        // fun foo() {
+        //    @get:Anno1
+        //    val x: Int
+        //    @CustomAnno
+        //    var y: Int
+        // }
+        unescaped_annotation(parser);
+        return Some(m.complete(parser, SINGLE_ANNOTATION));
     }
 
-    parser.finish_node(SINGLE_ANNOTATION);
+    // test multi_annotation
+    // fun foo() {
+    //    @get:[Anno1 Anno2]
+    //    val x: Int
+    //    @set:[Anno3]
+    //    var y: Int
+    // }
+
+    let mut parsed = 0;
+    while !matches!(parser.current(), T![']'] | EOF) {
+        if unescaped_annotation(parser).is_some() {
+            parsed += 1;
+        } else {
+            break;
+        }
+    }
+
+    if parsed == 0 {
+        parser.error("expected at least one annotation inside brackets");
+    }
+
+    if !parser.eat(T![']']) {
+        parser.err_recover("expected ']' to close annotation list", ANNO_RECOVERY);
+    }
+
+    Some(m.complete(parser, MULTI_ANNOTATION))
 }
 
-fn multi_annotation(parser: &mut Parser<'_, '_>) {
-    parser.start_node(MULTI_ANNOTATION);
-    parse_loop! { parser =>
-        if starts_use_site_target(parser) {
-            annotation_use_site_target(parser);
-        } else if matches!(
-            parser.current_token(),
-            Some(Token::AT_NO_WS | Token::AT_PRE_WS)
-        ) {
-            parser.bump();
-        } else {
-            parser.error("expected '@'");
-            parser.recover_until(ANNO_RECOVERY);
-            break;
-        }
-
-        parser.skip_trivia_and_newlines();
-
-        if !parser.expect_recover(Token::L_SQUARE, "expected '[' to start annotation list", ANNO_RECOVERY) {
-            break;
-        }
-
-        parser.skip_trivia_and_newlines();
-
-        let mut parsed_any = false;
-        while !matches!(parser.current_token(), Some(Token::R_SQUARE) | None) {
-            if unescaped_annotation(parser) {
-                parsed_any = true;
-                parser.skip_trivia_and_newlines();
-            }
-        }
-
-        if !parsed_any {
-            parser.error("expected at least one annotation inside brackets");
-        }
-
-        if !parser.expect_recover(Token::R_SQUARE, "expected ']' to close annotation list", ANNO_RECOVERY) {
-            break;
-        }
-        break;
-    }
-
-    parser.finish_node(MULTI_ANNOTATION);
+enum AnnStep {
+    At,
+    Receiver,
 }
 
-fn annotation_use_site_target(parser: &mut Parser<'_, '_>) {
-    parser.start_node(ANNOTATION_USE_SITE_TARGET);
-    parse_loop! { parser =>
-        match parser.current_token() {
-            Some(Token::AT_NO_WS | Token::AT_PRE_WS) => parser.bump(),
-            _ => {
-                parser.error("expected '@' for use-site target");
-                parser.recover_until(ANNO_RECOVERY);
-                break;
-            }
-        }
-
-        parser.skip_trivia_and_newlines();
-
-        if matches!(
-            parser.current_token(),
-            Some(
-                Token::FIELD
-                    | Token::PROPERTY
-                    | Token::GET
-                    | Token::SET
-                    | Token::RECEIVER
-                    | Token::PARAM
-                    | Token::SET_PARAM
-                    | Token::DELEGATE
-            )
-        ) {
-            parser.bump();
-        } else {
-            parser.error("expected use-site target");
-            parser.recover_until(ANNO_RECOVERY);
-            break;
-        }
-
-        parser.skip_trivia_and_newlines();
-
-        if !parser.expect_recover(Token::COLON, "expected ':' after use-site target", ANNO_RECOVERY) {
-            break;
-        }
-        break;
-    }
-
-    parser.finish_node(ANNOTATION_USE_SITE_TARGET);
+fn starts_annotation(parser: &mut Parser<'_>) -> bool {
+    matches!(parser.current(), AT_NO_WS | AT_PRE_WS)
 }
 
-pub(crate) fn unescaped_annotation(parser: &mut Parser<'_, '_>) -> bool {
-    parser.start_node(UNESCAPED_ANNOTATION);
-    parser.skip_trivia_and_newlines();
-    let mut successful = false;
-    parse_loop! { parser =>
-        // TODO: handle constructor invocation
-        if starts_user_type(parser) {
-            user_type(parser);
-            successful = true;
-        } else {
-            parser.recover_until(ANNO_RECOVERY);
-            successful = false;
-        }
-        break;
-    }
+fn annotation_use_site_target_or_at(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    let m = parser.start();
+    parser.bump_any();
 
-    parser.finish_node(UNESCAPED_ANNOTATION);
-    successful
+    if matches!(
+        parser.current(),
+        FIELD | PROPERTY | GET | SET | RECEIVER | PARAM | SET_PARAM | DELEGATE
+    ) {
+        parser.bump_any();
+    } else {
+        m.abandon(parser);
+        return None;
+    }
+    if !parser.eat(COLON) {
+        parser.err_recover("expected ':' after use-site target", ANNO_RECOVERY);
+    }
+    Some(m.complete(parser, ANNOTATION_USE_SITE_TARGET))
 }
 
-fn starts_user_type(parser: &mut Parser<'_, '_>) -> bool {
-    matches!(
-        parser
-            .current()
-            .map(|sp| (sp.is_soft_keyword(), *sp.token())),
-        Some((true, _)) | Some((_, Token::IDENTIFIER_TOKEN))
-    )
-}
-
-fn is_multi_annotation(parser: &mut Parser<'_, '_>) -> bool {
-    if !matches!(
-        parser.current_token(),
-        Some(Token::AT_NO_WS | Token::AT_PRE_WS)
-    ) && !starts_use_site_target(parser)
-    {
-        return false;
+pub(crate) fn unescaped_annotation(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    let m = parser.start();
+    if let Some(user_type_marker) = user_type(parser) {
+        constructor_invocation(parser, user_type_marker);
+        Some(m.complete(parser, UNESCAPED_ANNOTATION))
+    } else {
+        m.abandon(parser);
+        None
     }
-
-    let mut idx = 1usize;
-
-    // If there's a use-site target, advance past it.
-    if starts_use_site_target(parser) {
-        // Skip '@'
-        skip_trivia_tokens(parser, &mut idx);
-
-        // target token
-        idx += 1;
-        skip_trivia_tokens(parser, &mut idx);
-
-        // colon
-        if matches!(parser.lookahead_token(idx), Some(Token::COLON)) {
-            idx += 1;
-        } else {
-            return false;
-        }
-    }
-
-    skip_trivia_tokens(parser, &mut idx);
-    matches!(parser.lookahead_token(idx), Some(Token::L_SQUARE))
 }

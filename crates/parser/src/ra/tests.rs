@@ -14,8 +14,8 @@ use std::{
 use expect_test::expect_file;
 
 use crate::{
-    grammar2::annotations::annotation,
-    grammar2::types::ty,
+    grammar::annotations::annotation,
+    grammar::types::ty,
     ra::{self, lexed_str::LexedStr, parser, shortcuts::StrStep},
     version::KtVersion,
 };

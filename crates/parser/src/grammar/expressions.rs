@@ -1,896 +1,1086 @@
-use syntax::SyntaxKind::*;
-use syntax::Token;
+use syntax::{SyntaxKind::*, T};
 
 use super::annotations::annotation;
-use super::identifiers::simple_identifier;
-use super::types::{ty, type_arguments};
-use super::utils::{skip_trivia_tokens, starts_annotation, starts_simple_identifier};
-use crate::{Parser, parse_loop, parse_while};
+use super::class_members::{
+    function_body, multi_variable_declaration, parameters_with_opt_type, variable_declaration,
+};
+use super::classes::{class_body, delegation_specifiers, type_constraints};
+use super::identifiers::{is_simple_identifier, simple_identifier};
+use super::statements::{block, control_structure_body, label, semi, statements};
+use super::types::{RecvType, receiver_type, ty, type_projection};
+use crate::ra::{CompletedMarker, Parser};
 
-pub(crate) fn expression(parser: &mut Parser<'_, '_>) {
-    parser.skip_trivia_and_newlines();
-    parser.start_node(EXPRESSION);
-    disjunction(parser);
-    parser.finish_node(EXPRESSION);
+pub(crate) fn expression(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    disjunction(parser).map(|cm| cm.precede(parser).complete(parser, EXPRESSION))
 }
 
-fn disjunction(parser: &mut Parser<'_, '_>) {
-    parser.start_node(DISJUNCTION);
-    conjunction(parser);
-    parser.skip_trivia_and_newlines();
-
-    parse_while!(parser.current_token() == Some(&Token::DISJ), parser => {
-        parser.bump();
-        parser.skip_trivia_and_newlines();
-        conjunction(parser);
-    });
-
-    parser.finish_node(DISJUNCTION);
-}
-
-fn conjunction(parser: &mut Parser<'_, '_>) {
-    parser.start_node(CONJUNCTION);
-    equality(parser);
-    parser.skip_trivia_and_newlines();
-
-    parse_while!(parser.current_token() == Some(&Token::CONJ), parser => {
-        parser.bump();
-        parser.skip_trivia_and_newlines();
-        equality(parser);
-    });
-
-    parser.finish_node(CONJUNCTION);
-}
-
-fn equality(parser: &mut Parser<'_, '_>) {
-    parser.start_node(EQUALITY);
-    comparison(parser);
-    parser.skip_trivia_and_newlines();
-
-    parse_while!(
-        matches!(
-            parser.current_token(),
-            Some(Token::EXCL_EQ | Token::EXCL_EQ_EQ | Token::EQ_EQ | Token::EQ_EQ_EQ)
-        ),
-        parser => {
-            parser.start_node(EQUALITY_OPERATOR);
-            parser.bump();
-            parser.finish_node(EQUALITY_OPERATOR);
-
-            parser.skip_trivia_and_newlines();
-            comparison(parser);
-        }
-    );
-
-    parser.finish_node(EQUALITY);
-}
-
-fn comparison(parser: &mut Parser<'_, '_>) {
-    parser.start_node(COMPARISON);
-    generic_call_like_comparison(parser);
-    parser.skip_trivia_and_newlines();
-
-    parse_while!(
-        matches!(
-            parser.current_token(),
-            Some(Token::L_ANGLE | Token::R_ANGLE | Token::LE | Token::GE)
-        ),
-        parser => {
-            parser.start_node(COMPARISON_OPERATOR);
-            parser.bump();
-            parser.finish_node(COMPARISON_OPERATOR);
-
-            parser.skip_trivia_and_newlines();
-            generic_call_like_comparison(parser);
-        }
-    );
-
-    parser.finish_node(COMPARISON);
-}
-
-fn generic_call_like_comparison(parser: &mut Parser<'_, '_>) {
-    parser.start_node(GENERIC_CALL_LIKE_COMPARISON);
-    infix_operation(parser);
-    parser.skip_trivia_and_newlines();
-
-    parse_while!(starts_call_suffix(parser), parser => {
-        call_suffix(parser);
-    });
-
-    parser.finish_node(GENERIC_CALL_LIKE_COMPARISON);
-}
-
-fn infix_operation(parser: &mut Parser<'_, '_>) {
-    parser.start_node(INFIX_OPERATION);
-    elvis_expression(parser);
-
-    parse_loop! { parser =>
-        parser.skip_trivia_and_newlines();
-        match parser.current_token() {
-            Some(Token::IN | Token::NOT_IN) => {
-                parser.start_node(IN_OPERATOR);
-                parser.bump();
-               parser.finish_node(IN_OPERATOR);
-                parser.skip_trivia_and_newlines();
-                elvis_expression(parser);
-            }
-            Some(Token::IS | Token::NOT_IS) => {
-                parser.start_node(IS_OPERATOR);
-                parser.bump();
-               parser.finish_node(IS_OPERATOR);
-                parser.skip_trivia_and_newlines();
-                ty(parser);
-            }
-            _ => break,
-        }
-    }
-
-    parser.finish_node(INFIX_OPERATION);
-}
-
-fn elvis_expression(parser: &mut Parser<'_, '_>) {
-    parser.start_node(ELVIS_EXPRESSION);
-    infix_function_call(parser);
-
-    parse_while!(parser.current_token() == Some(&Token::QUEST_NO_WS), parser => {
-        let mut idx = 1usize;
-        parse_while!(matches!(parser.lookahead_token(idx), Some(Token::WS | Token::NL)), parser => {
-            idx += 1;
-        });
-        if parser.lookahead_token(idx) != Some(Token::COLON) {
-            break;
-        }
-
-        parser.start_node(ELVIS);
-        parser.bump();
-        parser.skip_trivia_and_newlines();
-        if parser.current_token() == Some(&Token::COLON) {
-            parser.bump();
-        } else {
-            parser.error("expected ':' in elvis operator");
-        }
-        parser.finish_node(ELVIS);
-
-        parser.skip_trivia_and_newlines();
-        infix_function_call(parser);
-    });
-
-    parser.finish_node(ELVIS_EXPRESSION);
-}
-
-fn infix_function_call(parser: &mut Parser<'_, '_>) {
-    parser.start_node(INFIX_FUNCTION_CALL);
-    range_expression(parser);
-
-    parse_loop! { parser =>
-        parser.skip_trivia();
-        if !starts_simple_identifier(parser) {
-            break;
-        }
-        simple_identifier(parser);
-        parser.skip_trivia_and_newlines();
-        range_expression(parser);
-    }
-
-    parser.finish_node(INFIX_FUNCTION_CALL);
-}
-
-fn range_expression(parser: &mut Parser<'_, '_>) {
-    parser.start_node(RANGE_EXPRESSION);
-    additive_expression(parser);
-    parser.skip_trivia();
-
-    parse_while!(
-        matches!(
-            parser.current_token(),
-            Some(Token::RANGE | Token::RANGE_UNTIL)
-        ),
-        parser => {
-            parser.bump();
-            parser.skip_trivia_and_newlines();
-            additive_expression(parser);
-            parser.skip_trivia();
-        }
-    );
-
-    parser.finish_node(RANGE_EXPRESSION);
-}
-
-fn additive_expression(parser: &mut Parser<'_, '_>) {
-    parser.start_node(ADDITIVE_EXPRESSION);
-    multiplicative_expression(parser);
-    parser.skip_trivia();
-
-    parse_while!(matches!(parser.current_token(), Some(Token::ADD | Token::SUB)), parser => {
-        parser.start_node(ADDITIVE_OPERATOR);
-        parser.bump();
-        parser.finish_node(ADDITIVE_OPERATOR);
-
-        parser.skip_trivia_and_newlines();
-        multiplicative_expression(parser);
-        parser.skip_trivia();
-    });
-
-    parser.finish_node(ADDITIVE_EXPRESSION);
-}
-
-fn multiplicative_expression(parser: &mut Parser<'_, '_>) {
-    parser.start_node(MULTIPLICATIVE_EXPRESSION);
-    as_expression(parser);
-    parser.skip_trivia();
-
-    parse_while!(
-        matches!(
-            parser.current_token(),
-            Some(Token::MULT | Token::DIV | Token::MOD)
-        ),
-        parser => {
-            parser.start_node(MULTIPLICATIVE_OPERATOR);
-            parser.bump();
-            parser.finish_node(MULTIPLICATIVE_OPERATOR);
-
-            parser.skip_trivia_and_newlines();
-            as_expression(parser);
-            parser.skip_trivia();
-        }
-    );
-
-    parser.finish_node(MULTIPLICATIVE_EXPRESSION);
-}
-
-fn as_expression(parser: &mut Parser<'_, '_>) {
-    parser.start_node(AS_EXPRESSION);
-    prefix_unary_expression(parser);
-    parser.skip_trivia_and_newlines();
-
-    parse_while!(matches!(parser.current_token(), Some(Token::AS | Token::AS_SAFE)), parser => {
-        parser.start_node(AS_OPERATOR);
-        parser.bump();
-        parser.finish_node(AS_OPERATOR);
-        parser.skip_trivia_and_newlines();
-        ty(parser);
-    });
-
-    parser.finish_node(AS_EXPRESSION);
-}
-
-fn prefix_unary_expression(parser: &mut Parser<'_, '_>) {
-    parser.start_node(PREFIX_UNARY_EXPRESSION);
-
-    parse_while!(starts_unary_prefix(parser), parser => {
-        unary_prefix(parser);
-    });
-
-    postfix_unary_expression(parser);
-    parser.finish_node(PREFIX_UNARY_EXPRESSION);
-}
-
-fn unary_prefix(parser: &mut Parser<'_, '_>) {
-    parser.start_node(UNARY_PREFIX);
-
-    if starts_annotation(parser) {
-        annotation(parser);
-    } else if starts_label(parser) {
-        label(parser);
-    } else {
-        prefix_unary_operator(parser);
-    }
-
-    parser.finish_node(UNARY_PREFIX);
-}
-
-fn postfix_unary_expression(parser: &mut Parser<'_, '_>) {
-    parser.start_node(POSTFIX_UNARY_EXPRESSION);
-    primary_expression(parser);
-    parser.skip_trivia_and_newlines();
-
-    parse_while!(starts_postfix_unary_suffix(parser), parser => {
-        postfix_unary_suffix(parser);
-        parser.skip_trivia_and_newlines();
-    });
-
-    parser.finish_node(POSTFIX_UNARY_EXPRESSION);
-}
-
-fn postfix_unary_suffix(parser: &mut Parser<'_, '_>) {
-    parser.start_node(POSTFIX_UNARY_SUFFIX);
-
-    if starts_postfix_unary_operator(parser) {
-        postfix_unary_operator(parser);
-    } else if starts_call_suffix(parser) {
-        call_suffix(parser);
-    } else if parser.current_token() == Some(&Token::L_ANGLE) {
-        type_arguments(parser);
-    } else if parser.current_token() == Some(&Token::L_SQUARE) {
-        indexing_suffix(parser);
-    } else {
-        navigation_suffix(parser);
-    }
-
-    parser.finish_node(POSTFIX_UNARY_SUFFIX);
-}
-
-pub(crate) fn directly_assignable_expression(parser: &mut Parser<'_, '_>) {
-    parser.start_node(DIRECTLY_ASSIGNABLE_EXPRESSION);
-    parser.skip_trivia_and_newlines();
-
-    if parser.current_token() == Some(&Token::L_PAREN) {
-        parenthesized_directly_assignable_expression(parser);
-    } else if starts_simple_identifier(parser) {
-        simple_identifier(parser);
-    } else {
-        postfix_unary_expression(parser);
-        assignable_suffix(parser);
-    }
-
-    parser.finish_node(DIRECTLY_ASSIGNABLE_EXPRESSION);
-}
-
-fn parenthesized_directly_assignable_expression(parser: &mut Parser<'_, '_>) {
-    parser
-        .sink
-        .start_node(PARENTHESIZED_DIRECTLY_ASSIGNABLE_EXPRESSION);
-
-    if parser.current_token() == Some(&Token::L_PAREN) {
-        parser.bump();
-        parser.skip_trivia_and_newlines();
-        directly_assignable_expression(parser);
-        parser.skip_trivia_and_newlines();
-        if parser.current_token() == Some(&Token::R_PAREN) {
-            parser.bump();
-        } else {
-            parser.error("expected ')'");
-        }
-    } else {
-        parser.error("expected '('");
-    }
-
-    parser.finish_node(PARENTHESIZED_DIRECTLY_ASSIGNABLE_EXPRESSION);
-}
-
-pub(crate) fn assignable_expression(parser: &mut Parser<'_, '_>) {
-    parser.start_node(ASSIGNABLE_EXPRESSION);
-    if parser.current_token() == Some(&Token::L_PAREN) {
-        parenthesized_assignable_expression(parser);
-    } else {
-        prefix_unary_expression(parser);
-    }
-    parser.finish_node(ASSIGNABLE_EXPRESSION);
-}
-
-fn parenthesized_assignable_expression(parser: &mut Parser<'_, '_>) {
-    parser.start_node(PARENTHESIZED_ASSIGNABLE_EXPRESSION);
-
-    if parser.current_token() == Some(&Token::L_PAREN) {
-        parser.bump();
-        parser.skip_trivia_and_newlines();
-        assignable_expression(parser);
-        parser.skip_trivia_and_newlines();
-        if parser.current_token() == Some(&Token::R_PAREN) {
-            parser.bump();
-        } else {
-            parser.error("expected ')'");
-        }
-    } else {
-        parser.error("expected '('");
-    }
-
-    parser.finish_node(PARENTHESIZED_ASSIGNABLE_EXPRESSION);
-}
-
-fn assignable_suffix(parser: &mut Parser<'_, '_>) {
-    parser.start_node(ASSIGNABLE_SUFFIX);
-    match parser.current_token() {
-        Some(Token::L_ANGLE) => type_arguments(parser),
-        Some(Token::L_SQUARE) => indexing_suffix(parser),
-        _ => navigation_suffix(parser),
-    }
-    parser.finish_node(ASSIGNABLE_SUFFIX);
-}
-
-fn indexing_suffix(parser: &mut Parser<'_, '_>) {
-    parser.start_node(INDEXING_SUFFIX);
-    if parser.current_token() != Some(&Token::L_SQUARE) {
-        parser.error("expected '['");
-        parser.finish_node(INDEXING_SUFFIX);
-        return;
-    }
-
-    parser.bump();
-    parse_loop! { parser =>
-        parser.skip_trivia_and_newlines();
-        if matches!(parser.current_token(), Some(Token::R_SQUARE) | None) {
-            break;
-        }
-        expression(parser);
-        parser.skip_trivia_and_newlines();
-        if parser.current_token() == Some(&Token::COMMA) {
-            parser.bump();
-            continue;
-        }
-        break;
-    }
-
-    parser.skip_trivia_and_newlines();
-    if parser.current_token() == Some(&Token::R_SQUARE) {
-        parser.bump();
-    } else {
-        parser.error("expected ']'");
-    }
-
-    parser.finish_node(INDEXING_SUFFIX);
-}
-
-fn navigation_suffix(parser: &mut Parser<'_, '_>) {
-    parser.start_node(NAVIGATION_SUFFIX);
-    member_access_operator(parser);
-    parser.skip_trivia_and_newlines();
-
-    match parser.current_token() {
-        Some(Token::CLASS) => parser.bump(),
-        Some(Token::L_PAREN) => parenthesized_expression(parser),
-        Some(Token::L_SQUARE) => collection_literal(parser),
-        _ => {
-            simple_identifier(parser);
-        }
-    }
-
-    parser.finish_node(NAVIGATION_SUFFIX);
-}
-
-fn call_suffix(parser: &mut Parser<'_, '_>) {
-    parser.start_node(CALL_SUFFIX);
-
-    if parser.current_token() == Some(&Token::L_ANGLE) {
-        type_arguments(parser);
-        parser.skip_trivia_and_newlines();
-    }
-
-    let mut parsed_value_args = false;
-    if parser.current_token() == Some(&Token::L_PAREN) {
-        value_arguments(parser);
-        parsed_value_args = true;
-        parser.skip_trivia_and_newlines();
-    }
-
-    if starts_annotated_lambda(parser) {
-        annotated_lambda(parser);
-    } else if !parsed_value_args && parser.current_token() == Some(&Token::L_PAREN) {
-        value_arguments(parser);
-    }
-
-    parser.finish_node(CALL_SUFFIX);
-}
-
-fn annotated_lambda(parser: &mut Parser<'_, '_>) {
-    parser.start_node(ANNOTATED_LAMBDA);
-
-    parse_while!(starts_annotation(parser), parser => {
-        annotation(parser);
-    });
-
-    if starts_label(parser) {
-        label(parser);
-    }
-
-    parser.skip_trivia_and_newlines();
-    lambda_literal(parser);
-
-    parser.finish_node(ANNOTATED_LAMBDA);
-}
-
-fn lambda_literal(parser: &mut Parser<'_, '_>) {
-    parser.start_node(LAMBDA_LITERAL);
-    if parser.current_token() != Some(&Token::L_CURL) {
-        parser.error("expected '{' to start lambda");
-        parser.finish_node(LAMBDA_LITERAL);
-        return;
-    }
-
-    // This is a minimal lambda parser that consumes until matching '}' for test purposes.
-    let mut depth = 0i32;
-    while let Some(tok) = parser.current_token() {
-        match tok {
-            Token::L_CURL => {
-                depth += 1;
-                parser.bump();
-            }
-            Token::R_CURL => {
-                depth -= 1;
-                parser.bump();
-                if depth == 0 {
-                    break;
-                }
-            }
-            _ => parser.bump(),
-        }
-    }
-
-    parser.finish_node(LAMBDA_LITERAL);
-}
-
-pub(crate) fn value_arguments(parser: &mut Parser<'_, '_>) {
-    parser.start_node(VALUE_ARGUMENTS);
-
-    if parser.current_token() != Some(&Token::L_PAREN) {
-        parser.error("expected '(' for value arguments");
-        parser.finish_node(VALUE_ARGUMENTS);
-        return;
-    }
-
-    parser.bump();
-    parser.skip_trivia_and_newlines();
-
-    parse_loop! { parser =>
-        if matches!(parser.current_token(), Some(Token::R_PAREN) | None) {
-            break;
-        }
-
-        value_argument(parser);
-        parser.skip_trivia_and_newlines();
-
-        if parser.current_token() == Some(&Token::COMMA) {
-            parser.bump();
-            parser.skip_trivia_and_newlines();
-            continue;
-        }
-        break;
-    }
-
-    if parser.current_token() == Some(&Token::R_PAREN) {
-        parser.bump();
-    } else {
-        parser.error("expected ')' to close arguments");
-    }
-
-    parser.finish_node(VALUE_ARGUMENTS);
-}
-
-fn value_argument(parser: &mut Parser<'_, '_>) {
-    parser.start_node(VALUE_ARGUMENT);
-
-    if starts_annotation(parser) {
-        annotation(parser);
-    }
-
-    parser.skip_trivia_and_newlines();
-
-    if starts_simple_identifier(parser) {
-        let mut idx = 1usize;
-        parse_while!(matches!(parser.lookahead_token(idx), Some(Token::WS | Token::NL)), parser => {
-            idx += 1;
-        });
-        if parser.lookahead_token(idx) == Some(Token::ASSIGNMENT_TOKEN) {
-            simple_identifier(parser);
-            parser.skip_trivia_and_newlines();
-            if parser.current_token() == Some(&Token::ASSIGNMENT_TOKEN) {
-                parser.bump();
-            }
-            parser.skip_trivia_and_newlines();
-        }
-    }
-
-    if parser.current_token() == Some(&Token::MULT) {
-        parser.bump();
-    }
-
-    expression(parser);
-    parser.finish_node(VALUE_ARGUMENT);
-}
-
-fn primary_expression(parser: &mut Parser<'_, '_>) {
-    parser.start_node(PRIMARY_EXPRESSION);
-    parser.skip_trivia_and_newlines();
-
-    let current = parser
-        .current()
-        .map(|sp| (sp.is_soft_keyword(), *sp.token()));
-    let token_only = current.map(|(_, tok)| tok);
-    let is_identifier_like = matches!(
-        current,
-        Some((true, _)) | Some((_, Token::IDENTIFIER_TOKEN))
-    );
-
-    match token_only {
-        Some(Token::L_PAREN) => parenthesized_expression(parser),
-        Some(Token::L_SQUARE) => collection_literal(parser),
-        Some(
-            Token::INTEGER_LITERAL
-            | Token::REAL_LITERAL
-            | Token::HEX_LITERAL
-            | Token::BIN_LITERAL
-            | Token::LONG_LITERAL
-            | Token::BOOLEAN_LITERAL
-            | Token::NULL_LITERAL
-            | Token::CHARACTER_LITERAL,
-        ) => literal_constant(parser),
-        Some(Token::QUOTE_OPEN | Token::TRIPLE_QUOTE_OPEN) => string_literal(parser),
-        Some(Token::THIS | Token::THIS_AT) => this_expression(parser),
-        Some(Token::SUPER | Token::SUPER_AT) => super_expression(parser),
-        _ if is_identifier_like => {
-            simple_identifier(parser);
-        }
-        Some(Token::L_CURL) => lambda_literal(parser),
-        Some(Token::DATA) => object_literal(parser),
-        Some(Token::OBJECT) => object_literal(parser),
-        _ => {
-            parser.error("expected primary expression");
-            if parser.current_token().is_some() {
-                parser.bump();
-            }
-        }
-    }
-
-    parser.finish_node(PRIMARY_EXPRESSION);
-}
-
-fn parenthesized_expression(parser: &mut Parser<'_, '_>) {
-    parser.start_node(PARENTHESIZED_EXPRESSION);
-    if parser.current_token() != Some(&Token::L_PAREN) {
-        parser.error("expected '('");
-        parser.finish_node(PARENTHESIZED_EXPRESSION);
-        return;
-    }
-
-    parser.bump();
-    parser.skip_trivia_and_newlines();
-    expression(parser);
-    parser.skip_trivia_and_newlines();
-
-    if parser.current_token() == Some(&Token::R_PAREN) {
-        parser.bump();
-    } else {
-        parser.error("expected ')'");
-    }
-
-    parser.finish_node(PARENTHESIZED_EXPRESSION);
-}
-
-fn collection_literal(parser: &mut Parser<'_, '_>) {
-    parser.start_node(COLLECTION_LITERAL);
-    if parser.current_token() != Some(&Token::L_SQUARE) {
-        parser.error("expected '['");
-        parser.finish_node(COLLECTION_LITERAL);
-        return;
-    }
-
-    parser.bump();
-    parse_loop! { parser =>
-        parser.skip_trivia_and_newlines();
-        if matches!(parser.current_token(), Some(Token::R_SQUARE) | None) {
-            break;
-        }
-        expression(parser);
-        parser.skip_trivia_and_newlines();
-        if parser.current_token() == Some(&Token::COMMA) {
-            parser.bump();
-            continue;
-        }
-        break;
-    }
-
-    if parser.current_token() == Some(&Token::R_SQUARE) {
-        parser.bump();
-    } else {
-        parser.error("expected ']'");
-    }
-
-    parser.finish_node(COLLECTION_LITERAL);
-}
-
-fn literal_constant(parser: &mut Parser<'_, '_>) {
-    parser.start_node(LITERAL_CONSTANT);
-    parser.bump();
-    parser.finish_node(LITERAL_CONSTANT);
-}
-
-fn string_literal(parser: &mut Parser<'_, '_>) {
-    parser.start_node(STRING_LITERAL);
-    parser.bump();
-    while let Some(tok) = parser.current_token() {
-        match tok {
-            Token::QUOTE_CLOSE | Token::TRIPLE_QUOTE_CLOSE => {
-                parser.bump();
+fn disjunction(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    if let Some(cm) = conjunction(parser) {
+        let m = cm.precede(parser);
+        while parser.eat(T![||]) {
+            if conjunction(parser).is_none() {
+                parser.error("expected an expression");
+            } else {
                 break;
             }
-            Token::EOF => break,
-            _ => parser.bump(),
         }
-    }
-    parser.finish_node(STRING_LITERAL);
-}
-
-fn this_expression(parser: &mut Parser<'_, '_>) {
-    parser.start_node(THIS_EXPRESSION);
-    parser.bump();
-    parser.finish_node(THIS_EXPRESSION);
-}
-
-fn super_expression(parser: &mut Parser<'_, '_>) {
-    parser.start_node(SUPER_EXPRESSION);
-    parser.bump();
-    parser.finish_node(SUPER_EXPRESSION);
-}
-
-fn object_literal(parser: &mut Parser<'_, '_>) {
-    parser.start_node(OBJECT_LITERAL);
-
-    if parser.current_token() == Some(&Token::DATA) {
-        parser.bump();
-        parser.skip_trivia_and_newlines();
-    }
-
-    if parser.current_token() == Some(&Token::OBJECT) {
-        parser.bump();
+        Some(m.complete(parser, DISJUNCTION))
     } else {
-        parser.error("expected 'object'");
+        None
     }
-
-    parser.finish_node(OBJECT_LITERAL);
 }
 
-pub(crate) fn label(parser: &mut Parser<'_, '_>) {
-    parser.start_node(LABEL);
-    simple_identifier(parser);
-    parser.skip_trivia_and_newlines();
-    match parser.current_token() {
-        Some(Token::AT_NO_WS | Token::AT_POST_WS) => parser.bump(),
-        _ => parser.error("expected '@' in label"),
-    }
-    parser.finish_node(LABEL);
-}
-
-fn prefix_unary_operator(parser: &mut Parser<'_, '_>) {
-    parser.start_node(PREFIX_UNARY_OPERATOR);
-    match parser.current_token() {
-        Some(Token::INCR | Token::DECR | Token::SUB | Token::ADD) => parser.bump(),
-        Some(Token::EXCL_NO_WS | Token::EXCL_WS) => parser.bump(),
-        _ => parser.error("expected prefix unary operator"),
-    }
-    parser.finish_node(PREFIX_UNARY_OPERATOR);
-}
-
-fn postfix_unary_operator(parser: &mut Parser<'_, '_>) {
-    parser.start_node(POSTFIX_UNARY_OPERATOR);
-    match parser.current_token() {
-        Some(Token::INCR | Token::DECR) => parser.bump(),
-        Some(Token::EXCL_NO_WS) => {
-            parser.bump();
-            match parser.current_token() {
-                Some(Token::EXCL_NO_WS | Token::EXCL_WS) => parser.bump(),
-                _ => parser.error("expected second '!'"),
-            }
-        }
-        _ => parser.error("expected postfix unary operator"),
-    }
-    parser.finish_node(POSTFIX_UNARY_OPERATOR);
-}
-
-fn member_access_operator(parser: &mut Parser<'_, '_>) {
-    parser.start_node(MEMBER_ACCESS_OPERATOR);
-    match parser.current_token() {
-        Some(Token::DOT) => parser.bump(),
-        Some(Token::COLON_COLON) => parser.bump(),
-        Some(Token::QUEST_NO_WS) => {
-            let idx = 1usize;
-            if parser.lookahead_token(idx) == Some(Token::DOT) {
-                parser.start_node(SAFE_NAV);
-                parser.bump();
-                parser.bump();
-                parser.finish_node(SAFE_NAV);
+fn conjunction(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    if let Some(cm) = equality(parser) {
+        let m = cm.precede(parser);
+        while parser.eat(T![&&]) {
+            if equality(parser).is_none() {
+                parser.error("expected an expression");
             } else {
-                parser.error("expected '.' after '?'");
+                break;
             }
         }
-        _ => parser.error("expected member access"),
+        Some(m.complete(parser, CONJUNCTION))
+    } else {
+        None
     }
-    parser.finish_node(MEMBER_ACCESS_OPERATOR);
 }
 
-fn starts_call_suffix(parser: &mut Parser<'_, '_>) -> bool {
-    match parser.current_token() {
-        Some(Token::L_PAREN | Token::L_CURL) => true,
-        Some(Token::L_ANGLE) => {
-            let mut idx = 0usize;
-            let mut depth = 0i32;
-
-            loop {
-                match parser.lookahead_token(idx) {
-                    Some(Token::L_ANGLE) => {
-                        depth += 1;
-                        idx += 1;
-                    }
-                    Some(Token::R_ANGLE) => {
-                        depth -= 1;
-                        idx += 1;
-                        if depth == 0 {
-                            break;
-                        }
-                    }
-                    Some(Token::EOF | Token::ERR) | None => return false,
-                    _ => idx += 1,
-                }
+fn equality(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    if let Some(cm) = comparison(parser) {
+        let m = cm.precede(parser);
+        while equality_operator(parser).is_some() {
+            if comparison(parser).is_none() {
+                parser.error("expected an expression");
+            } else {
+                break;
             }
-
-            skip_trivia_tokens(parser, &mut idx);
-            matches!(
-                parser.lookahead_token(idx),
-                Some(
-                    Token::L_PAREN
-                        | Token::L_CURL
-                        | Token::AT_NO_WS
-                        | Token::AT_PRE_WS
-                        | Token::AT_POST_WS
-                        | Token::AT_BOTH_WS
-                )
-            )
         }
-        _ => false,
+        Some(m.complete(parser, EQUALITY))
+    } else {
+        None
     }
 }
 
-fn starts_annotated_lambda(parser: &mut Parser<'_, '_>) -> bool {
-    matches!(
-        parser.current_token(),
-        Some(Token::L_CURL | Token::AT_NO_WS | Token::AT_PRE_WS)
-    )
-}
-
-pub(crate) fn starts_label(parser: &mut Parser<'_, '_>) -> bool {
-    if !starts_simple_identifier(parser) {
-        return false;
+fn comparison(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    if let Some(cm) = generic_call_like_comparison(parser) {
+        let m = cm.precede(parser);
+        while comparison_operator(parser).is_some() {
+            if generic_call_like_comparison(parser).is_none() {
+                parser.error("expected an expression");
+            } else {
+                break;
+            }
+        }
+        Some(m.complete(parser, COMPARISON))
+    } else {
+        None
     }
-    let mut idx = 1usize;
-    while matches!(parser.lookahead_token(idx), Some(Token::WS | Token::NL)) {
-        idx += 1;
+}
+
+fn generic_call_like_comparison(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    if let Some(cm) = infix_operation(parser) {
+        let m = cm.precede(parser);
+        while call_suffix(parser).is_some() {}
+        Some(m.complete(parser, GENERIC_CALL_LIKE_COMPARISON))
+    } else {
+        None
     }
-    matches!(
-        parser.lookahead_token(idx),
-        Some(Token::AT_NO_WS | Token::AT_POST_WS)
-    )
 }
 
-fn starts_unary_prefix(parser: &mut Parser<'_, '_>) -> bool {
-    starts_annotation(parser)
-        || starts_label(parser)
-        || matches!(
-            parser.current_token(),
-            Some(
-                Token::INCR
-                    | Token::DECR
-                    | Token::SUB
-                    | Token::ADD
-                    | Token::EXCL_NO_WS
-                    | Token::EXCL_WS
-            )
-        )
+fn infix_operation(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    if let Some(cm) = elvis_expression(parser) {
+        let m = cm.precede(parser);
+        while is_or_in_operator_expr(parser) {}
+        Some(m.complete(parser, INFIX_OPERATION))
+    } else {
+        None
+    }
 }
 
-fn starts_postfix_unary_suffix(parser: &mut Parser<'_, '_>) -> bool {
-    matches!(
-        parser.current_token(),
-        Some(
-            Token::INCR
-                | Token::DECR
-                | Token::EXCL_NO_WS
-                | Token::L_ANGLE
-                | Token::L_PAREN
-                | Token::L_SQUARE
-                | Token::DOT
-                | Token::COLON_COLON
-                | Token::QUEST_NO_WS
-        )
-    ) &&
-    // To avoid ambiguity with the elvis operator, we need to ensure that a '?' is not followed by a ':'.
-    !matches!(
-        parser.next_two_tokens(),
-        Some((Token::QUEST_NO_WS, Token::COLON))
-    )
+fn is_or_in_operator_expr(parser: &mut Parser<'_>) -> bool {
+    if is_operator(parser).is_some() {
+        if ty(parser).is_none() {
+            parser.error("expected a type");
+        } else {
+            return true;
+        }
+    } else if in_operator(parser).is_some() {
+        if elvis_expression(parser).is_none() {
+            parser.error("expected an expression");
+        } else {
+            return true;
+        }
+    }
+    false
 }
 
-fn starts_postfix_unary_operator(parser: &mut Parser<'_, '_>) -> bool {
-    matches!(
-        parser.current_token(),
-        Some(Token::INCR | Token::DECR | Token::EXCL_NO_WS)
-    )
+fn elvis_expression(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    if let Some(cm) = infix_function_call(parser) {
+        let m = cm.precede(parser);
+        while elvis(parser).is_some() {
+            if infix_function_call(parser).is_none() {
+                parser.error("expected an expression");
+            } else {
+                break;
+            }
+        }
+        Some(m.complete(parser, ELVIS_EXPRESSION))
+    } else {
+        None
+    }
+}
+
+fn elvis(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    if parser.at(T![?]) && !parser.nth_at(1, T![:]) {
+        let m = parser.start();
+        parser.bump(T![?]);
+        parser.bump(T![:]);
+        Some(m.complete(parser, ELVIS))
+    } else {
+        None
+    }
+}
+
+fn infix_function_call(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    if let Some(cm) = range_expression(parser) {
+        let m = cm.precede(parser);
+        while simple_identifier(parser).is_some() {
+            if range_expression(parser).is_none() {
+                parser.error("expected an expression");
+            } else {
+                break;
+            }
+        }
+        Some(m.complete(parser, INFIX_FUNCTION_CALL))
+    } else {
+        None
+    }
+}
+
+fn range_expression(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    if let Some(cm) = additive_expression(parser) {
+        let m = cm.precede(parser);
+        while parser.eat(T![..]) || parser.eat(T![..<]) {
+            if additive_expression(parser).is_none() {
+                parser.error("expected an expression");
+            } else {
+                break;
+            }
+        }
+        Some(m.complete(parser, RANGE_EXPRESSION))
+    } else {
+        None
+    }
+}
+
+fn additive_expression(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    if let Some(cm) = multiplicative_expression(parser) {
+        let m = cm.precede(parser);
+        while additive_operator(parser).is_some() {
+            if multiplicative_expression(parser).is_none() {
+                parser.error("expected an expression");
+            } else {
+                break;
+            }
+        }
+        Some(m.complete(parser, ADDITIVE_EXPRESSION))
+    } else {
+        None
+    }
+}
+
+fn multiplicative_expression(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    if let Some(cm) = as_expression(parser) {
+        let m = cm.precede(parser);
+        while multiplicative_operator(parser).is_some() {
+            if as_expression(parser).is_none() {
+                parser.error("expected an expression");
+            } else {
+                break;
+            }
+        }
+        Some(m.complete(parser, MULTIPLICATIVE_EXPRESSION))
+    } else {
+        None
+    }
+}
+
+fn as_expression(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    if let Some(cm) = prefix_unary_expression(parser) {
+        let m = cm.precede(parser);
+        while as_operator(parser).is_some() {
+            if ty(parser).is_none() {
+                parser.error("expected a type");
+            } else {
+                break;
+            }
+        }
+        Some(m.complete(parser, AS_EXPRESSION))
+    } else {
+        None
+    }
+}
+
+fn parenthesized_directly_assignable_expression(
+    parser: &mut Parser<'_>,
+) -> Option<CompletedMarker> {
+    if !parser.at(T!['(']) {
+        return None;
+    }
+    let m = parser.start();
+    parser.bump(T!['(']);
+    if directly_assignable_expression(parser).is_none() {
+        parser.error("expected an expression");
+    }
+    if !parser.eat(T![')']) {
+        parser.error("expected `)`");
+    }
+    Some(m.complete(parser, PARENTHESIZED_DIRECTLY_ASSIGNABLE_EXPRESSION))
+}
+
+fn directly_assignable_expression(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    postfix_unary_expression(parser)
+        .map(|cm| {
+            let m = cm.precede(parser);
+            assignable_suffix(parser); // record error if none
+            m.complete(parser, DIRECTLY_ASSIGNABLE_EXPRESSION)
+        })
+        .or_else(|| {
+            simple_identifier(parser)
+                .or_else(|| parenthesized_directly_assignable_expression(parser))
+                .map(|cm| {
+                    cm.precede(parser)
+                        .complete(parser, DIRECTLY_ASSIGNABLE_EXPRESSION)
+                })
+        })
+}
+
+fn parenthesized_assignable_expression(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    if !parser.at(T!['(']) {
+        return None;
+    }
+    let m = parser.start();
+    parser.bump(T!['(']);
+    if assignable_expression(parser).is_none() {
+        parser.error("expected an expression");
+    }
+    if !parser.eat(T![')']) {
+        parser.error("expected `)`");
+    }
+    Some(m.complete(parser, PARENTHESIZED_ASSIGNABLE_EXPRESSION))
+}
+
+fn assignable_expression(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    parenthesized_assignable_expression(parser)
+        .or_else(|| prefix_unary_expression(parser))
+        .map(|cm| cm.precede(parser).complete(parser, ASSIGNABLE_EXPRESSION))
+}
+
+fn prefix_unary_expression(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    let m = parser.start();
+    let mut has_prefix = false;
+
+    while unary_prefix(parser).is_some() {
+        has_prefix = true;
+    }
+    let has_postfix = postfix_unary_expression(parser).is_some();
+
+    if has_prefix || has_postfix {
+        Some(m.complete(parser, PREFIX_UNARY_EXPRESSION))
+    } else {
+        m.abandon(parser);
+        None
+    }
+}
+
+fn unary_prefix(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    annotation(parser)
+        .or_else(|| prefix_unary_operator(parser))
+        .or_else(|| label(parser))
+        .map(|cm| cm.precede(parser).complete(parser, UNARY_PREFIX))
+}
+
+fn postfix_unary_expression(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    primary_expression(parser).map(|cm| {
+        let m = cm.precede(parser);
+        while postfix_unary_suffix(parser).is_some() {}
+        m.complete(parser, POSTFIX_UNARY_EXPRESSION)
+    })
+}
+
+fn postfix_unary_suffix(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    call_suffix(parser)
+        .or_else(|| postfix_unary_operator(parser))
+        .or_else(|| indexing_suffix(parser))
+        .or_else(|| navigation_suffix(parser))
+        .or_else(|| type_arguments(parser))
+        .map(|cm| cm.precede(parser).complete(parser, POSTFIX_UNARY_SUFFIX))
+}
+
+fn assignable_suffix(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    indexing_suffix(parser)
+        .or_else(|| navigation_suffix(parser))
+        .or_else(|| type_arguments(parser))
+        .map(|cm| cm.precede(parser).complete(parser, ASSIGNABLE_SUFFIX))
+}
+
+fn indexing_suffix(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    if !parser.at(T!['[']) {
+        return None;
+    }
+    let m = parser.start();
+    parser.bump(T!['[']);
+
+    if expression(parser).is_none() {
+        parser.error("expected an expression");
+    } else {
+        while parser.eat(T![,]) && expression(parser).is_some() {}
+    }
+
+    if !parser.eat(T![']']) {
+        parser.error("expected `]`");
+    }
+    Some(m.complete(parser, INDEXING_SUFFIX))
+}
+
+fn navigation_suffix(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    if let Some(cm) = member_access_operator(parser) {
+        let m = cm.precede(parser);
+        if simple_identifier(parser)
+            .or_else(|| parenthesized_expression(parser))
+            .is_none()
+            && !parser.eat(T![class])
+        {
+            parser.error("expected an expression or `class`");
+        }
+        Some(m.complete(parser, NAVIGATION_SUFFIX))
+    } else {
+        None
+    }
+}
+
+fn call_suffix(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    let m = parser.start();
+    type_arguments(parser);
+    if value_arguments(parser).is_some() {
+        annotated_lambda(parser);
+        Some(m.complete(parser, CALL_SUFFIX))
+    } else {
+        m.abandon(parser);
+        None
+    }
+}
+
+fn annotated_lambda(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    let m = parser.start();
+    while annotation(parser).is_some() {}
+    let has_label = label(parser).is_some();
+    if lambda_literal(parser).is_none() && !has_label {
+        m.abandon(parser);
+        return None;
+    }
+    Some(m.complete(parser, ANNOTATED_LAMBDA))
+}
+
+fn type_arguments(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    if !parser.at(T![<]) {
+        return None;
+    }
+    let m = parser.start();
+    parser.bump(T![<]);
+    if type_projection(parser).is_some() {
+        while parser.eat(T![,]) && type_projection(parser).is_some() {}
+    }
+    if !parser.eat(T![>]) {
+        parser.error("expected `>`");
+    }
+    Some(m.complete(parser, TYPE_ARGUMENTS))
+}
+
+pub(crate) fn value_arguments(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    if !parser.at(T!['(']) {
+        return None;
+    }
+    let m = parser.start();
+    parser.bump(T!['(']);
+    if value_argument(parser).is_some() {
+        while parser.eat(T![,]) && value_argument(parser).is_some() {}
+    }
+    if !parser.eat(T![')']) {
+        parser.error("expected `)`");
+    }
+    Some(m.complete(parser, VALUE_ARGUMENTS))
+}
+
+fn value_argument(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    let m = parser.start();
+    annotation(parser);
+    if simple_identifier(parser).is_some() && !parser.eat(T![=]) {
+        parser.error("expected `=`");
+    }
+    parser.eat(T![*]);
+
+    if expression(parser).is_none() {
+        parser.error("expected an expression");
+    }
+    Some(m.complete(parser, VALUE_ARGUMENT))
+}
+
+fn primary_expression(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    parenthesized_expression(parser)
+        .or_else(|| collection_literal(parser))
+        .or_else(|| literal_constant(parser))
+        .or_else(|| string_literal(parser))
+        .or_else(|| function_literal(parser))
+        .or_else(|| object_literal(parser))
+        .or_else(|| this_expresssion(parser))
+        .or_else(|| super_expression(parser))
+        .or_else(|| if_expression(parser))
+        .or_else(|| when_expression(parser))
+        .or_else(|| try_expression(parser))
+        .or_else(|| jump_expression(parser))
+        .or_else(|| {
+            if is_simple_identifier(parser) && !parser.nth_at(1, T![::]) {
+                simple_identifier(parser)
+            } else {
+                None
+            }
+        })
+        .or_else(|| callable_reference(parser))
+        .map(|cm| cm.precede(parser).complete(parser, PRIMARY_EXPRESSION))
+}
+
+fn parenthesized_expression(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    if !parser.at(T!['(']) {
+        return None;
+    }
+    let m = parser.start();
+    parser.bump(T!['(']);
+    if expression(parser).is_none() {
+        parser.error("expected an expression");
+    }
+    if !parser.eat(T![')']) {
+        parser.error("expected `)`");
+    }
+    Some(m.complete(parser, PARENTHESIZED_EXPRESSION))
+}
+
+fn collection_literal(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    if !parser.at(T!['[']) {
+        return None;
+    }
+    let m = parser.start();
+    parser.bump(T!['[']);
+    if expression(parser).is_some() {
+        while parser.eat(T![,]) && expression(parser).is_some() {}
+    }
+    if !parser.eat(T![']']) {
+        parser.error("expected `]`");
+    }
+    Some(m.complete(parser, COLLECTION_LITERAL))
+}
+
+fn literal_constant(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    match parser.current() {
+        BOOLEAN_LITERAL | INTEGER_LITERAL | HEX_LITERAL | BIN_LITERAL | CHARACTER_LITERAL
+        | REAL_LITERAL | NULL_LITERAL | LONG_LITERAL | UNSIGNED_LITERAL => {
+            let m = parser.start();
+            parser.bump_any();
+            Some(m.complete(parser, LITERAL_CONSTANT))
+        }
+        _ => None,
+    }
+}
+
+fn string_literal(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    line_string_literal(parser)
+        .or_else(|| multi_line_string_literal(parser))
+        .map(|cm| cm.precede(parser).complete(parser, STRING_LITERAL))
+}
+
+fn line_string_literal(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    if !parser.at(QUOTE_OPEN) {
+        return None;
+    }
+    let m = parser.start();
+    parser.bump(QUOTE_OPEN);
+    while line_string_content(parser).is_some() || line_string_expr(parser).is_some() {}
+    if !parser.eat(QUOTE_CLOSE) {
+        parser.error(r#"expected `"`"#);
+    }
+    Some(m.complete(parser, LINE_STRING_LITERAL))
+}
+
+fn multi_line_string_literal(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    if !parser.at(TRIPLE_QUOTE_OPEN) {
+        return None;
+    }
+    let m = parser.start();
+    parser.bump(TRIPLE_QUOTE_OPEN);
+    while multi_line_string_content(parser).is_some()
+        || multi_line_string_expr(parser).is_some()
+        || parser.eat(MULTI_LINE_STRING_QUOTE)
+    {}
+    if !parser.eat(TRIPLE_QUOTE_CLOSE) {
+        parser.error(r#"expected `"""`"#);
+    }
+    Some(m.complete(parser, MULTI_LINE_STRING_LITERAL))
+}
+
+fn line_string_content(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    match parser.current() {
+        LINE_STR_TEXT | LINE_STR_ESCAPED_CHAR | LINE_STR_REF => {
+            let m = parser.start();
+            parser.bump_any();
+            Some(m.complete(parser, LINE_STRING_CONTENT))
+        }
+        _ => None,
+    }
+}
+
+fn line_string_expr(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    if parser.at(LINE_STR_EXPR_START) {
+        let m = parser.start();
+        parser.bump(LINE_STR_EXPR_START);
+        if expression(parser).is_none() {
+            parser.error("expected an expression");
+        }
+        if !parser.eat(T!['}']) {
+            parser.error("expected `}`");
+        }
+        Some(m.complete(parser, LINE_STRING_EXPRESSION))
+    } else {
+        None
+    }
+}
+
+fn multi_line_string_content(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    match parser.current() {
+        MULTI_LINE_STR_TEXT | MULTI_LINE_STRING_QUOTE | MULTI_LINE_STR_REF => {
+            let m = parser.start();
+            parser.bump_any();
+            Some(m.complete(parser, MULTI_LINE_STRING_CONTENT))
+        }
+        _ => None,
+    }
+}
+
+fn multi_line_string_expr(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    if parser.at(MULTI_STR_EXPR_START) {
+        let m = parser.start();
+        parser.bump(MULTI_STR_EXPR_START);
+        if expression(parser).is_none() {
+            parser.error("expected an expression");
+        }
+        if !parser.eat(T!['}']) {
+            parser.error("expected `}`");
+        }
+        Some(m.complete(parser, MULTI_LINE_STRING_EXPRESSION))
+    } else {
+        None
+    }
+}
+
+fn function_literal(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    lambda_literal(parser)
+        .or_else(|| anonymous_function(parser))
+        .map(|cm| cm.precede(parser).complete(parser, FUNCTION_LITERAL))
+}
+
+fn lambda_literal(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    if !parser.at(T!['{']) {
+        return None;
+    }
+    let m = parser.start();
+    parser.bump(T!['{']);
+    if lambda_parameters(parser).is_some() && !parser.eat(T![->]) {
+        parser.error("expected `->`");
+    }
+    statements(parser);
+    if !parser.eat(T!['}']) {
+        parser.error("expected `}`");
+    }
+    Some(m.complete(parser, LAMBDA_LITERAL))
+}
+
+fn lambda_parameters(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    if let Some(cm) = lambda_parameter(parser) {
+        let m = cm.precede(parser);
+        while parser.eat(T![,]) && lambda_parameter(parser).is_some() {}
+        Some(m.complete(parser, LAMBDA_PARAMETERS))
+    } else {
+        None
+    }
+}
+
+fn lambda_parameter(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    multi_variable_declaration(parser)
+        .or_else(|| variable_declaration(parser))
+        .map(|cm| cm.precede(parser).complete(parser, LAMBDA_PARAMETER))
+}
+
+fn anonymous_function(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    if !(parser.at(T![fun]) || (parser.at(T![suspend]) && parser.nth_at(1, T![fun]))) {
+        return None;
+    }
+    let m = parser.start();
+
+    parser.eat(T![suspend]);
+    parser.bump(T![fun]);
+
+    if ty(parser).is_some() && !parser.eat(T![.]) {
+        parser.error("expected `.`");
+    }
+    if parameters_with_opt_type(parser).is_none() {
+        parser.error("expected `(`");
+    }
+    if parser.at(T![:]) {
+        parser.bump(T![:]);
+        if ty(parser).is_none() {
+            parser.error("expected a return type");
+        }
+    }
+
+    type_constraints(parser);
+    function_body(parser);
+    Some(m.complete(parser, ANONYMOUS_FUNCTION))
+}
+
+fn object_literal(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    if !(parser.at(T![object]) || (parser.at(T![data]) && parser.nth_at(1, T![object]))) {
+        return None;
+    }
+    let m = parser.start();
+
+    parser.eat(T![data]);
+    parser.bump(T![object]);
+
+    if parser.at(T![:]) {
+        parser.bump(T![:]);
+        delegation_specifiers(parser);
+    }
+
+    class_body(parser, None, None);
+    Some(m.complete(parser, OBJECT_LITERAL))
+}
+
+fn this_expresssion(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    if parser.at(T![this]) || parser.at(T![this@]) {
+        let m = parser.start();
+        parser.bump_any();
+        Some(m.complete(parser, THIS_EXPRESSION))
+    } else {
+        None
+    }
+}
+
+fn super_expression(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    if parser.at(T![super]) {
+        let m = parser.start();
+        parser.bump(T![super]);
+        if parser.at(T![<]) {
+            parser.bump(T![<]);
+            if ty(parser).is_none() {
+                parser.error("expected a type");
+            }
+            if !parser.eat(T![>]) {
+                parser.error("expected `>`");
+            }
+        }
+        if parser.eat(T![@]) && simple_identifier(parser).is_none() {
+            parser.error("expected an identifier after `@`");
+        }
+        Some(m.complete(parser, SUPER_EXPRESSION))
+    } else if parser.at(T![super@]) {
+        let m = parser.start();
+        parser.bump(T![super@]);
+        Some(m.complete(parser, SUPER_EXPRESSION))
+    } else {
+        None
+    }
+}
+
+fn if_expression(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    if !parser.at(T![if]) {
+        return None;
+    }
+    let m = parser.start();
+    parser.bump(T![if]);
+    if !parser.eat(T!['(']) {
+        parser.error("expected `(`");
+    }
+    if expression(parser).is_none() {
+        parser.error("expected an expression");
+    }
+    if !parser.eat(T![')']) {
+        parser.error("expected `)`");
+    }
+
+    control_structure_body(parser);
+    parser.eat(T![;]);
+    if parser.eat(T![else]) && !parser.eat(T![;]) {
+        control_structure_body(parser);
+    }
+    Some(m.complete(parser, IF_EXPRESSION))
+}
+
+fn when_expression(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    if !parser.at(T![when]) {
+        return None;
+    }
+    let m = parser.start();
+    parser.bump(T![when]);
+    when_subject(parser);
+    if !parser.eat(T!['{']) {
+        parser.error("expected `{`");
+    }
+    while when_entry(parser).is_some() {}
+    if !parser.eat(T!['}']) {
+        parser.error("expected `}`");
+    }
+    Some(m.complete(parser, WHEN_EXPRESSION))
+}
+
+fn when_subject(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    if !parser.at(T!['(']) {
+        return None;
+    }
+    let m = parser.start();
+    parser.bump(T!['(']);
+    while annotation(parser).is_some() {}
+    if parser.at(T![val]) {
+        parser.bump(T![val]);
+        if variable_declaration(parser).is_none() {
+            parser.error("expected an identifier");
+        }
+        if !parser.eat(T![=]) {
+            parser.error("expected `=`");
+        }
+    }
+    if expression(parser).is_none() {
+        parser.error("expected an expression");
+    }
+
+    if !parser.eat(T![')']) {
+        parser.error("expected `)`");
+    }
+    Some(m.complete(parser, WHEN_SUBJECT))
+}
+
+fn when_entry(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    let m = parser.start();
+    if parser.at(T![else]) {
+        parser.bump(T![else]);
+        if parser.eat(T![->]) {
+            control_structure_body(parser);
+        }
+        semi(parser);
+    } else if when_condition(parser).is_some() {
+        while parser.eat(T![,]) && when_condition(parser).is_some() {}
+        if parser.eat(T![->]) {
+            control_structure_body(parser);
+        }
+        semi(parser);
+    } else {
+        m.abandon(parser);
+        return None;
+    }
+    Some(m.complete(parser, WHEN_ENTRY))
+}
+
+fn when_condition(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    range_test(parser)
+        .or_else(|| type_test(parser))
+        .or_else(|| expression(parser))
+        .map(|cm| cm.precede(parser).complete(parser, WHEN_CONDITION))
+}
+
+fn range_test(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    if let Some(cm) = in_operator(parser) {
+        let m = cm.precede(parser);
+        if expression(parser).is_none() {
+            parser.error("expected an expression");
+        }
+        Some(m.complete(parser, RANGE_TEST))
+    } else {
+        None
+    }
+}
+
+fn type_test(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    if let Some(cm) = is_operator(parser) {
+        let m = cm.precede(parser);
+        if ty(parser).is_none() {
+            parser.error("expected a type");
+        }
+        Some(m.complete(parser, TYPE_TEST))
+    } else {
+        None
+    }
+}
+
+enum CallableReference {
+    Partial(CompletedMarker),
+    Full(CompletedMarker),
+}
+
+fn try_expression(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    if !parser.at(T![try]) {
+        return None;
+    }
+    let m = parser.start();
+    parser.bump(T![try]);
+
+    if block(parser).is_none() {
+        parser.error("expected `{`");
+    }
+    let mut catch_or_finally = 0;
+    while catch_block(parser).is_some() {
+        catch_or_finally += 1;
+    }
+    finally_block(parser).inspect(|_| catch_or_finally += 1);
+    if catch_or_finally == 0 {
+        parser.error("expected at least one `catch` or `finally` block");
+    }
+    Some(m.complete(parser, TRY_EXPRESSION))
+}
+
+fn catch_block(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    if !parser.at(T![catch]) {
+        return None;
+    }
+    let m = parser.start();
+    parser.bump(T![catch]);
+
+    if !parser.eat(T!['(']) {
+        parser.error("expected `(`");
+    } else {
+        while annotation(parser).is_some() {}
+        if simple_identifier(parser).is_some() {
+            if !parser.eat(T![:]) {
+                parser.error("expected `:`");
+            }
+            if ty(parser).is_none() {
+                parser.error("expected a type");
+            }
+            parser.eat(T![,]);
+        } else {
+            parser.error("missing the exception to be caught");
+        }
+        if !parser.eat(T![')']) {
+            parser.error("expected `)`");
+        }
+    }
+    if block(parser).is_none() {
+        parser.error("expected `{`");
+    }
+    Some(m.complete(parser, CATCH_BLOCK))
+}
+
+fn finally_block(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    if !parser.at(T![finally]) {
+        return None;
+    }
+    let m = parser.start();
+    parser.bump(T![finally]);
+    if block(parser).is_none() {
+        parser.error("expected `{`");
+    }
+    Some(m.complete(parser, FINALLY_BLOCK))
+}
+
+fn jump_expression(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    let m = parser.start();
+    match parser.current() {
+        T![break] | T![continue] | T![break@] | T![continue@] => {
+            parser.bump_any();
+        }
+        T![return] | T![return@] => {
+            parser.bump_any();
+            expression(parser);
+        }
+        T![throw] => {
+            parser.bump(T![throw]);
+            if expression(parser).is_none() {
+                parser.error("expected an expression after `throw`");
+            }
+        }
+        _ => {
+            m.abandon(parser);
+            return None;
+        }
+    }
+    Some(m.complete(parser, JUMP_EXPRESSION))
+}
+
+fn callable_reference(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    let m = parser.start();
+    let recv = receiver_type(parser, RecvType::NotDotted);
+    if !parser.eat(T![::]) {
+        m.abandon(parser);
+        return recv;
+    }
+    if parser.at(T![class]) {
+        parser.bump(T![class]);
+    } else if simple_identifier(parser).is_some() {
+    } else {
+        parser.error("expected an identifier or `class`");
+    }
+    Some(m.complete(parser, CALLABLE_REFERENCE))
+}
+
+fn assignment_and_operator(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    match parser.current() {
+        T![+=] | T![-=] | T![/=] | T![*=] | T![%=] => {
+            let m = parser.start();
+            parser.bump_any();
+            Some(m.complete(parser, ASSIGNMENT_AND_OPERATOR))
+        }
+        _ => None,
+    }
+}
+
+fn equality_operator(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    match parser.current() {
+        T![==] | T![!=] | T![===] | T![!==] => {
+            let m = parser.start();
+            parser.bump_any();
+            Some(m.complete(parser, EQUALITY_OPERATOR))
+        }
+        _ => None,
+    }
+}
+
+fn comparison_operator(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    match parser.current() {
+        T![<] | T![>] | T![<=] | T![>=] => {
+            let m = parser.start();
+            parser.bump_any();
+            Some(m.complete(parser, COMPARISON_OPERATOR))
+        }
+        _ => None,
+    }
+}
+
+fn in_operator(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    match parser.current() {
+        T![in] | T![!in] => {
+            let m = parser.start();
+            parser.bump_any();
+            Some(m.complete(parser, IN_OPERATOR))
+        }
+        _ => None,
+    }
+}
+
+fn is_operator(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    match parser.current() {
+        T![is] | T![!is] => {
+            let m = parser.start();
+            parser.bump_any();
+            Some(m.complete(parser, IS_OPERATOR))
+        }
+        _ => None,
+    }
+}
+
+fn additive_operator(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    match parser.current() {
+        T![+] | T![-] => {
+            let m = parser.start();
+            parser.bump_any();
+            Some(m.complete(parser, ADDITIVE_OPERATOR))
+        }
+        _ => None,
+    }
+}
+
+fn multiplicative_operator(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    match parser.current() {
+        T![*] | T![/] | T![%] => {
+            let m = parser.start();
+            parser.bump_any();
+            Some(m.complete(parser, MULTIPLICATIVE_OPERATOR))
+        }
+        _ => None,
+    }
+}
+
+fn as_operator(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    if parser.at(T![as]) || parser.at(T![as?]) {
+        let m = parser.start();
+        parser.bump_any();
+        Some(m.complete(parser, AS_OPERATOR))
+    } else {
+        None
+    }
+}
+
+fn prefix_unary_operator(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    let m = parser.start();
+    match parser.current() {
+        T![++] | T![--] | T![+] | T![-] => {
+            parser.bump_any();
+        }
+        _ if safe_nav(parser).is_some() => {}
+        _ => {
+            m.abandon(parser);
+            return None;
+        }
+    }
+    Some(m.complete(parser, PREFIX_UNARY_OPERATOR))
+}
+
+fn postfix_unary_operator(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    let m = parser.start();
+    match parser.current() {
+        T![++] | T![--] => {
+            parser.bump_any();
+        }
+        T![!] => {
+            if excl(parser).is_none() {
+                parser.error("missing `!`, non-null assertion requires two `!`");
+            }
+        }
+        _ => {
+            m.abandon(parser);
+            return None;
+        }
+    }
+    Some(m.complete(parser, POSTFIX_UNARY_OPERATOR))
+}
+
+fn excl(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    if parser.at(T![!]) || parser.at(EXCL_WS) {
+        let m = parser.start();
+        parser.bump(T![!]);
+        Some(m.complete(parser, EXCL))
+    } else {
+        None
+    }
+}
+
+fn member_access_operator(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    let m = parser.start();
+    if safe_nav(parser).is_none() {
+        if parser.at(T![.]) || parser.at(T![::]) {
+            parser.bump_any();
+        } else {
+            m.abandon(parser);
+            return None;
+        }
+    }
+    Some(m.complete(parser, MEMBER_ACCESS_OPERATOR))
+}
+
+fn safe_nav(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    if parser.at(T![?]) && parser.nth_at(1, T![.]) {
+        let m = parser.start();
+        parser.bump(T![?]);
+        parser.bump(T![.]);
+        Some(m.complete(parser, SAFE_NAV))
+    } else {
+        None
+    }
 }

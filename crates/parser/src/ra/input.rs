@@ -1,6 +1,7 @@
 //! See [`Input`].
 
-use crate::{SyntaxKind, version::KtVersion};
+use crate::version::KtVersion;
+use syntax::SyntaxKind;
 
 /// Input for the parser -- a sequence of tokens.
 ///

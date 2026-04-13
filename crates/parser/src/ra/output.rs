@@ -1,6 +1,6 @@
 //! See [`Output`]
 
-use crate::SyntaxKind;
+use syntax::SyntaxKind;
 
 /// Output of the parser -- a DFS traversal of a concrete syntax tree.
 ///

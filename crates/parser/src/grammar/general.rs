@@ -1,332 +1,201 @@
-use syntax::SyntaxKind::*;
 use syntax::Token;
+use syntax::{SyntaxKind::*, T};
 
 use super::annotations::unescaped_annotation;
+use super::class_members::PROPERTY_DECLARATION_START;
 use super::class_members::{
-    function_declaration, object_declaration, property_declaration, semi, semis,
+    function_declaration, object_declaration, property_declaration, starts_fn_declaration,
 };
+use super::classes::starts_class_declaration;
 use super::classes::{class_declaration, type_parameters};
 use super::identifiers::{identifier, simple_identifier};
-use super::modifiers::{parse_optional_modifiers, starts_modifiers};
-use super::statements::statement;
+use super::modifiers::modifiers;
+use super::statements::{semi, semis, statement};
 use super::types::ty;
-use crate::{Parser, parse_loop, parse_while};
+use crate::ra::{CompletedMarker, Parser};
 
 const TOP_LEVEL_RECOVERY: &[Token] = &[Token::SEMICOLON, Token::NL, Token::R_CURL, Token::EOF];
 const BRACKET_RECOVERY: &[Token] = &[Token::R_SQUARE, Token::SEMICOLON, Token::NL, Token::EOF];
 
-pub(crate) fn kotlin_file(parser: &mut Parser<'_, '_>) {
-    parser.skip_trivia_and_newlines();
-
-    match parser.current_token() {
-        None | Some(Token::EOF) => return,
-        _ => {}
-    }
-
-    parser.start_node(KOTLIN_FILE);
-
-    if parser.current_token() == Some(&Token::SHEBANG_LINE_TOKEN) {
-        shebang_line(parser);
-        parser.skip_trivia_and_newlines();
-    }
-
-    parse_while!(starts_file_annotation(parser), parser => {
-        file_annotation(parser);
-        parser.skip_trivia_and_newlines();
-    });
-
+pub(crate) fn kotlin_file(parser: &mut Parser<'_>) {
+    let m = parser.start();
+    shebang_line(parser);
+    while file_annotation(parser).is_some() {}
     package_header(parser);
-    parser.skip_trivia_and_newlines();
-
     import_list(parser);
-    parser.skip_trivia_and_newlines();
-
-    parse_loop! { parser =>
-        if !starts_top_level_object(parser) {
-            break;
-        }
-        top_level_object(parser);
-        parser.skip_trivia_and_newlines();
-    }
-
-    if parser.current_token() == Some(&Token::EOF) {
-        parser.bump();
-    }
-
-    parser.finish_node(KOTLIN_FILE);
+    while top_level_object(parser).is_some() {}
+    m.complete(parser, KOTLIN_FILE);
 }
 
-pub(crate) fn script(parser: &mut Parser<'_, '_>) {
-    parser.skip_trivia_and_newlines();
-    match parser.current_token() {
-        None | Some(Token::EOF) => return,
-        _ => {}
-    }
-
-    parser.start_node(SCRIPT);
-
-    if parser.current_token() == Some(&Token::SHEBANG_LINE_TOKEN) {
-        shebang_line(parser);
-        parser.skip_trivia_and_newlines();
-    }
-
-    parse_while!(starts_file_annotation(parser), parser => {
-        file_annotation(parser);
-        parser.skip_trivia_and_newlines();
-    });
-
+pub(crate) fn script(parser: &mut Parser<'_>) {
+    let m = parser.start();
+    shebang_line(parser);
+    while file_annotation(parser).is_some() {}
     package_header(parser);
-    parser.skip_trivia_and_newlines();
-
     import_list(parser);
-    parser.skip_trivia_and_newlines();
-
-    parse_loop! { parser =>
-        if parser.current_token() == Some(&Token::EOF) {
-            break;
-        }
-        statement(parser);
-        parser.skip_trivia_and_newlines();
-        if parser.current_token() == Some(&Token::SEMICOLON) || parser.current_token() == Some(&Token::NL) {
+    while statement(parser)
+        .inspect(|_| {
             semi(parser);
-        }
-        parser.skip_trivia_and_newlines();
-    }
+        })
+        .is_some()
+    {}
 
-    if parser.current_token() == Some(&Token::EOF) {
-        parser.bump();
-    }
-
-    parser.finish_node(SCRIPT);
+    m.complete(parser, SCRIPT);
 }
 
-fn shebang_line(parser: &mut Parser<'_, '_>) {
-    parser.start_node(SHEBANG_LINE);
-    parse_loop! { parser =>
-        if !parser.expect_recover(Token::SHEBANG_LINE_TOKEN, "expected shebang", TOP_LEVEL_RECOVERY) {
-            break;
-        }
-        parse_while!(parser.current_token() == Some(&Token::NL), parser => {
-            parser.bump();
-        });
-        break;
+fn shebang_line(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    if parser.at(SHEBANG_LINE_TOKEN) {
+        let m = parser.start();
+        parser.eat(SHEBANG_LINE_TOKEN);
+        Some(m.complete(parser, SHEBANG_LINE))
+    } else {
+        None
     }
-    parser.finish_node(SHEBANG_LINE);
 }
 
-fn file_annotation(parser: &mut Parser<'_, '_>) {
-    parser.start_node(FILE_ANNOTATION);
-    parse_loop! { parser =>
-        if matches!(
-            parser.current_token(),
-            Some(Token::AT_NO_WS | Token::AT_PRE_WS)
-        ) {
-            parser.bump();
-        } else {
-            parser.error("expected '@'");
-            parser.recover_until(TOP_LEVEL_RECOVERY);
-            break;
-        }
+fn file_annotation(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    match (parser.current(), parser.nth(1)) {
+        (T![@] | AT_PRE_WS, FILE) => {
+            let m = parser.start();
+            parser.bump_any();
+            parser.bump(FILE);
 
-        parser.skip_trivia_and_newlines();
-        if !parser.expect_recover(Token::FILE, "expected 'file'", TOP_LEVEL_RECOVERY) {
-            break;
-        }
-
-        parser.skip_trivia_and_newlines();
-        if !parser.expect_recover(Token::COLON, "expected ':'", TOP_LEVEL_RECOVERY) {
-            break;
-        }
-
-        parser.skip_trivia_and_newlines();
-        if parser.current_token() == Some(&Token::L_SQUARE) {
-            parser.bump();
-            parser.skip_trivia_and_newlines();
-            parse_loop! { parser =>
-                if matches!(parser.current_token(), Some(Token::R_SQUARE) | None) {
-                    break;
-                }
-                if unescaped_annotation(parser){
-                    parser.skip_trivia_and_newlines();
-                } else {
-                    break;
-                }
+            if !parser.eat(T![:]) {
+                parser.error("expected `:`");
             }
-            if !parser.expect_recover(Token::R_SQUARE, "expected ']'", BRACKET_RECOVERY) {
-                break;
-            }
-        } else {
-            unescaped_annotation(parser);
-        }
 
-        parser.skip_trivia_and_newlines();
-        break;
+            if parser.eat(T!['[']) {
+                while unescaped_annotation(parser).is_some() {}
+                if !parser.eat(T![']']) {
+                    parser.error("expected ']'");
+                }
+            } else if unescaped_annotation(parser).is_none() {
+                parser.error("expected annotation");
+            }
+            semi(parser);
+            Some(m.complete(parser, FILE_ANNOTATION))
+        }
+        _ => None,
     }
-    parser.finish_node(FILE_ANNOTATION);
 }
 
-fn package_header(parser: &mut Parser<'_, '_>) {
-    parser.start_node(PACKAGE_HEADER);
-    if parser.current_token() == Some(&Token::PACKAGE) {
-        parser.bump();
-        parser.skip_trivia_and_newlines();
+fn package_header(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    if parser.at(T![package]) {
+        let m = parser.start();
+        parser.eat(T![package]);
         identifier(parser);
-        parser.skip_trivia();
-        semis(parser);
+        semi(parser);
+        Some(m.complete(parser, PACKAGE_HEADER))
+    } else {
+        None
     }
-    parser.finish_node(PACKAGE_HEADER);
 }
 
-fn import_list(parser: &mut Parser<'_, '_>) {
-    parser.start_node(IMPORT_LIST);
-    parse_while!(parser.current_token() == Some(&Token::IMPORT), parser => {
-        import_header(parser);
-        parser.skip_trivia_and_newlines();
-    });
-    parser.finish_node(IMPORT_LIST);
+fn import_list(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    let m = parser.start();
+    let mut has_imports = false;
+    while import_header(parser).is_some() {
+        has_imports = true;
+    }
+    if has_imports {
+        Some(m.complete(parser, IMPORT_LIST))
+    } else {
+        m.abandon(parser);
+        None
+    }
 }
 
-fn import_header(parser: &mut Parser<'_, '_>) {
-    parser.start_node(IMPORT_HEADER);
-    parse_loop! { parser =>
-        if !parser.expect_recover(Token::IMPORT, "expected 'import'", TOP_LEVEL_RECOVERY) {
-            break;
-        }
-
-        parser.skip_trivia_and_newlines();
+fn import_header(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    if parser.at(T![import]) {
+        let m = parser.start();
+        parser.eat(T![import]);
         identifier(parser);
 
-        parser.skip_trivia_and_newlines();
-        if parser.current_token() == Some(&Token::DOT) {
-            parser.bump();
-            parser.skip_trivia_and_newlines();
-            if parser.current_token() == Some(&Token::MULT) {
-                parser.bump();
-            } else if parser.current_token() == Some(&Token::AS) {
-                import_alias(parser);
+        if parser.eat(T![.]) {
+            if !parser.eat(T![*]) {
+                parser.error("expected either '*' or identifier");
             }
-        } else if parser.current_token() == Some(&Token::AS) {
+        } else {
             import_alias(parser);
         }
 
-        parser.skip_trivia_and_newlines();
         semis(parser);
-        break;
+        Some(m.complete(parser, IMPORT_HEADER))
+    } else {
+        None
     }
-
-    parser.finish_node(IMPORT_HEADER);
 }
 
-fn import_alias(parser: &mut Parser<'_, '_>) {
-    parser.start_node(IMPORT_ALIAS);
-    parse_loop! { parser =>
-        if !parser.expect_recover(Token::AS, "expected 'as'", TOP_LEVEL_RECOVERY) {
-            break;
-        }
-        parser.skip_trivia_and_newlines();
+fn import_alias(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    if parser.at(T![as]) {
+        let m = parser.start();
+        parser.eat(T![as]);
         simple_identifier(parser);
-        break;
+        Some(m.complete(parser, IMPORT_ALIAS))
+    } else {
+        None
     }
-    parser.finish_node(IMPORT_ALIAS);
 }
 
-fn top_level_object(parser: &mut Parser<'_, '_>) {
-    parser.start_node(TOP_LEVEL_OBJECT);
-    declaration(parser);
-    parser.skip_trivia_and_newlines();
+fn top_level_object(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    let m = parser.start();
+    let modifiers_marker = modifiers(parser);
+
+    if declaration(parser, modifiers_marker).is_none() {
+        m.abandon(parser);
+        return None;
+    }
+
     semis(parser);
-    parser.finish_node(TOP_LEVEL_OBJECT);
+    Some(m.complete(parser, TOP_LEVEL_OBJECT))
 }
 
-fn type_alias(parser: &mut Parser<'_, '_>) {
-    parser.start_node(TYPE_ALIAS);
-    parse_loop! { parser =>
-        parse_optional_modifiers(parser);
-        parser.skip_trivia_and_newlines();
-
-        if !parser.expect_recover(Token::TYPE_ALIAS, "expected 'typealias'", TOP_LEVEL_RECOVERY) {
-            break;
-        }
-
-        parser.skip_trivia_and_newlines();
-        simple_identifier(parser);
-
-        parser.skip_trivia_and_newlines();
-        if parser.current_token() == Some(&Token::L_ANGLE) {
-            type_parameters(parser);
-            parser.skip_trivia_and_newlines();
-        }
-
-        if !parser.expect_recover(Token::ASSIGNMENT_TOKEN, "expected '='", TOP_LEVEL_RECOVERY) {
-            break;
-        }
-
-        parser.skip_trivia_and_newlines();
-        ty(parser);
-        break;
+fn type_alias(
+    parser: &mut Parser<'_>,
+    modifiers_marker: Option<CompletedMarker>,
+) -> Option<CompletedMarker> {
+    if !parser.at(T![type]) {
+        return None;
     }
-    parser.finish_node(TYPE_ALIAS);
-}
+    let m = modifiers_marker
+        .map(|cm| cm.precede(parser))
+        .unwrap_or_else(|| parser.start());
 
-fn declaration(parser: &mut Parser<'_, '_>) {
-    parser.start_node(DECLARATION);
-    parse_loop! { parser =>
-        let has_modifiers = starts_modifiers(parser);
-        match parser.current_token() {
-            Some(Token::CLASS | Token::INTERFACE) => class_declaration(parser),
-            Some(Token::OBJECT) => object_declaration(parser),
-            Some(Token::FUN) => function_declaration(parser),
-            Some(Token::VAL | Token::VAR) => property_declaration(parser),
-            Some(Token::TYPE_ALIAS) => type_alias(parser),
-            _ if has_modifiers => {
-                // Best-effort: try class declaration when modifiers are present.
-                class_declaration(parser);
-            }
-            _ => {
-                parser.error("expected declaration");
-                parser.recover_until(TOP_LEVEL_RECOVERY);
-                break;
-            }
-        }
-        break;
+    parser.bump(T![type]);
+
+    if simple_identifier(parser).is_none() {
+        parser.error("expected type alias name");
     }
-    parser.finish_node(DECLARATION);
-}
-
-fn starts_file_annotation(parser: &mut Parser<'_, '_>) -> bool {
-    match parser.current_token() {
-        Some(Token::AT_NO_WS | Token::AT_PRE_WS) => {
-            let mut idx = 1usize;
-            loop {
-                match parser.lookahead_token(idx) {
-                    Some(
-                        Token::WS | Token::NL | Token::LINE_COMMENT | Token::DELIMITED_COMMENT,
-                    ) => idx += 1,
-                    Some(Token::FILE) => return true,
-                    _ => return false,
-                }
-            }
+    type_parameters(parser);
+    if !parser.eat(T![=]) {
+        parser.error("expected '='");
+        if ty(parser).is_none() {
+            parser.error("expected type");
         }
-        _ => false,
     }
+    Some(m.complete(parser, TYPE_ALIAS))
 }
 
-fn starts_top_level_object(parser: &mut Parser<'_, '_>) -> bool {
-    starts_declaration(parser)
-}
-
-fn starts_declaration(parser: &mut Parser<'_, '_>) -> bool {
-    starts_modifiers(parser)
-        || matches!(
-            parser.current_token(),
-            Some(
-                Token::CLASS
-                    | Token::INTERFACE
-                    | Token::OBJECT
-                    | Token::FUN
-                    | Token::VAL
-                    | Token::VAR
-                    | Token::TYPE_ALIAS
-            )
-        )
+pub(crate) fn declaration(
+    parser: &mut Parser<'_>,
+    modifiers_marker: Option<CompletedMarker>,
+) -> Option<CompletedMarker> {
+    if starts_class_declaration(parser) {
+        class_declaration(parser, modifiers_marker)
+            .map(|cm| cm.precede(parser).complete(parser, DECLARATION))
+    } else if starts_fn_declaration(parser) {
+        function_declaration(parser, modifiers_marker)
+            .map(|cm| cm.precede(parser).complete(parser, DECLARATION))
+    } else if parser.at(T![object]) {
+        object_declaration(parser, modifiers_marker)
+            .map(|cm| cm.precede(parser).complete(parser, DECLARATION))
+    } else if parser.at_ts(PROPERTY_DECLARATION_START) {
+        property_declaration(parser, modifiers_marker)
+            .map(|cm| cm.precede(parser).complete(parser, DECLARATION))
+    } else if parser.at(T![type]) {
+        type_alias(parser, modifiers_marker)
+            .map(|cm| cm.precede(parser).complete(parser, DECLARATION))
+    } else {
+        None
+    }
 }

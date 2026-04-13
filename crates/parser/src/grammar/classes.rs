@@ -1,403 +1,300 @@
-use syntax::SyntaxKind::*;
-use syntax::Token;
+use syntax::{SyntaxKind::*, T};
 
 use super::annotations::annotation;
-use super::class_members::class_body;
-use super::enum_classes::enum_class_body;
+use super::class_members::class_member_declarations;
+use super::enum_classes::{BodyResult, enum_class_body};
 use super::expressions::{expression, value_arguments};
 use super::identifiers::simple_identifier;
-use super::modifiers::{
-    modifiers, parse_optional_modifiers, starts_modifiers, type_parameter_modifiers,
-};
-use super::types::{ty, type_reference};
-use super::utils::{LIST_ITEM_RECOVERY, starts_annotation, starts_simple_identifier};
-use crate::{Parser, parse_loop, parse_while};
+use super::modifiers::{modifiers, type_parameter_modifiers};
+use super::types::ty;
+use crate::ra::{CompletedMarker, Marker, Parser};
 
-const DECL_RECOVERY: &[Token] = &[Token::SEMICOLON, Token::NL, Token::R_CURL, Token::EOF];
-const COLON_RECOVERY: &[Token] = &[
-    Token::SEMICOLON,
-    Token::IDENTIFIER_TOKEN,
-    Token::COMMA,
-    Token::NL,
-    Token::R_CURL,
-    Token::R_PAREN,
-    Token::EOF,
-];
-const PAREN_RECOVERY: &[Token] = &[
-    Token::R_PAREN,
-    Token::SEMICOLON,
-    Token::NL,
-    Token::R_CURL,
-    Token::EOF,
-];
-const ANGLE_RECOVERY: &[Token] = &[Token::R_ANGLE, Token::SEMICOLON, Token::NL, Token::R_CURL];
+pub(crate) fn starts_class_declaration(parser: &mut Parser<'_>) -> bool {
+    parser.at(T![class])
+        || parser.at(T![interface])
+        || (parser.at(T![fun]) && parser.nth_at(1, T![interface]))
+}
 
-pub(crate) fn class_declaration(parser: &mut Parser<'_, '_>) {
-    parser.start_node(CLASS_DECLARATION);
-    parse_loop! { parser =>
-        parse_optional_modifiers(parser);
-        parser.skip_trivia_and_newlines();
+pub(crate) fn class_declaration(
+    parser: &mut Parser<'_>,
+    modifiers_marker: Option<CompletedMarker>,
+) -> Option<CompletedMarker> {
+    if !starts_class_declaration(parser) {
+        return None;
+    }
 
-        match parser.current_token() {
-            Some(Token::CLASS) => parser.bump(),
-            Some(Token::FUN) => {
-                parser.bump();
-                parser.skip_trivia_and_newlines();
-                if !parser.expect_recover(Token::INTERFACE, "expected 'interface'", DECL_RECOVERY) {
-                    break;
-                }
-            }
-            Some(Token::INTERFACE) => parser.bump(),
-            _ => {
-                parser.error("expected 'class' or 'interface'");
-                parser.recover_until(DECL_RECOVERY);
+    let m = modifiers_marker
+        .map(|cm| cm.precede(parser))
+        .unwrap_or_else(|| parser.start());
+
+    if parser.at(T![class]) || parser.at(T![interface]) {
+        parser.bump_any();
+    } else if parser.at(T![fun]) {
+        parser.bump(T![fun]);
+        parser.bump(T![interface]);
+    }
+
+    if simple_identifier(parser).is_none() {
+        parser.error("expected an identifier");
+    }
+
+    type_parameters(parser);
+    primary_constructor(parser);
+
+    if parser.eat(T![:]) && delegation_specifiers(parser).is_none() {
+        parser.error("expected delegation specifiers");
+    }
+
+    type_constraints(parser);
+
+    if parser.at(T!['{']) {
+        let m = parser.start();
+
+        parser.bump(T!['{']);
+        let first_modifiers = modifiers(parser);
+
+        if let BodyResult::None(m) = enum_class_body(parser, m, first_modifiers.clone()) {
+            class_body(parser, Some(m), first_modifiers);
+        }
+    }
+
+    Some(m.complete(parser, CLASS_DECLARATION))
+}
+
+fn primary_constructor(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    let m = parser.start();
+
+    modifiers(parser);
+    if !parser.eat(T![constructor]) {
+        m.abandon(parser);
+        return None;
+    }
+
+    if class_parameters(parser).is_none() {
+        parser.error("expected `(`");
+    }
+
+    Some(m.complete(parser, PRIMARY_CONSTRUCTOR))
+}
+
+pub(crate) fn class_body(
+    parser: &mut Parser<'_>,
+    opening_brace: Option<Marker>,
+    modifier_marker: Option<CompletedMarker>,
+) -> Option<CompletedMarker> {
+    let m = opening_brace.or_else(|| {
+        if !parser.at(T!['{']) {
+            None
+        } else {
+            let m = parser.start();
+            parser.bump(T!['{']);
+            Some(m)
+        }
+    })?;
+
+    class_member_declarations(parser, modifier_marker);
+
+    if !parser.eat(T!['}']) {
+        parser.error("expected '}'");
+    }
+
+    Some(m.complete(parser, CLASS_BODY))
+}
+
+fn class_parameters(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    if !parser.at(T!['(']) {
+        return None;
+    }
+
+    let m = parser.start();
+    parser.bump(T!['(']);
+
+    if class_parameter(parser).is_some() {
+        while parser.eat(T![,]) && class_parameter(parser).is_some() {}
+    }
+
+    if !parser.eat(T![')']) {
+        parser.error("expected ')'");
+    }
+
+    Some(m.complete(parser, CLASS_PARAMETERS))
+}
+
+fn class_parameter(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    let m = parser.start();
+
+    modifiers(parser);
+    if parser.at(T![val]) || parser.at(T![var]) {
+        parser.bump_any();
+    }
+
+    if simple_identifier(parser).is_none() {
+        parser.error("expected an identifier");
+    }
+
+    if !parser.eat(T![:]) {
+        parser.error("expected ':'");
+    }
+
+    if ty(parser).is_none() {
+        parser.error("expected a type");
+    }
+
+    if parser.eat(T![=]) && expression(parser).is_none() {
+        parser.error("expected an expression");
+    }
+
+    Some(m.complete(parser, CLASS_PARAMETER))
+}
+
+pub(crate) fn delegation_specifiers(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    if let Some(first) = annotated_delegation_specifier(parser) {
+        let m = first.precede(parser);
+
+        while parser.eat(T![,]) {
+            if annotated_delegation_specifier(parser).is_none() {
+                parser.error("expected a delegation specifier");
                 break;
             }
         }
 
-        parser.skip_trivia_and_newlines();
-        simple_identifier(parser);
-
-        parser.skip_trivia_and_newlines();
-        if parser.current_token() == Some(&Token::L_ANGLE) {
-            type_parameters(parser);
-            parser.skip_trivia_and_newlines();
-        }
-
-        if parser.current_token() == Some(&Token::L_PAREN)
-            || starts_modifiers(parser)
-            || parser.current_token() == Some(&Token::CONSTRUCTOR)
-        {
-            primary_constructor(parser);
-            parser.skip_trivia_and_newlines();
-        }
-
-        if parser.current_token() == Some(&Token::COLON) {
-            parser.bump();
-            parser.skip_trivia_and_newlines();
-            delegation_specifiers(parser);
-            parser.skip_trivia_and_newlines();
-        }
-
-        if parser.current_token() == Some(&Token::WHERE) {
-            type_constraints(parser);
-            parser.skip_trivia_and_newlines();
-        }
-
-        if looks_like_enum_body(parser) {
-            enum_class_body(parser);
-        } else if parser.current_token() == Some(&Token::L_CURL) {
-            class_body(parser);
-        }
-        break;
-    }
-
-    parser.finish_node(CLASS_DECLARATION);
-}
-
-pub(crate) fn primary_constructor(parser: &mut Parser<'_, '_>) {
-    parser.start_node(PRIMARY_CONSTRUCTOR);
-
-    if starts_modifiers(parser) {
-        modifiers(parser);
-        parser.skip_trivia_and_newlines();
-    }
-
-    if parser.current_token() == Some(&Token::CONSTRUCTOR) {
-        parser.bump();
-        parser.skip_trivia_and_newlines();
-    }
-
-    class_parameters(parser);
-    parser.finish_node(PRIMARY_CONSTRUCTOR);
-}
-
-pub(crate) fn class_parameters(parser: &mut Parser<'_, '_>) {
-    parser.start_node(CLASS_PARAMETERS);
-    parse_loop! { parser =>
-        if !parser.expect_recover(Token::L_PAREN, "expected '(' after class name", PAREN_RECOVERY) {
-            if parser.current_token() == Some(&Token::R_PAREN) {
-                // recover from empty parameter list without trying to parse parameters
-                parser.bump();
-            }
-            break;
-        }
-
-        parser.skip_trivia_and_newlines();
-
-        parse_loop! { parser =>
-            if matches!(parser.current_token(), Some(Token::R_PAREN) | None) {
-                break;
-            }
-            class_parameter(parser);
-            parser.skip_trivia_and_newlines();
-            if parser.current_token() == Some(&Token::COMMA) {
-                parser.bump();
-                parser.skip_trivia_and_newlines();
-                continue;
-            }
-            break;
-        }
-
-        if !parser.expect_recover(Token::R_PAREN, "expected ')'", PAREN_RECOVERY) {
-            break;
-        }
-        break;
-    }
-
-    parser.finish_node(CLASS_PARAMETERS);
-}
-
-fn class_parameter(parser: &mut Parser<'_, '_>) {
-    parser.start_node(CLASS_PARAMETER);
-    parse_loop! { parser =>
-        parse_optional_modifiers(parser);
-        parser.skip_trivia_and_newlines();
-
-        let mut has_val_or_var = false;
-        if matches!(parser.current_token(), Some(Token::VAL | Token::VAR)) {
-            has_val_or_var = true;
-            parser.bump();
-            parser.skip_trivia_and_newlines();
-        }
-
-        if !simple_identifier(parser) {
-            let error_msg = if has_val_or_var {
-                "expected parameter name"
-            } else {
-                "expected parameter name or ')'"
-            };
-            parser.error(error_msg);
-            parser.recover_until(LIST_ITEM_RECOVERY);
-            break;
-        }
-        parser.skip_trivia_and_newlines();
-
-        parser.expect_recover(Token::COLON, "expected ':' before type", COLON_RECOVERY);
-
-        parser.skip_trivia_and_newlines();
-        ty(parser);
-
-        parser.skip_trivia_and_newlines();
-        if parser.current_token() == Some(&Token::ASSIGNMENT_TOKEN) {
-            parser.bump();
-            parser.skip_trivia_and_newlines();
-            expression(parser);
-        }
-        break;
-    }
-
-    parser.finish_node(CLASS_PARAMETER);
-}
-
-fn delegation_specifiers(parser: &mut Parser<'_, '_>) {
-    parser.start_node(DELEGATION_SPECIFIERS);
-    annotated_delegation_specifier(parser);
-
-    parse_while!(parser.current_token() == Some(&Token::COMMA), parser => {
-        parser.bump();
-        parser.skip_trivia_and_newlines();
-        annotated_delegation_specifier(parser);
-    });
-
-    parser.finish_node(DELEGATION_SPECIFIERS);
-}
-
-fn annotated_delegation_specifier(parser: &mut Parser<'_, '_>) {
-    parser.start_node(ANNOTATED_DELEGATION_SPECIFIER);
-    parse_while!(starts_annotation(parser), parser => {
-        annotation(parser);
-        parser.skip_trivia_and_newlines();
-    });
-    delegation_specifier(parser);
-    parser.finish_node(ANNOTATED_DELEGATION_SPECIFIER);
-}
-
-fn delegation_specifier(parser: &mut Parser<'_, '_>) {
-    parser.start_node(DELEGATION_SPECIFIER);
-
-    if parser.current_token() == Some(&Token::SUSPEND) {
-        parser.bump();
-        parser.skip_trivia_and_newlines();
-    }
-
-    if looks_like_explicit_delegation(parser) {
-        explicit_delegation(parser);
-    } else if looks_like_constructor_invocation(parser) {
-        constructor_invocation(parser);
+        Some(m.complete(parser, DELEGATION_SPECIFIERS))
     } else {
-        type_reference(parser);
+        None
+    }
+}
+
+fn delegation_specifier(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    let m = parser.start();
+
+    // NB: ty, in this function, matches more things than function | user types,
+    // if this happens to be the case, we should report an error later.
+    // Not in parsing phase
+    if parser.eat(T![suspend]) {
+        if ty(parser).is_none() {
+            parser.error("expected a function type");
+        }
+        return Some(m.complete(parser, DELEGATION_SPECIFIER));
     }
 
-    parser.finish_node(DELEGATION_SPECIFIER);
-}
-
-fn constructor_invocation(parser: &mut Parser<'_, '_>) {
-    parser.start_node(CONSTRUCTOR_INVOCATION);
-    type_reference(parser);
-    parser.skip_trivia_and_newlines();
-    value_arguments(parser);
-    parser.finish_node(CONSTRUCTOR_INVOCATION);
-}
-
-fn explicit_delegation(parser: &mut Parser<'_, '_>) {
-    parser.start_node(EXPLICIT_DELEGATION);
-    parse_loop! { parser =>
-        type_reference(parser);
-        parser.skip_trivia_and_newlines();
-        if !parser.expect_recover(Token::BY, "expected 'by'", DECL_RECOVERY) {
-            break;
+    if let Some(ty_marker) = ty(parser) {
+        if parser.at(T![by]) {
+            explicit_delegation(parser, ty_marker);
+        } else {
+            constructor_invocation(parser, ty_marker);
         }
-        parser.skip_trivia_and_newlines();
-        expression(parser);
-        break;
+        Some(m.complete(parser, DELEGATION_SPECIFIER))
+    } else {
+        None
     }
-    parser.finish_node(EXPLICIT_DELEGATION);
 }
 
-pub(crate) fn type_parameters(parser: &mut Parser<'_, '_>) {
-    parser.start_node(TYPE_PARAMETERS);
-    parse_loop! { parser =>
-        if !parser.expect_recover(Token::L_ANGLE, "expected '<'", ANGLE_RECOVERY) {
-            break;
-        }
+fn annotated_delegation_specifier(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    let m = parser.start();
 
-        parser.skip_trivia_and_newlines();
-        if parser.current_token() == Some(&Token::R_ANGLE) {
-            parser.bump();
-            break;
-        }
+    while annotation(parser).is_some() {}
+    if delegation_specifier(parser).is_none() {
+        m.abandon(parser);
+        return None;
+    }
 
-        parse_loop! { parser =>
-            type_parameter(parser);
-            parser.skip_trivia_and_newlines();
-            if parser.current_token() == Some(&Token::COMMA) {
-                parser.bump();
-                parser.skip_trivia_and_newlines();
-                if parser.current_token() == Some(&Token::R_ANGLE) {
+    Some(m.complete(parser, ANNOTATED_DELEGATION_SPECIFIER))
+}
+
+fn explicit_delegation(
+    parser: &mut Parser<'_>,
+    ty_marker: CompletedMarker,
+) -> Option<CompletedMarker> {
+    if parser.at(T![by]) {
+        let m = ty_marker.precede(parser);
+        parser.eat(T![by]);
+
+        if expression(parser).is_none() {
+            parser.error("expected an expression");
+        }
+        Some(m.complete(parser, EXPLICIT_DELEGATION))
+    } else {
+        None
+    }
+}
+
+pub(crate) fn type_parameters(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    if parser.at(T![<]) {
+        let m = parser.start();
+        parser.eat(T![<]);
+        if type_parameter(parser).is_some() {
+            while parser.eat(T![,]) && type_parameter(parser).is_some() {}
+        }
+        if !parser.eat(T![>]) {
+            parser.error("expected '>'");
+        }
+        Some(m.complete(parser, TYPE_PARAMETERS))
+    } else {
+        None
+    }
+}
+
+pub(crate) fn constructor_invocation(
+    parser: &mut Parser<'_>,
+    user_type_marker: CompletedMarker,
+) -> Option<CompletedMarker> {
+    let m = user_type_marker.precede(parser);
+    if value_arguments(parser).is_some() {
+        Some(m.complete(parser, CONSTRUCTOR_INVOCATION))
+    } else {
+        m.abandon(parser);
+        None
+    }
+}
+
+fn type_parameter(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    let m = parser.start();
+    type_parameter_modifiers(parser);
+    if simple_identifier(parser).is_some() {
+        if parser.eat(T![:]) && ty(parser).is_none() {
+            parser.error("expected a type");
+        }
+        Some(m.complete(parser, TYPE_PARAMETER))
+    } else {
+        m.abandon(parser);
+        None
+    }
+}
+
+pub(crate) fn type_constraints(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    if parser.at(T![where]) {
+        let m = parser.start();
+        parser.eat(T![where]);
+        if type_constraint(parser).is_none() {
+            parser.error("expected a type constraint");
+        } else {
+            while parser.eat(T![,]) {
+                if type_constraint(parser).is_none() {
+                    parser.error("expected a type constraint");
                     break;
                 }
-                continue;
             }
-            break;
         }
-
-        if !parser.expect_recover(Token::R_ANGLE, "expected '>'", ANGLE_RECOVERY) {
-            break;
-        }
-        break;
-    }
-
-    parser.finish_node(TYPE_PARAMETERS);
-}
-
-fn type_parameter(parser: &mut Parser<'_, '_>) {
-    parser.start_node(TYPE_PARAMETER);
-    type_parameter_modifiers(parser);
-    parser.skip_trivia_and_newlines();
-    simple_identifier(parser);
-    parser.skip_trivia_and_newlines();
-    if parser.current_token() == Some(&Token::COLON) {
-        parser.bump();
-        parser.skip_trivia_and_newlines();
-        ty(parser);
-    }
-    parser.finish_node(TYPE_PARAMETER);
-}
-
-fn type_constraints(parser: &mut Parser<'_, '_>) {
-    parser.start_node(TYPE_CONSTRAINTS);
-    parse_loop! { parser =>
-        if !parser.expect_recover(Token::WHERE, "expected 'where'", DECL_RECOVERY) {
-            break;
-        }
-
-        parse_loop! { parser =>
-            parser.skip_trivia_and_newlines();
-            type_constraint(parser);
-            parser.skip_trivia_and_newlines();
-            if parser.current_token() == Some(&Token::COMMA) {
-                parser.bump();
-                continue;
-            }
-            break;
-        }
-        break;
-    }
-
-    parser.finish_node(TYPE_CONSTRAINTS);
-}
-
-fn type_constraint(parser: &mut Parser<'_, '_>) {
-    parser.start_node(TYPE_CONSTRAINT);
-    parse_loop! { parser =>
-        parse_while!(starts_annotation(parser), parser => {
-            annotation(parser);
-            parser.skip_trivia_and_newlines();
-        });
-        simple_identifier(parser);
-        parser.skip_trivia_and_newlines();
-        if !parser.expect_recover(Token::COLON, "expected ':'", DECL_RECOVERY) {
-            break;
-        }
-        parser.skip_trivia_and_newlines();
-        ty(parser);
-        break;
-    }
-    parser.finish_node(TYPE_CONSTRAINT);
-}
-
-fn looks_like_constructor_invocation(parser: &mut Parser<'_, '_>) -> bool {
-    if !starts_simple_identifier(parser) {
-        return false;
-    }
-    let mut idx = 0usize;
-    loop {
-        match parser.lookahead_token(idx) {
-            Some(Token::WS | Token::NL | Token::LINE_COMMENT | Token::DELIMITED_COMMENT) => {
-                idx += 1
-            }
-            Some(Token::L_PAREN) => return true,
-            Some(Token::COLON | Token::COMMA | Token::R_CURL | Token::EOF) | None => return false,
-            _ => idx += 1,
-        }
+        Some(m.complete(parser, TYPE_CONSTRAINTS))
+    } else {
+        None
     }
 }
 
-fn looks_like_explicit_delegation(parser: &mut Parser<'_, '_>) -> bool {
-    if !starts_simple_identifier(parser) {
-        return false;
-    }
-    let mut idx = 0usize;
-    loop {
-        match parser.lookahead_token(idx) {
-            Some(Token::WS | Token::NL | Token::LINE_COMMENT | Token::DELIMITED_COMMENT) => {
-                idx += 1
+fn type_constraint(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    let m = parser.start();
+    annotation(parser);
+    if simple_identifier(parser).is_some() {
+        if parser.eat(T![:]) {
+            if ty(parser).is_none() {
+                parser.error("expected a type");
             }
-            Some(Token::BY) => return true,
-            Some(Token::COMMA | Token::R_CURL | Token::EOF) | None => return false,
-            _ => idx += 1,
+        } else {
+            parser.error("expected ':'");
         }
-    }
-}
-
-fn looks_like_enum_body(parser: &mut Parser<'_, '_>) -> bool {
-    if parser.current_token() != Some(&Token::L_CURL) {
-        return false;
-    }
-
-    let mut idx = 1usize;
-    loop {
-        match parser.lookahead_token(idx) {
-            Some(Token::WS | Token::NL | Token::LINE_COMMENT | Token::DELIMITED_COMMENT) => {
-                idx += 1
-            }
-            Some(
-                Token::IDENTIFIER_TOKEN | Token::AT_NO_WS | Token::AT_PRE_WS | Token::AT_BOTH_WS,
-            ) => {
-                return true;
-            }
-            _ => return false,
-        }
+        Some(m.complete(parser, TYPE_CONSTRAINT))
+    } else {
+        m.abandon(parser);
+        None
     }
 }

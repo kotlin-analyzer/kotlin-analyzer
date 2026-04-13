@@ -1,377 +1,163 @@
 use syntax::SyntaxKind::*;
-use syntax::Token;
 
 use super::annotations::annotation;
-use super::utils::starts_annotation;
-use crate::Parser;
+use crate::ra::{CompletedMarker, Parser};
 
-pub(crate) fn modifiers(parser: &mut Parser<'_, '_>) {
-    parser.skip_trivia_and_newlines();
-
-    if !starts_annotation(parser) && !starts_modifier(parser) {
-        return;
-    }
-
-    parser.sink.start_node(MODIFIERS);
-
-    while starts_annotation(parser) || starts_modifier(parser) {
-        if starts_annotation(parser) {
-            annotation(parser);
-        } else {
-            modifier(parser);
-        }
-
-        parser.skip_trivia_and_newlines();
-    }
-
-    parser.sink.finish_node();
-}
-
-pub(crate) fn parameter_modifiers(parser: &mut Parser<'_, '_>) {
-    parser.skip_trivia_and_newlines();
-
-    if !starts_annotation(parser) && !starts_parameter_modifier(parser) {
-        return;
-    }
-
-    parser.sink.start_node(PARAMETER_MODIFIERS);
-
-    while starts_annotation(parser) || starts_parameter_modifier(parser) {
-        if starts_annotation(parser) {
-            annotation(parser);
-        } else {
-            parameter_modifier(parser);
-        }
-
-        parser.skip_trivia_and_newlines();
-    }
-
-    parser.sink.finish_node();
-}
-
-pub(crate) fn type_parameter_modifiers(parser: &mut Parser<'_, '_>) {
-    parser.skip_trivia_and_newlines();
-
-    if !starts_type_parameter_modifier(parser) {
-        return;
-    }
-
-    parser.sink.start_node(TYPE_PARAMETER_MODIFIERS);
-
-    while starts_type_parameter_modifier(parser) {
-        type_parameter_modifier(parser);
-        parser.skip_trivia_and_newlines();
-    }
-
-    parser.sink.finish_node();
-}
-
-pub(crate) fn modifier(parser: &mut Parser<'_, '_>) {
-    parser.skip_trivia();
-    parser.sink.start_node(MODIFIER);
-
-    match parser.current_token() {
-        Some(tok) if is_class_modifier(tok) => class_modifier(parser),
-        Some(tok) if is_member_modifier(tok) => member_modifier(parser),
-        Some(tok) if is_visibility_modifier(tok) => visibility_modifier(parser),
-        Some(tok) if is_function_modifier(tok) => function_modifier(parser),
-        Some(tok) if is_property_modifier(tok) => property_modifier(parser),
-        Some(tok) if is_inheritance_modifier(tok) => inheritance_modifier(parser),
-        Some(tok) if is_parameter_modifier(tok) => parameter_modifier(parser),
-        Some(tok) if is_platform_modifier(tok) => platform_modifier(parser),
-        Some(Token::ERR) => {
-            parser.error("expected modifier");
-            parser.bump();
-        }
-        Some(_) => {
-            parser.error("expected modifier");
-            parser.bump();
-        }
-        None => parser.error("expected modifier"),
-    }
-
-    parser.skip_trivia_and_newlines();
-    parser.sink.finish_node();
-}
-
-fn type_parameter_modifier(parser: &mut Parser<'_, '_>) {
-    parser.skip_trivia_and_newlines();
-    parser.sink.start_node(TYPE_PARAMETER_MODIFIER);
-
-    if starts_annotation(parser) {
-        annotation(parser);
+pub(crate) fn modifiers(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    if let Some(cm) = annotation(parser).or_else(|| modifier(parser)) {
+        let m = cm.precede(parser);
+        while annotation(parser).or_else(|| modifier(parser)).is_some() {}
+        Some(m.complete(parser, PARAMETER_MODIFIERS))
     } else {
-        match parser.current_token() {
-            Some(Token::REIFIED) => reification_modifier(parser),
-            Some(Token::IN | Token::OUT) => variance_modifier(parser),
-            Some(Token::ERR) => {
-                parser.error("expected type parameter modifier");
-                parser.bump();
-            }
-            Some(_) => {
-                parser.error("expected type parameter modifier");
-                parser.bump();
-            }
-            None => parser.error("expected type parameter modifier"),
-        }
+        None
     }
-
-    parser.skip_trivia_and_newlines();
-    parser.sink.finish_node();
 }
 
-fn class_modifier(parser: &mut Parser<'_, '_>) {
-    parser.sink.start_node(CLASS_MODIFIER);
-    match parser.current_token() {
-        Some(
-            Token::ENUM
-            | Token::SEALED
-            | Token::ANNOTATION
-            | Token::DATA
-            | Token::INNER
-            | Token::VALUE,
-        ) => parser.bump(),
-        Some(Token::ERR) => {
-            parser.error("expected class modifier");
-            parser.bump();
-        }
-        _ => parser.error("expected class modifier"),
-    }
-    parser.sink.finish_node();
-}
-
-fn member_modifier(parser: &mut Parser<'_, '_>) {
-    parser.sink.start_node(MEMBER_MODIFIER);
-    match parser.current_token() {
-        Some(Token::OVERRIDE | Token::LATEINIT) => parser.bump(),
-        Some(Token::ERR) => {
-            parser.error("expected member modifier");
-            parser.bump();
-        }
-        _ => parser.error("expected member modifier"),
-    }
-    parser.sink.finish_node();
-}
-
-fn visibility_modifier(parser: &mut Parser<'_, '_>) {
-    parser.sink.start_node(VISIBILITY_MODIFIER);
-    match parser.current_token() {
-        Some(Token::PUBLIC | Token::PRIVATE | Token::INTERNAL | Token::PROTECTED) => parser.bump(),
-        Some(Token::ERR) => {
-            parser.error("expected visibility modifier");
-            parser.bump();
-        }
-        _ => parser.error("expected visibility modifier"),
-    }
-    parser.sink.finish_node();
-}
-
-fn function_modifier(parser: &mut Parser<'_, '_>) {
-    parser.sink.start_node(FUNCTION_MODIFIER);
-    match parser.current_token() {
-        Some(
-            Token::TAILREC
-            | Token::OPERATOR
-            | Token::INFIX
-            | Token::INLINE
-            | Token::EXTERNAL
-            | Token::SUSPEND,
-        ) => parser.bump(),
-        Some(Token::ERR) => {
-            parser.error("expected function modifier");
-            parser.bump();
-        }
-        _ => parser.error("expected function modifier"),
-    }
-    parser.sink.finish_node();
-}
-
-fn property_modifier(parser: &mut Parser<'_, '_>) {
-    parser.sink.start_node(PROPERTY_MODIFIER);
-    match parser.current_token() {
-        Some(Token::CONST) => parser.bump(),
-        Some(Token::ERR) => {
-            parser.error("expected property modifier");
-            parser.bump();
-        }
-        _ => parser.error("expected property modifier"),
-    }
-    parser.sink.finish_node();
-}
-
-fn inheritance_modifier(parser: &mut Parser<'_, '_>) {
-    parser.sink.start_node(INHERITANCE_MODIFIER);
-    match parser.current_token() {
-        Some(Token::ABSTRACT | Token::FINAL | Token::OPEN) => parser.bump(),
-        Some(Token::ERR) => {
-            parser.error("expected inheritance modifier");
-            parser.bump();
-        }
-        _ => parser.error("expected inheritance modifier"),
-    }
-    parser.sink.finish_node();
-}
-
-fn parameter_modifier(parser: &mut Parser<'_, '_>) {
-    parser.sink.start_node(PARAMETER_MODIFIER);
-    match parser.current_token() {
-        Some(Token::VAR_ARG | Token::NO_INLINE | Token::CROSS_INLINE) => parser.bump(),
-        Some(Token::ERR) => {
-            parser.error("expected parameter modifier");
-            parser.bump();
-        }
-        _ => parser.error("expected parameter modifier"),
-    }
-    parser.sink.finish_node();
-}
-
-fn reification_modifier(parser: &mut Parser<'_, '_>) {
-    parser.sink.start_node(REIFICATION_MODIFIER);
-    match parser.current_token() {
-        Some(Token::REIFIED) => parser.bump(),
-        Some(Token::ERR) => {
-            parser.error("expected reification modifier");
-            parser.bump();
-        }
-        _ => parser.error("expected reification modifier"),
-    }
-    parser.sink.finish_node();
-}
-
-fn variance_modifier(parser: &mut Parser<'_, '_>) {
-    parser.sink.start_node(VARIANCE_MODIFIER);
-    match parser.current_token() {
-        Some(Token::IN | Token::OUT) => parser.bump(),
-        Some(Token::ERR) => {
-            parser.error("expected variance modifier");
-            parser.bump();
-        }
-        _ => parser.error("expected variance modifier"),
-    }
-    parser.sink.finish_node();
-}
-
-fn platform_modifier(parser: &mut Parser<'_, '_>) {
-    parser.sink.start_node(PLATFORM_MODIFIER);
-    match parser.current_token() {
-        Some(Token::EXPECT | Token::ACTUAL) => parser.bump(),
-        Some(Token::ERR) => {
-            parser.error("expected platform modifier");
-            parser.bump();
-        }
-        _ => parser.error("expected platform modifier"),
-    }
-    parser.sink.finish_node();
-}
-
-pub(crate) fn starts_modifiers(parser: &mut Parser<'_, '_>) -> bool {
-    starts_annotation(parser) || starts_modifier(parser)
-}
-
-pub(crate) fn parse_optional_modifiers(parser: &mut Parser<'_, '_>) -> bool {
-    if starts_modifiers(parser) {
-        modifiers(parser);
-        true
+pub(crate) fn parameter_modifiers(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    if let Some(cm) = annotation(parser).or_else(|| parameter_modifier(parser)) {
+        let m = cm.precede(parser);
+        while annotation(parser)
+            .or_else(|| parameter_modifier(parser))
+            .is_some()
+        {}
+        Some(m.complete(parser, PARAMETER_MODIFIERS))
     } else {
-        false
+        None
     }
 }
 
-fn starts_modifier(parser: &mut Parser<'_, '_>) -> bool {
-    matches!(
-        parser.current_token(),
-        Some(
-            Token::ENUM
-                | Token::SEALED
-                | Token::ANNOTATION
-                | Token::DATA
-                | Token::INNER
-                | Token::VALUE
-                | Token::OVERRIDE
-                | Token::LATEINIT
-                | Token::PUBLIC
-                | Token::PRIVATE
-                | Token::INTERNAL
-                | Token::PROTECTED
-                | Token::TAILREC
-                | Token::OPERATOR
-                | Token::INFIX
-                | Token::INLINE
-                | Token::EXTERNAL
-                | Token::SUSPEND
-                | Token::CONST
-                | Token::ABSTRACT
-                | Token::FINAL
-                | Token::OPEN
-                | Token::VAR_ARG
-                | Token::NO_INLINE
-                | Token::CROSS_INLINE
-                | Token::EXPECT
-                | Token::ACTUAL
-        )
-    )
+pub(crate) fn type_parameter_modifiers(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    if let Some(cm) = type_parameter_modifier(parser) {
+        let m = cm.precede(parser);
+        while type_parameter_modifier(parser).is_some() {}
+        Some(m.complete(parser, TYPE_PARAMETER_MODIFIERS))
+    } else {
+        None
+    }
 }
 
-fn starts_parameter_modifier(parser: &mut Parser<'_, '_>) -> bool {
-    matches!(
-        parser.current_token(),
-        Some(Token::VAR_ARG | Token::NO_INLINE | Token::CROSS_INLINE)
-    )
+pub(crate) fn modifier(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    class_modifier(parser)
+        .or_else(|| member_modifier(parser))
+        .or_else(|| visibility_modifier(parser))
+        .or_else(|| function_modifier(parser))
+        .or_else(|| property_modifier(parser))
+        .or_else(|| inheritance_modifier(parser))
+        .or_else(|| parameter_modifier(parser))
+        .or_else(|| platform_modifier(parser))
+        .map(|cm| cm.precede(parser).complete(parser, MODIFIER))
 }
 
-fn starts_type_parameter_modifier(parser: &mut Parser<'_, '_>) -> bool {
-    starts_annotation(parser)
-        || matches!(
-            parser.current_token(),
-            Some(Token::REIFIED | Token::IN | Token::OUT)
-        )
+fn type_parameter_modifier(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    reification_modifier(parser)
+        .or_else(|| variance_modifier(parser))
+        .or_else(|| annotation(parser))
+        .map(|cm| cm.precede(parser).complete(parser, TYPE_PARAMETER_MODIFIER))
 }
 
-fn is_class_modifier(token: &Token) -> bool {
-    matches!(
-        token,
-        Token::ENUM | Token::SEALED | Token::ANNOTATION | Token::DATA | Token::INNER | Token::VALUE
-    )
+fn class_modifier(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    match parser.current() {
+        ENUM | SEALED | ANNOTATION | DATA | INNER | VALUE => {
+            let m = parser.start();
+            parser.bump_any();
+            Some(m.complete(parser, CLASS_MODIFIER))
+        }
+        _ => None,
+    }
 }
 
-fn is_member_modifier(token: &Token) -> bool {
-    matches!(token, Token::OVERRIDE | Token::LATEINIT)
+fn member_modifier(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    match parser.current() {
+        OVERRIDE | LATEINIT => {
+            let m = parser.start();
+            parser.bump_any();
+            Some(m.complete(parser, MEMBER_MODIFIER))
+        }
+        _ => None,
+    }
 }
 
-fn is_visibility_modifier(token: &Token) -> bool {
-    matches!(
-        token,
-        Token::PUBLIC | Token::PRIVATE | Token::INTERNAL | Token::PROTECTED
-    )
+fn visibility_modifier(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    match parser.current() {
+        PUBLIC | PRIVATE | INTERNAL | PROTECTED => {
+            let m = parser.start();
+            parser.bump_any();
+            Some(m.complete(parser, VISIBILITY_MODIFIER))
+        }
+        _ => None,
+    }
 }
 
-fn is_function_modifier(token: &Token) -> bool {
-    matches!(
-        token,
-        Token::TAILREC
-            | Token::OPERATOR
-            | Token::INFIX
-            | Token::INLINE
-            | Token::EXTERNAL
-            | Token::SUSPEND
-    )
+fn function_modifier(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    match parser.current() {
+        TAILREC | OPERATOR | INFIX | INLINE | EXTERNAL | SUSPEND => {
+            let m = parser.start();
+            parser.bump_any();
+            Some(m.complete(parser, FUNCTION_MODIFIER))
+        }
+        _ => None,
+    }
 }
 
-fn is_property_modifier(token: &Token) -> bool {
-    matches!(token, Token::CONST)
+fn property_modifier(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    if parser.at(CONST) {
+        let m = parser.start();
+        parser.bump(CONST);
+        Some(m.complete(parser, PROPERTY_MODIFIER))
+    } else {
+        None
+    }
 }
 
-fn is_inheritance_modifier(token: &Token) -> bool {
-    matches!(token, Token::ABSTRACT | Token::FINAL | Token::OPEN)
+fn inheritance_modifier(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    match parser.current() {
+        ABSTRACT | FINAL | OPEN => {
+            let m = parser.start();
+            parser.bump_any();
+            Some(m.complete(parser, INHERITANCE_MODIFIER))
+        }
+        _ => None,
+    }
 }
 
-fn is_parameter_modifier(token: &Token) -> bool {
-    matches!(
-        token,
-        Token::VAR_ARG | Token::NO_INLINE | Token::CROSS_INLINE
-    )
+fn parameter_modifier(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    match parser.current() {
+        VAR_ARG | NO_INLINE | CROSS_INLINE => {
+            let m = parser.start();
+            parser.bump_any();
+            Some(m.complete(parser, PARAMETER_MODIFIER))
+        }
+        _ => None,
+    }
 }
 
-fn is_platform_modifier(token: &Token) -> bool {
-    matches!(token, Token::EXPECT | Token::ACTUAL)
+fn reification_modifier(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    if parser.at(REIFIED) {
+        let m = parser.start();
+        parser.bump(REIFIED);
+        Some(m.complete(parser, REIFICATION_MODIFIER))
+    } else {
+        None
+    }
+}
+
+fn variance_modifier(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    match parser.current() {
+        IN | OUT => {
+            let m = parser.start();
+            parser.bump_any();
+            Some(m.complete(parser, VARIANCE_MODIFIER))
+        }
+        _ => None,
+    }
+}
+
+fn platform_modifier(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    if matches!(parser.current(), EXPECT | ACTUAL) {
+        let m = parser.start();
+        parser.bump_any();
+        Some(m.complete(parser, PLATFORM_MODIFIER))
+    } else {
+        None
+    }
 }

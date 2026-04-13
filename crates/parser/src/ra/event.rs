@@ -3,8 +3,8 @@
 //! parser, so as to allow to evolve the tree representation
 //! and the parser algorithm independently.
 use super::output::Output;
-use crate::SyntaxKind::{self, *};
 use std::mem;
+use syntax::SyntaxKind::{self, *};
 
 /// `Parser` produces a flat list of `Event`s.
 /// They are converted to a tree-structure in

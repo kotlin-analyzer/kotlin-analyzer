@@ -73,6 +73,7 @@ define_syntax! {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
     #[allow(non_camel_case_types)]
     #[repr(u16)]
+    #[allow(clippy::manual_non_exhaustive)]
     pub enum SyntaxKind {
         pub enum Token {
             DELIMITED_COMMENT,
@@ -414,6 +415,7 @@ define_syntax! {
             KOTLIN_FILE,
             ROOT,
             ERROR,
+             #[doc(hidden)]
             __LAST
         }
     }

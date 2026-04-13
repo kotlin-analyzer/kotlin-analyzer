@@ -1,6 +1,6 @@
 //! A bit-set of `SyntaxKind`s.
 
-use crate::SyntaxKind;
+use syntax::SyntaxKind;
 
 /// A bit-set of `SyntaxKind`s
 #[derive(Clone, Copy)]
@@ -51,7 +51,7 @@ impl TokenSet {
 
 #[test]
 fn token_set_works_for_tokens() {
-    use crate::SyntaxKind::*;
+    use syntax::SyntaxKind::*;
     let ts = TokenSet::new(&[EOF, SHEBANG_LINE_TOKEN]);
     assert!(ts.contains(EOF));
     assert!(ts.contains(SHEBANG_LINE_TOKEN));

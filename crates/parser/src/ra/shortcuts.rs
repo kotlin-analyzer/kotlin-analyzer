@@ -169,9 +169,9 @@ fn n_attached_trivias<'a>(
     match kind {
         DECLARATION | CLASS_MEMBER_DECLARATION => {
             let mut res = 0;
-            let mut trivias = trivias_and_nls.enumerate().peekable();
+            let trivias = trivias_and_nls.enumerate().peekable();
 
-            while let Some((i, (kind, text))) = trivias.next() {
+            for (i, (kind, text)) in trivias {
                 match kind {
                     DELIMITED_COMMENT | LINE_COMMENT => {
                         if is_outer(text) {

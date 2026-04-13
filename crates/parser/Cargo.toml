@@ -23,7 +23,6 @@ panic-context.workspace = true
 pretty_assertions.workspace = true
 rowan.workspace = true
 rstest.workspace = true
-syntax = { workspace = true, features = ["cast"] }
 
 [features]
 verbose = []

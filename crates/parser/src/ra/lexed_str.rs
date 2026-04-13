@@ -7,7 +7,8 @@ use std::ops;
 use lexer::Lexer;
 use syntax::Token;
 
-use crate::{SyntaxKind, version::KtVersion};
+use crate::version::KtVersion;
+use syntax::SyntaxKind;
 
 pub struct LexedStr<'a> {
     text: &'a str,
@@ -25,8 +26,8 @@ impl<'a> LexedStr<'a> {
     pub fn new(version: KtVersion, text: &'a str) -> LexedStr<'a> {
         let _p = tracing::info_span!("LexedStr::new").entered();
         let mut conv = Converter::new(version, text);
-        let mut lexer = Lexer::new(text).spanned();
-        while let Some(token_info) = lexer.next() {
+        let lexer = Lexer::new(text).spanned();
+        for token_info in lexer {
             let offset = token_info.span().start;
             let token = token_info.token();
             match token {
@@ -46,7 +47,7 @@ impl<'a> LexedStr<'a> {
         }
 
         let spanned = Lexer::new(text).spanned_with_src().next()?;
-        if spanned.substring().len() as usize != text.len() {
+        if spanned.substring().len() != text.len() {
             return None;
         }
 
