@@ -215,10 +215,9 @@ pub(crate) fn variable_declaration(parser: &mut Parser<'_>) -> Option<CompletedM
     let m = parser.start();
     annotation(parser);
     if simple_identifier(parser).is_some() {
-        if parser.eat(T![:])
-            && ty(parser).is_none() {
-                parser.error("expected a type");
-            }
+        if parser.eat(T![:]) && ty(parser).is_none() {
+            parser.error("expected a type");
+        }
         Some(m.complete(parser, VARIABLE_DECLARATION))
     } else {
         m.abandon(parser);
@@ -247,9 +246,9 @@ pub(crate) fn property_declaration(
         && property_delegate(parser)
             .or_else(|| expression(parser))
             .is_none()
-        {
-            parser.error("expected an expression");
-        }
+    {
+        parser.error("expected an expression");
+    }
     parser.eat(T![;]);
 
     let mod_cm = modifiers(parser);
@@ -286,10 +285,9 @@ fn getter(
         if !parser.eat(T![')']) {
             parser.error("expected ')'");
         }
-        if parser.eat(T![:])
-            && ty(parser).is_none() {
-                parser.error("expected a type");
-            }
+        if parser.eat(T![:]) && ty(parser).is_none() {
+            parser.error("expected a type");
+        }
         if function_body(parser).is_none() {
             parser.error("expected a function body");
         }
@@ -314,10 +312,9 @@ fn setter(
         if !parser.eat(T![')']) {
             parser.error("expected ')'");
         }
-        if parser.eat(T![:])
-            && ty(parser).is_none() {
-                parser.error("expected a type");
-            }
+        if parser.eat(T![:]) && ty(parser).is_none() {
+            parser.error("expected a type");
+        }
         if function_body(parser).is_none() {
             parser.error("expected a function body");
         }
@@ -349,10 +346,9 @@ fn function_value_parameter(parser: &mut Parser<'_>) -> Option<CompletedMarker> 
         parser.error("expected a parameter");
     }
 
-    if parser.eat(T![=])
-        && expression(parser).is_none() {
-            parser.error("expected an expression");
-        }
+    if parser.eat(T![=]) && expression(parser).is_none() {
+        parser.error("expected an expression");
+    }
     Some(m.complete(parser, FUNCTION_VALUE_PARAMETER))
 }
 
@@ -363,10 +359,9 @@ fn function_value_parameter_with_optional_type(parser: &mut Parser<'_>) -> Optio
         parser.error("expected a parameter");
     }
 
-    if parser.eat(T![=])
-        && expression(parser).is_none() {
-            parser.error("expected an expression");
-        }
+    if parser.eat(T![=]) && expression(parser).is_none() {
+        parser.error("expected an expression");
+    }
     Some(m.complete(parser, FUNCTION_VALUE_PARAMETER_WITH_OPTIONAL_TYPE))
 }
 

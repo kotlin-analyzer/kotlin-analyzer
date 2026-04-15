@@ -84,34 +84,20 @@ impl<'t> Parser<'t> {
         true
     }
 
-    pub(crate) fn eat_contextual_kw(&mut self, kind: SyntaxKind) -> bool {
-        if !self.at_contextual_kw(kind) {
-            return false;
-        }
-        self.bump_remap(kind);
-        true
-    }
-
-    fn at_composite2(&self, n: usize, k1: SyntaxKind, k2: SyntaxKind) -> bool {
-        self.inp.kind(self.pos + n) == k1 && self.inp.kind(self.pos + n + 1) == k2
-        // && self.inp.is_joint(self.pos + n)
-    }
-
     /// Checks if the current token is in `kinds`.
     pub(crate) fn at_ts(&self, kinds: TokenSet) -> bool {
         kinds.contains(self.current())
     }
 
-    /// Checks if the current token is contextual keyword `kw`.
-    pub(crate) fn at_contextual_kw(&self, kw: SyntaxKind) -> bool {
-        self.inp.contextual_kind(self.pos) == kw
+    /// Checks if the current token is a `(` preceded by whitespace.
+    pub(crate) fn at_lparen_after_ws(&self) -> bool {
+        self.at(T!['(']) && self.has_ws_before()
     }
 
-    /// Checks if the nth token is contextual keyword `kw`.
-    pub(crate) fn nth_at_contextual_kw(&self, n: usize, kw: SyntaxKind) -> bool {
-        self.inp.contextual_kind(self.pos + n) == kw
+    /// Checks if the current token has a whitespace before it.
+    pub(crate) fn has_ws_before(&self) -> bool {
+        self.inp.has_ws_before(self.pos)
     }
-
     /// Starts a new node in the syntax tree. All nodes and tokens
     /// consumed between the `start` and the corresponding `Marker::complete`
     /// belong to the same node.

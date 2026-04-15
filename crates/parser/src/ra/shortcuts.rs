@@ -32,10 +32,17 @@ impl LexedStr<'_> {
     pub fn to_input(&self, version: KtVersion) -> Input {
         let _p = tracing::info_span!("LexedStr::to_input").entered();
         let mut res = Input::with_capacity(self.len());
+        let mut seen_ws = false;
         for i in 0..self.len() {
             let kind = self.kind(i);
             if !kind.is_trivia() {
                 res.push(kind, version);
+                if seen_ws {
+                    res.set_ws_before();
+                }
+                seen_ws = false;
+            } else if matches!(kind, WS | NL) {
+                seen_ws = true;
             }
         }
         res

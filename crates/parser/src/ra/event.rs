@@ -85,8 +85,6 @@ pub(super) fn process(mut events: Vec<Event>) -> Output {
     let mut res = Output::default();
     let mut forward_parents = Vec::new();
 
-    dbg!("Processing events: {:#?}", &events);
-
     for i in 0..events.len() {
         match mem::replace(&mut events[i], Event::tombstone()) {
             Event::Start {

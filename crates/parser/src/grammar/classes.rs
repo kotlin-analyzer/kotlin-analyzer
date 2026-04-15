@@ -179,7 +179,7 @@ fn delegation_specifier(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
         if parser.at(T![by]) {
             explicit_delegation(parser, ty_marker);
         } else {
-            constructor_invocation(parser, ty_marker);
+            constructor_invocation(parser, ty_marker, false);
         }
         Some(m.complete(parser, DELEGATION_SPECIFIER))
     } else {
@@ -235,8 +235,9 @@ pub(crate) fn type_parameters(parser: &mut Parser<'_>) -> Option<CompletedMarker
 pub(crate) fn constructor_invocation(
     parser: &mut Parser<'_>,
     user_type_marker: CompletedMarker,
+    in_fn_type_position: bool,
 ) -> Option<CompletedMarker> {
-    if !parser.at(T!['(']) {
+    if !parser.at(T!['(']) || (in_fn_type_position && parser.at_lparen_after_ws()) {
         return None;
     }
     let m = user_type_marker.precede(parser);

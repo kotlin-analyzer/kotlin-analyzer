@@ -93,7 +93,7 @@ fn annotation_use_site_target_or_at(parser: &mut Parser<'_>) -> Option<Completed
 pub(crate) fn unescaped_annotation(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     let m = parser.start();
     if let Some(user_type_marker) = user_type(parser) {
-        constructor_invocation(parser, user_type_marker);
+        constructor_invocation(parser, user_type_marker, true);
         Some(m.complete(parser, UNESCAPED_ANNOTATION))
     } else {
         m.abandon(parser);
