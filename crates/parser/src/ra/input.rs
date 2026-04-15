@@ -35,10 +35,6 @@ impl Input {
     pub fn push(&mut self, kind: SyntaxKind, version: KtVersion) {
         self.push_impl(kind, SyntaxKind::EOF, version)
     }
-    #[inline]
-    pub fn push_ident(&mut self, contextual_kind: SyntaxKind, version: KtVersion) {
-        self.push_impl(SyntaxKind::IDENTIFIER, contextual_kind, version)
-    }
 
     #[inline]
     pub fn set_ws_before(&mut self) {

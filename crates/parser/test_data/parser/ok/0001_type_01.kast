@@ -76,7 +76,7 @@ TYPE
                   USER_TYPE
                     SIMPLE_USER_TYPE
                       SIMPLE_IDENTIFIER
-                        IDENTIFIER_TOKEN "NonNllable"
+                        IDENTIFIER_TOKEN "NonNullable"
         WS " "
         FUNCTION_TYPE
           FUNCTION_TYPE_PARAMETERS

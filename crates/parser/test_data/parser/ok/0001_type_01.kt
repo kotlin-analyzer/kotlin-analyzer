@@ -1,7 +1,7 @@
 @Decorated 
 Foo.(
     @Serializable List<out Bar?>, 
-    @NonNllable () -> Baz, 
+    @NonNullable () -> Baz, 
     dynamic, 
     String & (Generic<in T>),
     ((a: A, b: B) -> C)?

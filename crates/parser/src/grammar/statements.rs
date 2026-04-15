@@ -4,7 +4,7 @@ use super::annotations::annotation;
 use super::class_members::{multi_variable_declaration, variable_declaration};
 use super::expressions::expression;
 use super::general::declaration;
-use super::identifiers::is_simple_identifier;
+use super::identifiers::{is_simple_identifier, simple_identifier};
 use super::modifiers::modifiers;
 use crate::ra::{CompletedMarker, Parser};
 
@@ -178,7 +178,7 @@ fn do_while_statement(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
 pub(crate) fn label(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     if is_simple_identifier(parser) && (parser.nth_at(1, T![@]) || parser.nth_at(1, AT_POST_WS)) {
         let m = parser.start();
-        parser.bump(SIMPLE_IDENTIFIER);
+        simple_identifier(parser);
         parser.bump_any(); // either T![@] or AT_POST_WS
         Some(m.complete(parser, LABEL))
     } else {

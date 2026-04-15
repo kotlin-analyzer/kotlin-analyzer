@@ -1,6 +1,6 @@
 #[doc = r" `T![]`"]
 #[macro_export]
-macro_rules ! T {
+macro_rules! T {
     [;] => { $ crate :: SyntaxKind :: SEMICOLON };
     [,] => { $ crate :: SyntaxKind :: COMMA };
     ['('] => { $ crate :: SyntaxKind :: L_PAREN };
@@ -60,7 +60,6 @@ macro_rules ! T {
     [do] => { $ crate :: SyntaxKind :: DO };
     [else] => { $ crate :: SyntaxKind :: ELSE };
     [enum] => { $ crate :: SyntaxKind :: ENUM };
-    [false] => { $ crate :: SyntaxKind :: FALSE };
     [final] => { $ crate :: SyntaxKind :: FINAL };
     [fun] => { $ crate :: SyntaxKind :: FUN };
     [for] => { $ crate :: SyntaxKind :: FOR };
@@ -71,7 +70,6 @@ macro_rules ! T {
     [!is] => { $ crate :: SyntaxKind :: NOT_IS };
     [val] => { $ crate :: SyntaxKind :: VAL };
     [var] => { $ crate :: SyntaxKind :: VAR };
-    [loop] => { $ crate :: SyntaxKind :: LOOP };
     [throw] => { $ crate :: SyntaxKind :: THROW };
     [try] => { $ crate :: SyntaxKind :: TRY };
     [catch] => { $ crate :: SyntaxKind :: CATCH };
@@ -81,7 +79,6 @@ macro_rules ! T {
     [super] => { $ crate :: SyntaxKind :: SUPER };
     [super@] => { $ crate :: SyntaxKind :: SUPER_AT };
     [data] => { $ crate :: SyntaxKind :: DATA };
-    [true] => { $ crate :: SyntaxKind :: TRUE };
     [typealias] => { $ crate :: SyntaxKind :: TYPE_ALIAS };
     [typeof] => { $ crate :: SyntaxKind :: TYPEOF };
     [where] => { $ crate :: SyntaxKind :: WHERE };
