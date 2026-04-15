@@ -65,13 +65,11 @@ fn primary_constructor(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     let m = parser.start();
 
     modifiers(parser);
-    if !parser.eat(T![constructor]) {
-        m.abandon(parser);
-        return None;
-    }
+    parser.eat(T![constructor]);
 
     if class_parameters(parser).is_none() {
-        parser.error("expected `(`");
+        m.abandon(parser);
+        return None;
     }
 
     Some(m.complete(parser, PRIMARY_CONSTRUCTOR))

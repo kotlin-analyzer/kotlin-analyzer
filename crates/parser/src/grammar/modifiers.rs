@@ -7,7 +7,7 @@ pub(crate) fn modifiers(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     if let Some(cm) = annotation(parser).or_else(|| modifier(parser)) {
         let m = cm.precede(parser);
         while annotation(parser).or_else(|| modifier(parser)).is_some() {}
-        Some(m.complete(parser, PARAMETER_MODIFIERS))
+        Some(m.complete(parser, MODIFIERS))
     } else {
         None
     }

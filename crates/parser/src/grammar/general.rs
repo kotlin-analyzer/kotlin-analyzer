@@ -154,14 +154,14 @@ fn type_alias(
     parser: &mut Parser<'_>,
     modifiers_marker: Option<CompletedMarker>,
 ) -> Option<CompletedMarker> {
-    if !parser.at(T![type]) {
+    if !parser.at(T![typealias]) {
         return None;
     }
     let m = modifiers_marker
         .map(|cm| cm.precede(parser))
         .unwrap_or_else(|| parser.start());
 
-    parser.bump(T![type]);
+    parser.bump(T![typealias]);
 
     if simple_identifier(parser).is_none() {
         parser.error("expected type alias name");
@@ -192,7 +192,7 @@ pub(crate) fn declaration(
     } else if parser.at_ts(PROPERTY_DECLARATION_START) {
         property_declaration(parser, modifiers_marker)
             .map(|cm| cm.precede(parser).complete(parser, DECLARATION))
-    } else if parser.at(T![type]) {
+    } else if parser.at(T![typealias]) {
         type_alias(parser, modifiers_marker)
             .map(|cm| cm.precede(parser).complete(parser, DECLARATION))
     } else {

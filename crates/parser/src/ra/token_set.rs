@@ -57,8 +57,4 @@ fn token_set_works_for_tokens() {
     assert!(ts.contains(SHEBANG_LINE_TOKEN));
     assert!(!ts.contains(ADD));
     assert!(!ts.contains(DELIMITED_COMMENT));
-
-    for token in ts.0 {
-        dbg!(token);
-    }
 }
