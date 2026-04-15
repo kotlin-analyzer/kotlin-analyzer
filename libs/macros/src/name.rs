@@ -2,7 +2,7 @@ use inflector::Inflector;
 use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote};
 use syn::{ExprPath, Ident, Result, parse_quote};
-use tokens::Token;
+use syntax::Token;
 
 use crate::parse::{BasicParseEntry, ParseEntry};
 

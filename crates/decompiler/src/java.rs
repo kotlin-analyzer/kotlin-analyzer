@@ -329,13 +329,13 @@ pub fn decompile_class(class_file: ClassFile) -> DecompilationResult<JClass> {
     }
 
     let mut parent_name: Option<String> = None;
-    if let Some(Constant::ClassInfo { name_index }) = super_class_info {
-        if name_index != 0 {
-            parent_name = class_file
-                .get_constant_utf8(name_index)
-                .ok()
-                .map(String::from);
-        }
+    if let Some(Constant::ClassInfo { name_index }) = super_class_info
+        && name_index != 0
+    {
+        parent_name = class_file
+            .get_constant_utf8(name_index)
+            .ok()
+            .map(String::from);
     }
 
     let mut interfaces: Vec<String> = vec![];

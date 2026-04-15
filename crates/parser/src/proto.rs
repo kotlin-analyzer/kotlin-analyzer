@@ -309,7 +309,7 @@ pub enum KotlinNode {
     },
 
     /// Matches `Identifier | SOFT_KEYWORDS`
-    #[rule(identifier_token: $Identifier | soft_keyword: SOFT_KEYWORDS)]
+    #[rule(IDENTIFIER: $Identifier | soft_keyword: SOFT_KEYWORDS)]
     #[describe("simple identifier")]
     #[denote(SIMPLE_IDENTIFIER)]
     SimpleIdentifier {
@@ -318,14 +318,14 @@ pub enum KotlinNode {
         #[parent]
         parent: NodeRef,
         #[child]
-        identifier_token: TokenRef,
+        IDENTIFIER: TokenRef,
         #[child]
         soft_keyword: TokenRef,
     },
 
     /// Variant of SimpleIdentifier that does not allow suspend
     /// Used in Type definitions and other places where suspend is not allowed
-    #[rule(identifier_token: $Identifier | soft_keyword: SOFT_KEYWORDS_SANS_SUSPEND_WHERE)]
+    #[rule(IDENTIFIER: $Identifier | soft_keyword: SOFT_KEYWORDS_SANS_SUSPEND_WHERE)]
     #[describe("simple identifier")]
     SimpleTypeIdentifier {
         #[node]
@@ -333,7 +333,7 @@ pub enum KotlinNode {
         #[parent]
         parent: NodeRef,
         #[child]
-        identifier_token: TokenRef,
+        IDENTIFIER: TokenRef,
         #[child]
         soft_keyword: TokenRef,
     },

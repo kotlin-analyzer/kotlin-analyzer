@@ -1,5 +1,6 @@
 ---
 source: crates/lexer/tests/lexer.rs
+assertion_line: 124
 expression: entries
 ---
 [

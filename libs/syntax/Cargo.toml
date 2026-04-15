@@ -1,5 +1,5 @@
 [package]
-name = "ast"
+name = "syntax"
 version = "0.0.1"
 edition.workspace = true
 rust-version.workspace = true
@@ -8,9 +8,8 @@ license.workspace = true
 
 [dependencies]
 casey.workspace = true
-inflector-plus.workspace = true
-macros.workspace = true
-ron.workspace = true
 rowan.workspace = true
-serde.workspace = true
-syntax.workspace = true
+
+[features]
+default = []
+cast = []
