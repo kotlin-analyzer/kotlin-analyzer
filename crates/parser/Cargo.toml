@@ -8,6 +8,7 @@ license.workspace = true
 
 [dependencies]
 ast.workspace = true
+casey.workspace = true
 drop_bomb.workspace = true
 # todo: remove dependency on lexer: move to dev dependencies
 lexer.workspace = true

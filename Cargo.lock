@@ -664,6 +664,7 @@ name = "parser"
 version = "0.0.1"
 dependencies = [
  "ast",
+ "casey",
  "drop_bomb",
  "expect-test",
  "insta",

@@ -244,7 +244,7 @@ pub(crate) fn property_declaration(
     type_constraints(parser);
     if parser.eat(T![=])
         && property_delegate(parser)
-            .or_else(|| expression(parser))
+            .or_else(|| expression(parser).map(|e| e.marker()))
             .is_none()
     {
         parser.error("expected an expression");

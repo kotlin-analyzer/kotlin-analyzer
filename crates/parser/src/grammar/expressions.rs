@@ -1,6 +1,11 @@
+//! This module contains parsing functions for expressions and their components.
+//! Expressions are similar to assigments, this makes parsing them a bit tricky, because of the ambiguity.
+//! The code here tries to factor that into their logic.
+
+use casey::shouty;
 use syntax::{SyntaxKind::*, T};
 
-use super::annotations::annotation;
+use super::annotations::{annotation, starts_annotation};
 use super::class_members::{
     context_parameter_list, function_body, multi_variable_declaration, parameters_with_opt_type,
     variable_declaration,
@@ -11,102 +16,165 @@ use super::statements::{block, control_structure_body, label, semi, statements};
 use super::types::{RecvType, receiver_type, ty, type_projection};
 use crate::ra::{CompletedMarker, Parser};
 
-pub(crate) fn expression(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    disjunction(parser).map(|cm| cm.precede(parser).complete(parser, EXPRESSION))
-}
+macro_rules! define_operator {
+    ($name:ident, $mat:pat) => {
+        pub(crate) mod $name {
+            use super::*;
+            pub(crate) fn parse(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+                match parser.current() {
+                    $mat => {
+                        let m = parser.start();
+                        parser.bump_any();
+                        Some(m.complete(parser, shouty!($name)))
+                    }
+                    _ => None,
+                }
+            }
 
-fn disjunction(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    if let Some(cm) = conjunction(parser) {
-        let m = cm.precede(parser);
-        while parser.eat(T![||]) {
-            if conjunction(parser).is_none() {
-                parser.error("expected an expression");
-            } else {
-                break;
+            pub(crate) fn is(parser: &mut Parser<'_>) -> bool {
+                matches!(parser.current(), $mat)
             }
         }
-        Some(m.complete(parser, DISJUNCTION))
-    } else {
-        None
-    }
+    };
 }
 
-fn conjunction(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    if let Some(cm) = equality(parser) {
-        let m = cm.precede(parser);
-        while parser.eat(T![&&]) {
-            if equality(parser).is_none() {
-                parser.error("expected an expression");
-            } else {
-                break;
+pub(crate) fn expression(parser: &mut Parser<'_>) -> Option<Expression> {
+    if let Some(ex) = disjunction(parser) {
+        let m = ex.clone().marker().precede(parser);
+        let cm = m.complete(parser, EXPRESSION);
+        let res = match ex {
+            Expression::Affixed(AffixedExpression::Postfix(_)) => {
+                Expression::Affixed(AffixedExpression::Postfix(cm))
             }
-        }
-        Some(m.complete(parser, CONJUNCTION))
-    } else {
-        None
-    }
-}
-
-fn equality(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    if let Some(cm) = comparison(parser) {
-        let m = cm.precede(parser);
-        while equality_operator(parser).is_some() {
-            if comparison(parser).is_none() {
-                parser.error("expected an expression");
-            } else {
-                break;
+            Expression::Affixed(AffixedExpression::Prefix(_)) => {
+                Expression::Affixed(AffixedExpression::Postfix(cm))
             }
-        }
-        Some(m.complete(parser, EQUALITY))
+            Expression::Other(_) => Expression::Other(cm),
+        };
+        Some(res)
     } else {
         None
     }
 }
 
-fn comparison(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    if let Some(cm) = generic_call_like_comparison(parser) {
-        let m = cm.precede(parser);
-        while comparison_operator(parser).is_some() {
-            if generic_call_like_comparison(parser).is_none() {
-                parser.error("expected an expression");
-            } else {
-                break;
+fn disjunction(parser: &mut Parser<'_>) -> Option<Expression> {
+    if let Some(ex) = conjunction(parser) {
+        if parser.at(T![&&]) {
+            let m = ex.marker().precede(parser);
+            while parser.eat(T![||]) {
+                if conjunction(parser).is_none() {
+                    parser.error("expected an expression");
+                    break;
+                }
             }
+            Some(Expression::Other(m.complete(parser, DISJUNCTION)))
+        } else {
+            Some(ex)
         }
-        Some(m.complete(parser, COMPARISON))
     } else {
         None
     }
 }
 
-fn generic_call_like_comparison(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    if let Some(cm) = infix_operation(parser) {
-        let m = cm.precede(parser);
-        while call_suffix(parser, CallSuffix::Full).is_some() {}
-        Some(m.complete(parser, GENERIC_CALL_LIKE_COMPARISON))
+fn conjunction(parser: &mut Parser<'_>) -> Option<Expression> {
+    if let Some(ex) = equality(parser) {
+        if parser.at(T![&&]) {
+            let m = ex.marker().precede(parser);
+            while parser.eat(T![&&]) {
+                if equality(parser).is_none() {
+                    parser.error("expected an expression");
+                    break;
+                }
+            }
+            Some(Expression::Other(m.complete(parser, CONJUNCTION)))
+        } else {
+            Some(ex)
+        }
     } else {
         None
     }
 }
 
-fn infix_operation(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+fn equality(parser: &mut Parser<'_>) -> Option<Expression> {
+    if let Some(ex) = comparison(parser) {
+        if equality_operator::is(parser) {
+            let m = ex.marker().precede(parser);
+            while equality_operator::parse(parser).is_some() {
+                if comparison(parser).is_none() {
+                    parser.error("expected an expression");
+                    break;
+                }
+            }
+            Some(Expression::Other(m.complete(parser, EQUALITY)))
+        } else {
+            Some(ex)
+        }
+    } else {
+        None
+    }
+}
+
+fn comparison(parser: &mut Parser<'_>) -> Option<Expression> {
+    if let Some(ex) = generic_call_like_comparison(parser) {
+        if comparison_operator::is(parser) {
+            let m = ex.marker().precede(parser);
+            while comparison_operator::parse(parser).is_some() {
+                if generic_call_like_comparison(parser).is_none() {
+                    parser.error("expected an expression");
+                    break;
+                }
+            }
+            Some(Expression::Other(m.complete(parser, COMPARISON)))
+        } else {
+            Some(ex)
+        }
+    } else {
+        None
+    }
+}
+
+fn generic_call_like_comparison(parser: &mut Parser<'_>) -> Option<Expression> {
+    if let Some(ex) = infix_operation(parser) {
+        let m = ex.clone().marker().precede(parser);
+        let mut seen = 0;
+        while call_suffix(parser, CallSuffix::Full).is_some() {
+            seen += 1;
+        }
+        if seen > 0 {
+            Some(Expression::Other(
+                m.complete(parser, GENERIC_CALL_LIKE_COMPARISON),
+            ))
+        } else {
+            m.abandon(parser);
+            Some(ex)
+        }
+    } else {
+        None
+    }
+}
+
+fn infix_operation(parser: &mut Parser<'_>) -> Option<Expression> {
     if let Some(cm) = elvis_expression(parser) {
-        let m = cm.precede(parser);
-        while is_or_in_operator_expr(parser) {}
-        Some(m.complete(parser, INFIX_OPERATION))
+        if is_operator::is(parser) || in_operator::is(parser) {
+            let m = cm.marker().precede(parser);
+            while is_or_in_operator_expr(parser) {}
+            Some(Expression::Other(m.complete(parser, INFIX_OPERATION)))
+        } else {
+            Some(cm)
+        }
     } else {
         None
     }
 }
 
 fn is_or_in_operator_expr(parser: &mut Parser<'_>) -> bool {
-    if is_operator(parser).is_some() {
+    if is_operator::is(parser) {
         if ty(parser).is_none() {
             parser.error("expected a type");
         } else {
             return true;
         }
-    } else if in_operator(parser).is_some() {
+    } else if in_operator::is(parser) {
         if elvis_expression(parser).is_none() {
             parser.error("expected an expression");
         } else {
@@ -116,24 +184,31 @@ fn is_or_in_operator_expr(parser: &mut Parser<'_>) -> bool {
     false
 }
 
-fn elvis_expression(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+fn elvis_expression(parser: &mut Parser<'_>) -> Option<Expression> {
     if let Some(cm) = infix_function_call(parser) {
-        let m = cm.precede(parser);
-        while elvis(parser).is_some() {
-            if infix_function_call(parser).is_none() {
-                parser.error("expected an expression");
-            } else {
-                break;
+        if is_elvis(parser) {
+            let m = cm.marker().precede(parser);
+            while elvis(parser).is_some() {
+                if infix_function_call(parser).is_none() {
+                    parser.error("expected an expression");
+                    break;
+                }
             }
+            Some(Expression::Other(m.complete(parser, ELVIS_EXPRESSION)))
+        } else {
+            Some(cm)
         }
-        Some(m.complete(parser, ELVIS_EXPRESSION))
     } else {
         None
     }
 }
 
+fn is_elvis(parser: &mut Parser<'_>) -> bool {
+    parser.at(T![?]) && !parser.nth_at(1, T![:])
+}
+
 fn elvis(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    if parser.at(T![?]) && !parser.nth_at(1, T![:]) {
+    if is_elvis(parser) {
         let m = parser.start();
         parser.bump(T![?]);
         parser.bump(T![:]);
@@ -143,81 +218,98 @@ fn elvis(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     }
 }
 
-fn infix_function_call(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+fn infix_function_call(parser: &mut Parser<'_>) -> Option<Expression> {
     if let Some(cm) = range_expression(parser) {
-        let m = cm.precede(parser);
-        while simple_identifier(parser).is_some() {
-            if range_expression(parser).is_none() {
-                parser.error("expected an expression");
-            } else {
-                break;
+        if is_simple_identifier(parser) {
+            let m = cm.marker().precede(parser);
+            while simple_identifier(parser).is_some() {
+                if range_expression(parser).is_none() {
+                    parser.error("expected an expression");
+                    break;
+                }
             }
+            Some(Expression::Other(m.complete(parser, INFIX_FUNCTION_CALL)))
+        } else {
+            Some(cm)
         }
-        Some(m.complete(parser, INFIX_FUNCTION_CALL))
     } else {
         None
     }
 }
 
-fn range_expression(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+fn range_expression(parser: &mut Parser<'_>) -> Option<Expression> {
     if let Some(cm) = additive_expression(parser) {
-        let m = cm.precede(parser);
-        while parser.eat(T![..]) || parser.eat(T![..<]) {
-            if additive_expression(parser).is_none() {
-                parser.error("expected an expression");
-            } else {
-                break;
+        if range_operator::is(parser) {
+            let m = cm.marker().precede(parser);
+            while range_operator::parse(parser) {
+                if additive_expression(parser).is_none() {
+                    parser.error("expected an expression");
+                    break;
+                }
             }
+            Some(Expression::Other(m.complete(parser, RANGE_EXPRESSION)))
+        } else {
+            Some(cm)
         }
-        Some(m.complete(parser, RANGE_EXPRESSION))
     } else {
         None
     }
 }
 
-fn additive_expression(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+fn additive_expression(parser: &mut Parser<'_>) -> Option<Expression> {
     if let Some(cm) = multiplicative_expression(parser) {
-        let m = cm.precede(parser);
-        while additive_operator(parser).is_some() {
-            if multiplicative_expression(parser).is_none() {
-                parser.error("expected an expression");
-            } else {
-                break;
+        if additive_operator::is(parser) {
+            let m = cm.marker().precede(parser);
+            while additive_operator::parse(parser).is_some() {
+                if multiplicative_expression(parser).is_none() {
+                    parser.error("expected an expression");
+                    break;
+                }
             }
+            Some(Expression::Other(m.complete(parser, ADDITIVE_EXPRESSION)))
+        } else {
+            Some(cm)
         }
-        Some(m.complete(parser, ADDITIVE_EXPRESSION))
     } else {
         None
     }
 }
 
-fn multiplicative_expression(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+fn multiplicative_expression(parser: &mut Parser<'_>) -> Option<Expression> {
     if let Some(cm) = as_expression(parser) {
-        let m = cm.precede(parser);
-        while multiplicative_operator(parser).is_some() {
-            if as_expression(parser).is_none() {
-                parser.error("expected an expression");
-            } else {
-                break;
+        if multiplicative_operator::is(parser) {
+            let m = cm.marker().precede(parser);
+            while multiplicative_operator::parse(parser).is_some() {
+                if as_expression(parser).is_none() {
+                    parser.error("expected an expression");
+                    break;
+                }
             }
+            Some(Expression::Other(
+                m.complete(parser, MULTIPLICATIVE_EXPRESSION),
+            ))
+        } else {
+            Some(cm)
         }
-        Some(m.complete(parser, MULTIPLICATIVE_EXPRESSION))
     } else {
         None
     }
 }
 
-fn as_expression(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    if let Some(cm) = prefix_unary_expression(parser).map(|s| s.marker()) {
-        let m = cm.precede(parser);
-        while as_operator(parser).is_some() {
-            if ty(parser).is_none() {
-                parser.error("expected a type");
-            } else {
-                break;
+fn as_expression(parser: &mut Parser<'_>) -> Option<Expression> {
+    if let Some(cm) = prefix_unary_expression(parser) {
+        if as_operator::is(parser) {
+            let m = cm.marker().precede(parser);
+            while as_operator::parse(parser).is_some() {
+                if ty(parser).is_none() {
+                    parser.error("expected a type");
+                    break;
+                }
             }
+            Some(Expression::Other(m.complete(parser, AS_EXPRESSION)))
+        } else {
+            Some(Expression::Affixed(cm))
         }
-        Some(m.complete(parser, AS_EXPRESSION))
     } else {
         None
     }
@@ -243,7 +335,7 @@ fn parenthesized_directly_assignable_expression(
 fn directly_assignable_expression(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     postfix_unary_expression(parser)
         .map(|cm| {
-            let m = cm.precede(parser);
+            let m = cm.marker().precede(parser);
             assignable_suffix(parser); // record error if none
             m.complete(parser, DIRECTLY_ASSIGNABLE_EXPRESSION)
         })
@@ -278,20 +370,36 @@ fn assignable_expression(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
         .map(|cm| cm.precede(parser).complete(parser, ASSIGNABLE_EXPRESSION))
 }
 
-enum PrefixUnaryExpression {
+#[derive(Clone)]
+pub(crate) enum AffixedExpression {
     Prefix(CompletedMarker),
     Postfix(CompletedMarker),
 }
 
-impl PrefixUnaryExpression {
+impl AffixedExpression {
     fn marker(self) -> CompletedMarker {
         match self {
-            PrefixUnaryExpression::Prefix(cm) | PrefixUnaryExpression::Postfix(cm) => cm,
+            AffixedExpression::Prefix(marker) | AffixedExpression::Postfix(marker) => marker,
         }
     }
 }
 
-fn prefix_unary_expression(parser: &mut Parser<'_>) -> Option<PrefixUnaryExpression> {
+#[derive(Clone)]
+pub(crate) enum Expression {
+    Affixed(AffixedExpression),
+    Other(CompletedMarker),
+}
+
+impl Expression {
+    pub(crate) fn marker(self) -> CompletedMarker {
+        match self {
+            Expression::Affixed(affixed) => affixed.marker(),
+            Expression::Other(marker) => marker,
+        }
+    }
+}
+
+pub(crate) fn prefix_unary_expression(parser: &mut Parser<'_>) -> Option<AffixedExpression> {
     let m = parser.start();
     let mut has_prefix = false;
 
@@ -299,13 +407,14 @@ fn prefix_unary_expression(parser: &mut Parser<'_>) -> Option<PrefixUnaryExpress
         has_prefix = true;
     }
     let postfix = postfix_unary_expression(parser);
-    let has_postfix = postfix.is_some();
 
-    if has_postfix {
+    if postfix.is_some() {
         if has_prefix {
-            Some(PrefixUnaryExpression::Prefix(m.complete(parser, PREFIX_UNARY_EXPRESSION)))
+            Some(AffixedExpression::Prefix(
+                m.complete(parser, PREFIX_UNARY_EXPRESSION),
+            ))
         } else {
-           postfix.map(PrefixUnaryExpression::Postfix)
+            postfix
         }
     } else {
         m.abandon(parser);
@@ -315,28 +424,28 @@ fn prefix_unary_expression(parser: &mut Parser<'_>) -> Option<PrefixUnaryExpress
 
 fn unary_prefix(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     annotation(parser)
-        .or_else(|| prefix_unary_operator(parser))
+        .or_else(|| prefix_unary_operator::parse(parser))
         .or_else(|| label(parser))
         .map(|cm| cm.precede(parser).complete(parser, UNARY_PREFIX))
 }
 
-fn postfix_unary_expression(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    primary_expression(parser).map(|cm| {
-        let m = cm.marker().precede(parser);
+fn postfix_unary_expression(parser: &mut Parser<'_>) -> Option<AffixedExpression> {
+    primary_expression(parser).map(|aff| {
+        let m = aff.precede(parser);
         while postfix_unary_suffix(parser).is_some() {}
-        m.complete(parser, POSTFIX_UNARY_EXPRESSION)
+        AffixedExpression::Postfix(m.complete(parser, POSTFIX_UNARY_EXPRESSION))
     })
 }
 
 fn postfix_unary_suffix(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     call_suffix(parser, CallSuffix::AcceptTypeArguments)
-        .or_else(|| postfix_unary_operator(parser))
+        .or_else(|| postfix_unary_operator::parse(parser))
         .or_else(|| indexing_suffix(parser))
         .or_else(|| navigation_suffix(parser))
         .map(|cm| cm.precede(parser).complete(parser, POSTFIX_UNARY_SUFFIX))
 }
 
-fn assignable_suffix(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+pub(crate) fn assignable_suffix(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     indexing_suffix(parser)
         .or_else(|| navigation_suffix(parser))
         .or_else(|| type_arguments(parser))
@@ -381,16 +490,23 @@ fn navigation_suffix(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
 enum CallSuffix {
     /// Allows call_suffix to succeed with just type arguments.
     AcceptTypeArguments,
-    Full
+    Full,
 }
 
+fn starts_call_suffix(parser: &mut Parser<'_>) -> bool {
+    parser.at(T!['('])
+        || parser.at(T![<])
+        || parser.at(T!['{'])
+        || parser.at(T![label])
+        || starts_annotation(parser)
+}
 
 fn call_suffix(parser: &mut Parser<'_>, res: CallSuffix) -> Option<CompletedMarker> {
     let m = parser.start();
     let ta = type_arguments(parser);
     let va = value_arguments(parser);
     let lambda = annotated_lambda(parser);
-    
+
     match (va.is_none(), lambda.is_none(), res) {
         (true, true, CallSuffix::AcceptTypeArguments) => {
             m.abandon(parser);
@@ -459,66 +575,31 @@ fn value_argument(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     Some(m.complete(parser, VALUE_ARGUMENT))
 }
 
-enum PrimaryExpression {
-        Parenthesized(CompletedMarker),
-        CollectionLiteral(CompletedMarker),
-        LiteralConstant(CompletedMarker),
-        StringLiteral(CompletedMarker),
-        FunctionLiteral(CompletedMarker),
-        ObjectLiteral(CompletedMarker),
-        ThisExpression(CompletedMarker),
-        SuperExpression(CompletedMarker),
-        IfExpression(CompletedMarker),
-        WhenExpression(CompletedMarker),
-        TryExpression(CompletedMarker),
-        JumpExpression(CompletedMarker),
-        SimpleIdentifier(CompletedMarker),
-        CallableReference(CompletedMarker)
-}
-
-impl PrimaryExpression {
-    fn marker(self) -> CompletedMarker {
-        match self {
-            PrimaryExpression::Parenthesized(cm)
-            | PrimaryExpression::CollectionLiteral(cm)
-            | PrimaryExpression::LiteralConstant(cm)
-            | PrimaryExpression::StringLiteral(cm)
-            | PrimaryExpression::FunctionLiteral(cm)
-            | PrimaryExpression::ObjectLiteral(cm)
-            | PrimaryExpression::ThisExpression(cm)
-            | PrimaryExpression::SuperExpression(cm)
-            | PrimaryExpression::IfExpression(cm)
-            | PrimaryExpression::WhenExpression(cm)
-            | PrimaryExpression::TryExpression(cm)
-            | PrimaryExpression::JumpExpression(cm)
-            | PrimaryExpression::SimpleIdentifier(cm)
-            | PrimaryExpression::CallableReference(cm) => cm,
-        }
-    }
-}
-
-fn primary_expression(parser: &mut Parser<'_>) -> Option<PrimaryExpression> {
-    use PrimaryExpression::*;
-    parenthesized_expression(parser).map(|cm| Parenthesized(cm.precede(parser).complete(parser, PRIMARY_EXPRESSION)))
-        .or_else(|| collection_literal(parser).map(|cm| CollectionLiteral(cm.precede(parser).complete(parser, PRIMARY_EXPRESSION))))
-        .or_else(|| literal_constant(parser).map(|cm| LiteralConstant(cm.precede(parser).complete(parser, PRIMARY_EXPRESSION))))
-        .or_else(|| string_literal(parser).map(|cm| StringLiteral(cm.precede(parser).complete(parser, PRIMARY_EXPRESSION))))
-        .or_else(|| function_literal(parser).map(|cm| FunctionLiteral(cm.precede(parser).complete(parser, PRIMARY_EXPRESSION))))
-        .or_else(|| object_literal(parser).map(|cm| ObjectLiteral(cm.precede(parser).complete(parser, PRIMARY_EXPRESSION))))
-        .or_else(|| this_expresssion(parser).map(|cm| ThisExpression(cm.precede(parser).complete(parser, PRIMARY_EXPRESSION))))
-        .or_else(|| super_expression(parser).map(|cm| SuperExpression(cm.precede(parser).complete(parser, PRIMARY_EXPRESSION))))
-        .or_else(|| if_expression(parser).map(|cm| IfExpression(cm.precede(parser).complete(parser, PRIMARY_EXPRESSION))))
-        .or_else(|| when_expression(parser).map(|cm| WhenExpression(cm.precede(parser).complete(parser, PRIMARY_EXPRESSION))))
-        .or_else(|| try_expression(parser).map(|cm| TryExpression(cm.precede(parser).complete(parser, PRIMARY_EXPRESSION))))
-        .or_else(|| jump_expression(parser).map(|cm| JumpExpression(cm.precede(parser).complete(parser, PRIMARY_EXPRESSION))))
+fn primary_expression(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    let mut is_ident = false;
+    parenthesized_expression(parser)
+        .or_else(|| collection_literal(parser))
+        .or_else(|| literal_constant(parser))
+        .or_else(|| string_literal(parser))
+        .or_else(|| function_literal(parser))
+        .or_else(|| object_literal(parser))
+        .or_else(|| this_expresssion(parser))
+        .or_else(|| super_expression(parser))
+        .or_else(|| if_expression(parser))
+        .or_else(|| when_expression(parser))
+        .or_else(|| try_expression(parser))
+        .or_else(|| jump_expression(parser))
         .or_else(|| {
             if is_simple_identifier(parser) && !parser.nth_at(1, T![::]) {
-                simple_identifier(parser).map(|cm| SimpleIdentifier(cm.precede(parser).complete(parser, PRIMARY_EXPRESSION)))
+                simple_identifier(parser).inspect(|_| {
+                    is_ident = true;
+                })
             } else {
                 None
             }
         })
-        .or_else(|| callable_reference(parser).map(|cm| CallableReference(cm.precede(parser).complete(parser, PRIMARY_EXPRESSION))))
+        .or_else(|| callable_reference(parser))
+        .map(|cm| cm.precede(parser).complete(parser, PRIMARY_EXPRESSION))
 }
 
 fn parenthesized_expression(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
@@ -891,12 +972,12 @@ fn when_entry(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
 fn when_condition(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     range_test(parser)
         .or_else(|| type_test(parser))
-        .or_else(|| expression(parser))
+        .or_else(|| expression(parser).map(|e| e.marker()))
         .map(|cm| cm.precede(parser).complete(parser, WHEN_CONDITION))
 }
 
 fn range_test(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    if let Some(cm) = in_operator(parser) {
+    if let Some(cm) = in_operator::parse(parser) {
         let m = cm.precede(parser);
         if expression(parser).is_none() {
             parser.error("expected an expression");
@@ -908,7 +989,7 @@ fn range_test(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
 }
 
 fn type_test(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    if let Some(cm) = is_operator(parser) {
+    if let Some(cm) = is_operator::parse(parser) {
         let m = cm.precede(parser);
         if ty(parser).is_none() {
             parser.error("expected a type");
@@ -1029,125 +1110,72 @@ fn callable_reference(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     Some(m.complete(parser, CALLABLE_REFERENCE))
 }
 
-fn assignment_and_operator(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    match parser.current() {
-        T![+=] | T![-=] | T![/=] | T![*=] | T![%=] => {
+define_operator!(
+    assignment_and_operator,
+    T![+=] | T![-=] | T![/=] | T![*=] | T![%=]
+);
+define_operator!(equality_operator, T![==] | T![!=] | T![===] | T![!==]);
+define_operator!(comparison_operator, T![<] | T![>] | T![<=] | T![>=]);
+define_operator!(in_operator, T![in] | T![!in]);
+define_operator!(is_operator, T![is] | T![!is]);
+define_operator!(additive_operator, T![+] | T![-]);
+define_operator!(multiplicative_operator, T![*] | T![/] | T![%]);
+define_operator!(as_operator, T![as] | T![as?]);
+
+mod prefix_unary_operator {
+    use super::*;
+    pub(crate) fn parse(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+        if is(parser) {
             let m = parser.start();
             parser.bump_any();
-            Some(m.complete(parser, ASSIGNMENT_AND_OPERATOR))
+            Some(m.complete(parser, PREFIX_UNARY_OPERATOR))
+        } else {
+            None
         }
-        _ => None,
+    }
+    pub(crate) fn is(parser: &mut Parser<'_>) -> bool {
+        matches!(
+            parser.current(),
+            T![++] | T![--] | T![+] | T![-] | T![!] | EXCL_WS
+        )
     }
 }
-
-fn equality_operator(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    match parser.current() {
-        T![==] | T![!=] | T![===] | T![!==] => {
+mod postfix_unary_operator {
+    use super::*;
+    pub(crate) fn parse(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+        if is(parser) {
             let m = parser.start();
-            parser.bump_any();
-            Some(m.complete(parser, EQUALITY_OPERATOR))
-        }
-        _ => None,
-    }
-}
-
-fn comparison_operator(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    match parser.current() {
-        T![<] | T![>] | T![<=] | T![>=] => {
-            let m = parser.start();
-            parser.bump_any();
-            Some(m.complete(parser, COMPARISON_OPERATOR))
-        }
-        _ => None,
-    }
-}
-
-fn in_operator(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    match parser.current() {
-        T![in] | T![!in] => {
-            let m = parser.start();
-            parser.bump_any();
-            Some(m.complete(parser, IN_OPERATOR))
-        }
-        _ => None,
-    }
-}
-
-fn is_operator(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    match parser.current() {
-        T![is] | T![!is] => {
-            let m = parser.start();
-            parser.bump_any();
-            Some(m.complete(parser, IS_OPERATOR))
-        }
-        _ => None,
-    }
-}
-
-fn additive_operator(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    match parser.current() {
-        T![+] | T![-] => {
-            let m = parser.start();
-            parser.bump_any();
-            Some(m.complete(parser, ADDITIVE_OPERATOR))
-        }
-        _ => None,
-    }
-}
-
-fn multiplicative_operator(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    match parser.current() {
-        T![*] | T![/] | T![%] => {
-            let m = parser.start();
-            parser.bump_any();
-            Some(m.complete(parser, MULTIPLICATIVE_OPERATOR))
-        }
-        _ => None,
-    }
-}
-
-fn as_operator(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    if parser.at(T![as]) || parser.at(T![as?]) {
-        let m = parser.start();
-        parser.bump_any();
-        Some(m.complete(parser, AS_OPERATOR))
-    } else {
-        None
-    }
-}
-
-fn prefix_unary_operator(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    let m = parser.start();
-    match parser.current() {
-        T![++] | T![--] | T![+] | T![-] => {
-            parser.bump_any();
-        }
-        _ if safe_nav(parser).is_some() => {}
-        _ => {
-            m.abandon(parser);
-            return None;
-        }
-    }
-    Some(m.complete(parser, PREFIX_UNARY_OPERATOR))
-}
-
-fn postfix_unary_operator(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    let m = parser.start();
-    match parser.current() {
-        T![++] | T![--] => {
-            parser.bump_any();
-        }
-        T![!] => {
-            if excl(parser).is_none() {
-                parser.error("missing `!`, non-null assertion requires two `!`");
+            if parser.eat(T![!]) {
+                excl(parser);
+            } else {
+                parser.bump_any();
             }
-        }
-        _ => {
-            m.abandon(parser);
-            return None;
+            Some(m.complete(parser, POSTFIX_UNARY_OPERATOR))
+        } else {
+            None
         }
     }
-    Some(m.complete(parser, POSTFIX_UNARY_OPERATOR))
+    pub(crate) fn is(parser: &mut Parser<'_>) -> bool {
+        matches!(
+            (parser.current(), parser.nth(1)),
+            (T![++] | T![--], _) | (T![!], T![!] | EXCL_WS)
+        )
+    }
+}
+
+pub(crate) mod range_operator {
+    use super::*;
+    pub(crate) fn parse(parser: &mut Parser<'_>) -> bool {
+        if is(parser) {
+            parser.bump_any();
+            true
+        } else {
+            false
+        }
+    }
+    pub(crate) fn is(parser: &mut Parser<'_>) -> bool {
+        parser.at(T![..]) || parser.at(T![..<])
+    }
 }
 
 fn excl(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
