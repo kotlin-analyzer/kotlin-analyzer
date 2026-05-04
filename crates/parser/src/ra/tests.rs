@@ -15,6 +15,7 @@ use expect_test::expect_file;
 
 use crate::{
     grammar::annotations::annotation,
+    grammar::statements::statement,
     grammar::types::ty,
     ra::{self, lexed_str::LexedStr, parser, shortcuts::StrStep},
     version::KtVersion,
@@ -95,6 +96,20 @@ fn parse_err() {
             case.kt.display()
         );
         expect_file![case.kast].assert_eq(&actual)
+    }
+}
+
+#[test]
+fn parse_statement_ok() {
+    for case in TestCase::list("parser/statement/ok") {
+        let _guard = panic_context!("{:?}", case.kt);
+        let (actual, errors) = parse(statement, &case.text, KtVersion::V2_3);
+        assert!(
+            !errors,
+            "errors in an OK file {}:\n{actual}",
+            case.kt.display()
+        );
+        expect_file![case.kast].assert_eq(&actual);
     }
 }
 

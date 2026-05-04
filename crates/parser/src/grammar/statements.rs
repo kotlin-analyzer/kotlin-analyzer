@@ -2,7 +2,7 @@ use syntax::{SyntaxKind::*, T};
 
 use super::annotations::annotation;
 use super::class_members::{multi_variable_declaration, variable_declaration};
-use super::expressions::expression;
+use super::expressions::{assignment_and_operator, expression};
 use super::general::declaration;
 use super::identifiers::{is_simple_identifier, simple_identifier};
 use super::modifiers::modifiers;
@@ -32,6 +32,43 @@ pub(crate) fn semis(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     }
 }
 
+/// Parses an assignment or an expression statement.
+///
+/// Inspired by the "parse then decide" pattern from `types.rs`: the common prefix
+/// (the left-hand side candidate) is parsed as an expression first, since both
+/// `directlyAssignableExpression` and `assignableExpression` look identical to an
+/// expression at the start. After parsing, the presence of an assignment operator
+/// determines whether we have an assignment or a plain expression:
+///
+/// - `=`  → direct assignment: wrap LHS as `DIRECTLY_ASSIGNABLE_EXPRESSION` + `ASSIGNMENT`
+/// - `+=`, `-=`, `*=`, `/=`, `%=` → compound assignment: wrap LHS as `ASSIGNABLE_EXPRESSION` + `ASSIGNMENT`
+/// - anything else → plain expression, returned as-is
+pub(crate) fn assignment(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    let lhs = expression(parser)?;
+
+    match parser.current() {
+        T![=] => {
+            let dae = lhs.precede(parser).complete(parser, DIRECTLY_ASSIGNABLE_EXPRESSION);
+            let m = dae.precede(parser);
+            parser.bump(T![=]);
+            if expression(parser).is_none() {
+                parser.error("expected an expression");
+            }
+            Some(m.complete(parser, ASSIGNMENT))
+        }
+        T![+=] | T![-=] | T![*=] | T![/=] | T![%=] => {
+            let ae = lhs.precede(parser).complete(parser, ASSIGNABLE_EXPRESSION);
+            let m = ae.precede(parser);
+            assignment_and_operator(parser);
+            if expression(parser).is_none() {
+                parser.error("expected an expression");
+            }
+            Some(m.complete(parser, ASSIGNMENT))
+        }
+        _ => Some(lhs),
+    }
+}
+
 pub(crate) fn statements(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     if let Some(first) = statement(parser) {
         let m = first.precede(parser);
@@ -51,13 +88,12 @@ pub(crate) fn statement(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     let m = parser.start();
     while label(parser).or_else(|| annotation(parser)).is_some() {}
 
-    // FIXME: | assignment
     if loop_statement(parser)
         .or_else(|| {
             let modifiers = modifiers(parser);
             declaration(parser, modifiers)
         })
-        .or_else(|| expression(parser)) // TODO: verify that expression doesn't have a modifier
+        .or_else(|| assignment(parser))
         .is_none()
     {
         m.abandon(parser);

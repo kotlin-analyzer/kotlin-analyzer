@@ -1,0 +1,42 @@
+STATEMENT
+  ASSIGNMENT
+    DIRECTLY_ASSIGNABLE_EXPRESSION
+      EXPRESSION
+        DISJUNCTION
+          CONJUNCTION
+            EQUALITY
+              COMPARISON
+                GENERIC_CALL_LIKE_COMPARISON
+                  INFIX_OPERATION
+                    ELVIS_EXPRESSION
+                      INFIX_FUNCTION_CALL
+                        RANGE_EXPRESSION
+                          ADDITIVE_EXPRESSION
+                            MULTIPLICATIVE_EXPRESSION
+                              AS_EXPRESSION
+                                PREFIX_UNARY_EXPRESSION
+                                  POSTFIX_UNARY_EXPRESSION
+                                    PRIMARY_EXPRESSION
+                                      SIMPLE_IDENTIFIER
+                                        IDENTIFIER_TOKEN "a"
+    WS " "
+    ASSIGNMENT_TOKEN "="
+    WS " "
+    EXPRESSION
+      DISJUNCTION
+        CONJUNCTION
+          EQUALITY
+            COMPARISON
+              GENERIC_CALL_LIKE_COMPARISON
+                INFIX_OPERATION
+                  ELVIS_EXPRESSION
+                    INFIX_FUNCTION_CALL
+                      RANGE_EXPRESSION
+                        ADDITIVE_EXPRESSION
+                          MULTIPLICATIVE_EXPRESSION
+                            AS_EXPRESSION
+                              PREFIX_UNARY_EXPRESSION
+                                POSTFIX_UNARY_EXPRESSION
+                                  PRIMARY_EXPRESSION
+                                    SIMPLE_IDENTIFIER
+                                      IDENTIFIER_TOKEN "b"

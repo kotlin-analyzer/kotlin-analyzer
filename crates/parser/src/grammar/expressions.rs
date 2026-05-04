@@ -930,7 +930,7 @@ fn callable_reference(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     Some(m.complete(parser, CALLABLE_REFERENCE))
 }
 
-fn assignment_and_operator(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+pub(crate) fn assignment_and_operator(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     match parser.current() {
         T![+=] | T![-=] | T![/=] | T![*=] | T![%=] => {
             let m = parser.start();
