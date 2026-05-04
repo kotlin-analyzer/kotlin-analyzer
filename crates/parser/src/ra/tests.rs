@@ -109,7 +109,7 @@ fn parse_statement_ok() {
             "errors in an OK file {}:\n{actual}",
             case.kt.display()
         );
-        expect_file![case.kast].assert_eq(&actual);
+        expect_file![case.kast].assert_eq(&actual)
     }
 }
 
