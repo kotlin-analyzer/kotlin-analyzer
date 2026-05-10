@@ -82,7 +82,7 @@ fn comparison(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
 fn generic_call_like_comparison(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     if let Some(cm) = infix_operation(parser) {
         let m = cm.precede(parser);
-        while call_suffix(parser).is_some() {}
+        while call_suffix(parser, CallSuffix::Full).is_some() {}
         Some(m.complete(parser, GENERIC_CALL_LIKE_COMPARISON))
     } else {
         None
@@ -208,7 +208,7 @@ fn multiplicative_expression(parser: &mut Parser<'_>) -> Option<CompletedMarker>
 }
 
 fn as_expression(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    if let Some(cm) = prefix_unary_expression(parser) {
+    if let Some(cm) = prefix_unary_expression(parser).map(|s| s.marker()) {
         let m = cm.precede(parser);
         while as_operator(parser).is_some() {
             if ty(parser).is_none() {
@@ -274,21 +274,39 @@ fn parenthesized_assignable_expression(parser: &mut Parser<'_>) -> Option<Comple
 
 fn assignable_expression(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     parenthesized_assignable_expression(parser)
-        .or_else(|| prefix_unary_expression(parser))
+        .or_else(|| prefix_unary_expression(parser).map(|pue| pue.marker()))
         .map(|cm| cm.precede(parser).complete(parser, ASSIGNABLE_EXPRESSION))
 }
 
-fn prefix_unary_expression(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+enum PrefixUnaryExpression {
+    Prefix(CompletedMarker),
+    Postfix(CompletedMarker),
+}
+
+impl PrefixUnaryExpression {
+    fn marker(self) -> CompletedMarker {
+        match self {
+            PrefixUnaryExpression::Prefix(cm) | PrefixUnaryExpression::Postfix(cm) => cm,
+        }
+    }
+}
+
+fn prefix_unary_expression(parser: &mut Parser<'_>) -> Option<PrefixUnaryExpression> {
     let m = parser.start();
     let mut has_prefix = false;
 
     while unary_prefix(parser).is_some() {
         has_prefix = true;
     }
-    let has_postfix = postfix_unary_expression(parser).is_some();
+    let postfix = postfix_unary_expression(parser);
+    let has_postfix = postfix.is_some();
 
-    if has_prefix || has_postfix {
-        Some(m.complete(parser, PREFIX_UNARY_EXPRESSION))
+    if has_postfix {
+        if has_prefix {
+            Some(PrefixUnaryExpression::Prefix(m.complete(parser, PREFIX_UNARY_EXPRESSION)))
+        } else {
+           postfix.map(PrefixUnaryExpression::Postfix)
+        }
     } else {
         m.abandon(parser);
         None
@@ -304,18 +322,17 @@ fn unary_prefix(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
 
 fn postfix_unary_expression(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     primary_expression(parser).map(|cm| {
-        let m = cm.precede(parser);
+        let m = cm.marker().precede(parser);
         while postfix_unary_suffix(parser).is_some() {}
         m.complete(parser, POSTFIX_UNARY_EXPRESSION)
     })
 }
 
 fn postfix_unary_suffix(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    call_suffix(parser)
+    call_suffix(parser, CallSuffix::AcceptTypeArguments)
         .or_else(|| postfix_unary_operator(parser))
         .or_else(|| indexing_suffix(parser))
         .or_else(|| navigation_suffix(parser))
-        .or_else(|| type_arguments(parser))
         .map(|cm| cm.precede(parser).complete(parser, POSTFIX_UNARY_SUFFIX))
 }
 
@@ -361,15 +378,29 @@ fn navigation_suffix(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     }
 }
 
-fn call_suffix(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+enum CallSuffix {
+    /// Allows call_suffix to succeed with just type arguments.
+    AcceptTypeArguments,
+    Full
+}
+
+
+fn call_suffix(parser: &mut Parser<'_>, res: CallSuffix) -> Option<CompletedMarker> {
     let m = parser.start();
-    type_arguments(parser);
-    if value_arguments(parser).is_some() {
-        annotated_lambda(parser);
-        Some(m.complete(parser, CALL_SUFFIX))
-    } else {
-        m.abandon(parser);
-        None
+    let ta = type_arguments(parser);
+    let va = value_arguments(parser);
+    let lambda = annotated_lambda(parser);
+    
+    match (va.is_none(), lambda.is_none(), res) {
+        (true, true, CallSuffix::AcceptTypeArguments) => {
+            m.abandon(parser);
+            ta // it is valid to have just type arguments.
+        }
+        (true, true, _) => {
+            m.abandon(parser);
+            None
+        }
+        (_, _, _) => Some(m.complete(parser, CALL_SUFFIX)),
     }
 }
 
@@ -428,28 +459,66 @@ fn value_argument(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     Some(m.complete(parser, VALUE_ARGUMENT))
 }
 
-fn primary_expression(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    parenthesized_expression(parser)
-        .or_else(|| collection_literal(parser))
-        .or_else(|| literal_constant(parser))
-        .or_else(|| string_literal(parser))
-        .or_else(|| function_literal(parser))
-        .or_else(|| object_literal(parser))
-        .or_else(|| this_expresssion(parser))
-        .or_else(|| super_expression(parser))
-        .or_else(|| if_expression(parser))
-        .or_else(|| when_expression(parser))
-        .or_else(|| try_expression(parser))
-        .or_else(|| jump_expression(parser))
+enum PrimaryExpression {
+        Parenthesized(CompletedMarker),
+        CollectionLiteral(CompletedMarker),
+        LiteralConstant(CompletedMarker),
+        StringLiteral(CompletedMarker),
+        FunctionLiteral(CompletedMarker),
+        ObjectLiteral(CompletedMarker),
+        ThisExpression(CompletedMarker),
+        SuperExpression(CompletedMarker),
+        IfExpression(CompletedMarker),
+        WhenExpression(CompletedMarker),
+        TryExpression(CompletedMarker),
+        JumpExpression(CompletedMarker),
+        SimpleIdentifier(CompletedMarker),
+        CallableReference(CompletedMarker)
+}
+
+impl PrimaryExpression {
+    fn marker(self) -> CompletedMarker {
+        match self {
+            PrimaryExpression::Parenthesized(cm)
+            | PrimaryExpression::CollectionLiteral(cm)
+            | PrimaryExpression::LiteralConstant(cm)
+            | PrimaryExpression::StringLiteral(cm)
+            | PrimaryExpression::FunctionLiteral(cm)
+            | PrimaryExpression::ObjectLiteral(cm)
+            | PrimaryExpression::ThisExpression(cm)
+            | PrimaryExpression::SuperExpression(cm)
+            | PrimaryExpression::IfExpression(cm)
+            | PrimaryExpression::WhenExpression(cm)
+            | PrimaryExpression::TryExpression(cm)
+            | PrimaryExpression::JumpExpression(cm)
+            | PrimaryExpression::SimpleIdentifier(cm)
+            | PrimaryExpression::CallableReference(cm) => cm,
+        }
+    }
+}
+
+fn primary_expression(parser: &mut Parser<'_>) -> Option<PrimaryExpression> {
+    use PrimaryExpression::*;
+    parenthesized_expression(parser).map(|cm| Parenthesized(cm.precede(parser).complete(parser, PRIMARY_EXPRESSION)))
+        .or_else(|| collection_literal(parser).map(|cm| CollectionLiteral(cm.precede(parser).complete(parser, PRIMARY_EXPRESSION))))
+        .or_else(|| literal_constant(parser).map(|cm| LiteralConstant(cm.precede(parser).complete(parser, PRIMARY_EXPRESSION))))
+        .or_else(|| string_literal(parser).map(|cm| StringLiteral(cm.precede(parser).complete(parser, PRIMARY_EXPRESSION))))
+        .or_else(|| function_literal(parser).map(|cm| FunctionLiteral(cm.precede(parser).complete(parser, PRIMARY_EXPRESSION))))
+        .or_else(|| object_literal(parser).map(|cm| ObjectLiteral(cm.precede(parser).complete(parser, PRIMARY_EXPRESSION))))
+        .or_else(|| this_expresssion(parser).map(|cm| ThisExpression(cm.precede(parser).complete(parser, PRIMARY_EXPRESSION))))
+        .or_else(|| super_expression(parser).map(|cm| SuperExpression(cm.precede(parser).complete(parser, PRIMARY_EXPRESSION))))
+        .or_else(|| if_expression(parser).map(|cm| IfExpression(cm.precede(parser).complete(parser, PRIMARY_EXPRESSION))))
+        .or_else(|| when_expression(parser).map(|cm| WhenExpression(cm.precede(parser).complete(parser, PRIMARY_EXPRESSION))))
+        .or_else(|| try_expression(parser).map(|cm| TryExpression(cm.precede(parser).complete(parser, PRIMARY_EXPRESSION))))
+        .or_else(|| jump_expression(parser).map(|cm| JumpExpression(cm.precede(parser).complete(parser, PRIMARY_EXPRESSION))))
         .or_else(|| {
             if is_simple_identifier(parser) && !parser.nth_at(1, T![::]) {
-                simple_identifier(parser)
+                simple_identifier(parser).map(|cm| SimpleIdentifier(cm.precede(parser).complete(parser, PRIMARY_EXPRESSION)))
             } else {
                 None
             }
         })
-        .or_else(|| callable_reference(parser))
-        .map(|cm| cm.precede(parser).complete(parser, PRIMARY_EXPRESSION))
+        .or_else(|| callable_reference(parser).map(|cm| CallableReference(cm.precede(parser).complete(parser, PRIMARY_EXPRESSION))))
 }
 
 fn parenthesized_expression(parser: &mut Parser<'_>) -> Option<CompletedMarker> {

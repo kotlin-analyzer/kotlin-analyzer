@@ -207,3 +207,21 @@ pub(crate) fn block(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
         None
     }
 }
+
+mod assignment {
+    use super::*;
+
+    enum AssignmentFragment {
+        SimpleIdentifier(CompletedMarker),
+        DirectlyAssignableExpression(CompletedMarker),
+        AssignableExpression(CompletedMarker),
+    }
+
+    fn first_pass(p: &mut Parser<'_>) -> Option<AssignmentFragment> {
+        if p.at(SIMPLE_IDENTIFIER) {
+            simple_identifier(p).map(AssignmentFragment::SimpleIdentifier);
+        }
+        todo!()
+    }
+
+}
