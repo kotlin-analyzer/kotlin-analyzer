@@ -206,6 +206,7 @@ impl Token {
             "suspend" => Some(SUSPEND),
             "tailrec" => Some(TAILREC),
             "value" => Some(VALUE),
+            "context" => Some(CONTEXT),
             "vararg" => Some(VAR_ARG),
             "where" => Some(WHERE),
             _ => None,
@@ -270,6 +271,7 @@ impl SyntaxKind {
                 | Self::SUSPEND
                 | Self::TAILREC
                 | Self::VALUE
+                | Self::CONTEXT
                 | Self::VAR_ARG
                 | Self::WHERE,
         )

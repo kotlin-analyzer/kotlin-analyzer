@@ -322,6 +322,27 @@ fn setter(
     Some(m.complete(parser, SETTER))
 }
 
+pub(crate) fn context_parameter_list(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    if parser.at(T![context]) && parser.nth_at(1, T!['(']) {
+        let m = parser.start();
+        parser.bump(T![context]);
+        parser.bump(T!['(']);
+
+        if function_value_parameter(parser).is_some() {
+            while parser.eat(T![,]) && function_value_parameter(parser).is_some() {}
+        } else {
+            parser.error("expected a context parameter");
+        }
+
+        if !parser.eat(T![')']) {
+            parser.error("expected ')'");
+        }
+        Some(m.complete(parser, CONTEXT_PARAMETER_LIST))
+    } else {
+        None
+    }
+}
+
 fn function_value_parameters(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     if parser.at(T!['(']) {
         let m = parser.start();
