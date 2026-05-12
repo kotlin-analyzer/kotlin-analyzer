@@ -338,11 +338,8 @@ const KEYWORDS_KEY_LENGTH_RANGE: RangeInclusive<u8> = 2..=11;
 fn apply_parsers_seq<'a, 'b>(ps: &'b [impl ParseFn<'a>], step: Step<'a>) -> Option<Step<'a>> {
     let mut step = step;
     for p in ps {
-        if let Some(new_step) = (p)(step) {
-            step = new_step;
-        } else {
-            return None;
-        }
+        let new_step = (p)(step)?;
+        step = new_step;
     }
     Some(step)
 }

@@ -444,7 +444,7 @@ mod test {
     fn pretty_print(stream: TokenStream) -> String {
         match syn::parse_file(&stream.to_string()) {
             Ok(tree) => prettyplease::unparse(&tree),
-            Err(err) => format!("{}\n{}", &stream.to_string(), err),
+            Err(err) => format!("{}\n{}", stream, err),
         }
     }
 

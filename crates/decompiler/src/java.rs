@@ -80,7 +80,7 @@ impl JClass {
             syntax.push_str("class ");
         }
 
-        syntax.push_str(&format!("{} ", &self.name.replace("/", "."),));
+        syntax.push_str(&format!("{} ", self.name.replace("/", "."),));
 
         if let Some(extends) = &self.extends {
             syntax.push_str(&format!("extends {} ", extends.replace("/", ".")));
