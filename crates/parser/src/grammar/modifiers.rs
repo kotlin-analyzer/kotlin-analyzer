@@ -1,6 +1,7 @@
 use syntax::SyntaxKind::*;
 
 use super::annotations::annotation;
+use super::class_members::context_parameter_list;
 use crate::ra::{CompletedMarker, Parser};
 
 pub(crate) fn modifiers(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
@@ -9,7 +10,13 @@ pub(crate) fn modifiers(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
         while annotation(parser).or_else(|| modifier(parser)).is_some() {}
         Some(m.complete(parser, MODIFIERS))
     } else {
-        None
+        if let Some(cm) = context_parameter_list(parser) {
+            let m = cm.precede(parser);
+            while context_parameter_list(parser).is_some() {}
+            Some(m.complete(parser, MODIFIERS))
+        } else {
+            None
+        }
     }
 }
 

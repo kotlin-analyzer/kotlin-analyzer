@@ -70,6 +70,7 @@ macro_rules! T {
     [!is] => { $ crate :: SyntaxKind :: NOT_IS };
     [val] => { $ crate :: SyntaxKind :: VAL };
     [var] => { $ crate :: SyntaxKind :: VAR };
+    [context] => { $ crate :: SyntaxKind :: CONTEXT };
     [throw] => { $ crate :: SyntaxKind :: THROW };
     [try] => { $ crate :: SyntaxKind :: TRY };
     [catch] => { $ crate :: SyntaxKind :: CATCH };

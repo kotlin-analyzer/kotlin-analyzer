@@ -2,7 +2,8 @@ use syntax::{SyntaxKind::*, T};
 
 use super::annotations::annotation;
 use super::class_members::{
-    function_body, multi_variable_declaration, parameters_with_opt_type, variable_declaration,
+    context_parameter_list, function_body, multi_variable_declaration, parameters_with_opt_type,
+    variable_declaration,
 };
 use super::classes::{class_body, delegation_specifiers, type_constraints};
 use super::identifiers::{is_simple_identifier, simple_identifier};
@@ -621,13 +622,42 @@ fn lambda_parameter(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
 }
 
 fn anonymous_function(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    if !(parser.at(T![fun]) || (parser.at(T![suspend]) && parser.nth_at(1, T![fun]))) {
-        return None;
-    }
     let m = parser.start();
 
-    parser.eat(T![suspend]);
-    parser.bump(T![fun]);
+    match (parser.current(), parser.nth(1)) {
+        (T![fun], _) => {
+            parser.bump(T![fun]);
+        }
+        (T![suspend], T![fun]) => {
+            parser.bump(T![suspend]);
+            parser.bump(T![fun]);
+        }
+        (T![suspend], T![context]) => {
+            parser.bump(T![suspend]);
+            if context_parameter_list(parser).is_none() {
+                parser.error("expected `context` parameters");
+            }
+            if !parser.eat(T![fun]) {
+                parser.error("expected `fun` keyword");
+                // TODO: error recovery if `fun` is missing after context parameters
+                m.abandon(parser);
+                return None;
+            }
+        }
+        (T![context], T!['(']) => {
+            if context_parameter_list(parser).is_none() {
+                parser.error("expected `context` parameters");
+            }
+            parser.eat(T![suspend]); // optional
+            if !parser.eat(T![fun]) {
+                parser.error("expected `fun` keyword");
+            }
+        }
+        _ => {
+            m.abandon(parser);
+            return None;
+        }
+    }
 
     if ty(parser).is_some() && !parser.eat(T![.]) {
         parser.error("expected `.`");
