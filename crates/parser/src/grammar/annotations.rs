@@ -67,7 +67,7 @@ enum AnnStep {
     Receiver,
 }
 
-fn starts_annotation(parser: &mut Parser<'_>) -> bool {
+pub(crate) fn starts_annotation(parser: &mut Parser<'_>) -> bool {
     matches!(parser.current(), AT_NO_WS | AT_PRE_WS)
 }
 

@@ -93,4 +93,5 @@ macro_rules! T {
     [return] => { $ crate :: SyntaxKind :: RETURN };
     [return@] => { $ crate :: SyntaxKind :: RETURN_AT };
     [by] => { $ crate :: SyntaxKind :: BY };
+    [label] => { $ crate :: SyntaxKind :: LABEL };
 }
