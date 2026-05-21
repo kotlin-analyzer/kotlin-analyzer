@@ -1,0 +1,20 @@
+[package]
+name = "xtask"
+version = "0.1.0"
+edition = "2024"
+rust-version.workspace = true
+license = "MIT OR Apache-2.0"
+publish = false
+
+[dependencies]
+anyhow.workspace = true
+either.workspace = true
+itertools.workspace = true
+proc-macro2 = "1.0.95"
+quote = "1.0.40"
+stdx.workspace = true
+time = { version = "0.3", default-features = false }
+ungrammar = "1.16.1"
+xflags = "0.3.2"
+xshell.workspace = true
+# Avoid adding more dependencies to this crate

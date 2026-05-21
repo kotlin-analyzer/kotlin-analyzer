@@ -11,10 +11,11 @@ pub enum KtVersion {
     V2_1,
     V2_2,
     V2_3,
+    V2_4,
 }
 
 impl KtVersion {
     pub const DEFAULT: KtVersion = KtVersion::V1_8;
-    pub const LATEST: KtVersion = KtVersion::V2_3;
-    pub const CURRENT: KtVersion = KtVersion::V2_2;
+    pub const LATEST: KtVersion = KtVersion::V2_4;
+    pub const CURRENT: KtVersion = KtVersion::V2_4;
 }

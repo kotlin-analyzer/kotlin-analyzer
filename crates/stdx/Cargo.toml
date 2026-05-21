@@ -1,0 +1,12 @@
+[package]
+name = "stdx"
+version = "0.0.0"
+description = "Missing batteries for standard libraries for rust-analyzer."
+repository.workspace = true
+
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[lib]
+doctest = false
