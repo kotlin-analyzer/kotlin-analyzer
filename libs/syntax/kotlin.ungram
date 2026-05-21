@@ -1,0 +1,671 @@
+// Kotlin Un-Grammar for concrete syntax tree, translated from kotlinLexer.g4 and KotlinParser.g4.
+// Following conventions from Rust Un-grammar used in Rust Analyzer.
+//
+// This grammar specifies the structure of Kotlin's concrete syntax tree.
+// It does not specify parsing rules (ambiguities, precedence, etc are out of scope).
+// Tokens are processed -- contextual keywords are recognised, compound operators glued.
+//
+// Legend:
+//
+//   //          -- comment
+//   Name =      -- non-terminal definition
+//   'ident'     -- keyword or punct token (terminal)
+//   '#ident'    -- generic token (terminal)
+//   '@ident'    -- literal token (terminal)
+//   A B         -- sequence
+//   A | B       -- alternation
+//   A*          -- zero or more repetition
+//   A?          -- zero or one repetition
+//   (A)         -- same as A
+//   label:A     -- suggested name for field of AST node
+
+//*************************//
+//          Files          //
+//*************************//
+
+KotlinFile =
+  ShebangLine?
+  FileAnnotation*
+  PackageHeader?
+  ImportHeader*
+  TopLevelObject*
+
+Script =
+  ShebangLine?
+  FileAnnotation*
+  PackageHeader?
+  ImportHeader*
+  Statement*
+
+ShebangLine =
+  '#!'
+
+FileAnnotation =
+  '@' 'file' ':' ('[' unescaped_annotations:UnescapedAnnotation+ ']' | UnescapedAnnotation)
+
+PackageHeader =
+  'package' Identifier
+
+ImportHeader =
+  'import' Identifier ('.' '*' | ImportAlias)?
+
+ImportAlias =
+  'as' SimpleIdentifier
+
+TopLevelObject =
+  Declaration
+
+TypeAlias =
+  Modifiers? 'typealias' name:SimpleIdentifier TypeParameters? '=' Type
+
+Declaration =
+  ClassDeclaration
+| ObjectDeclaration
+| FunctionDeclaration
+| PropertyDeclaration
+| TypeAlias
+
+
+//*************************//
+//         Classes         //
+//*************************//
+
+ClassDeclaration =
+  Modifiers?
+  ( 'class' | 'fun'? 'interface' )
+  name:SimpleIdentifier
+  TypeParameters?
+  PrimaryConstructor?
+  (':' DelegationSpecifiers)?
+  TypeConstraints?
+  (ClassBody | EnumClassBody)?
+
+PrimaryConstructor =
+  (Modifiers? 'constructor')? ClassParameters
+
+ClassBody =
+  '{' ClassMemberDeclarations? '}'
+
+ClassParameters =
+  '(' (ClassParameter ( ',' ClassParameter )* ','?)? ')'
+
+ClassParameter =
+  Modifiers? ('val' | 'var')? name:SimpleIdentifier ':' Type ('=' Expression)?
+
+DelegationSpecifiers =
+  AnnotatedDelegationSpecifier (',' AnnotatedDelegationSpecifier)*
+
+DelegationSpecifier =
+  ConstructorInvocation
+| ExplicitDelegation
+| UserType
+| FunctionType
+| 'suspend' FunctionType
+
+ConstructorInvocation =
+  UserType ValueArguments
+
+AnnotatedDelegationSpecifier =
+  Annotation* DelegationSpecifier
+
+ExplicitDelegation =
+  (UserType | FunctionType) 'by' Expression
+
+TypeParameters =
+  '<' (TypeParameter (',' TypeParameter)* ','?)? '>'
+
+TypeParameter =
+  TypeParameterModifiers? name:SimpleIdentifier (':' Type)?
+
+TypeConstraints =
+  'where' TypeConstraint (',' TypeConstraint)*
+
+TypeConstraint =
+  Annotation* name:SimpleIdentifier ':' Type
+
+
+//*************************//
+//      Class Members      //
+//*************************//
+
+ClassMemberDeclarations =
+  ClassMemberDeclaration*
+
+ClassMemberDeclaration =
+  Declaration
+| CompanionObject
+| AnonymousInitializer
+| SecondaryConstructor
+
+AnonymousInitializer =
+  'init' Block
+
+CompanionObject =
+  Modifiers? 'companion' 'data'? 'object' name:SimpleIdentifier? (':' DelegationSpecifiers)? ClassBody?
+
+FunctionValueParameters =
+  '(' (FunctionValueParameter (',' FunctionValueParameter)* ','?)? ')'
+
+FunctionValueParameter =
+  ParameterModifiers? Parameter ('=' Expression)?
+
+FunctionDeclaration =
+  Modifiers?
+  'fun' TypeParameters? (ReceiverType '.')? name:SimpleIdentifier
+  FunctionValueParameters
+  (':' Type)?
+  TypeConstraints?
+  FunctionBody?
+
+FunctionBody =
+  Block
+| '=' Expression
+
+VariableDeclaration =
+  Annotation* name:SimpleIdentifier (':' Type)?
+
+MultiVariableDeclaration =
+  '(' (VariableDeclaration (',' VariableDeclaration)* ','?)? ')'
+
+PropertyDeclaration =
+  Modifiers? ('val' | 'var')
+  TypeParameters?
+  (ReceiverType '.')?
+  (MultiVariableDeclaration | VariableDeclaration)
+  TypeConstraints?
+  ('=' Expression | PropertyDelegate)?
+  (Getter? Setter? | Setter? Getter?)
+
+PropertyDelegate =
+  'by' Expression
+
+Getter =
+  Modifiers? 'get' ('(' ')' (':' Type)? FunctionBody)?
+
+Setter =
+  Modifiers? 'set' ('(' FunctionValueParameterWithOptionalType ','? ')' (':' Type)? FunctionBody)?
+
+ParametersWithOptionalType =
+  '(' (FunctionValueParameterWithOptionalType (',' FunctionValueParameterWithOptionalType)* ','?)? ')'
+
+FunctionValueParameterWithOptionalType =
+  ParameterModifiers? ParameterWithOptionalType ('=' Expression)?
+
+ParameterWithOptionalType =
+  name:SimpleIdentifier (':' Type)?
+
+Parameter =
+  name:SimpleIdentifier ':' Type
+
+ObjectDeclaration =
+  Modifiers? 'object' name:SimpleIdentifier (':' DelegationSpecifiers)? ClassBody?
+
+SecondaryConstructor =
+  Modifiers? 'constructor' FunctionValueParameters (':' ConstructorDelegationCall)? Block?
+
+ConstructorDelegationCall =
+  ('this' | 'super') ValueArguments
+
+
+//*************************//
+//      Enum Classes       //
+//*************************//
+
+EnumClassBody =
+  '{' EnumEntries? (';' ClassMemberDeclarations?)? '}'
+
+EnumEntries =
+  EnumEntry (',' EnumEntry)* ','?
+
+EnumEntry =
+  Modifiers? name:SimpleIdentifier ValueArguments? ClassBody?
+
+
+//*************************//
+//          Types          //
+//*************************//
+
+Type =
+  TypeReference
+| NullableType
+| FunctionType
+| ParenthesizedType
+| DefinitelyNonNullableType
+
+TypeReference =
+  UserType
+| 'dynamic'
+
+NullableType =
+  (TypeReference | ParenthesizedType) '?'
+
+UserType =
+  SimpleUserType ('.' SimpleUserType)*
+
+SimpleUserType =
+  name:SimpleIdentifier TypeArguments?
+
+TypeProjection =
+  TypeProjectionModifiers? Type
+| '*'
+
+TypeProjectionModifiers =
+  TypeProjectionModifier+
+
+TypeProjectionModifier =
+  VarianceModifier | Annotation
+
+FunctionType =
+  (ReceiverType '.')? FunctionTypeParameters '->' Type
+
+FunctionTypeParameters =
+  '(' (Parameter | Type)? (',' (Parameter | Type))* ','? ')'
+
+ParenthesizedType =
+  '(' Type ')'
+
+ReceiverType =
+  TypeModifiers? (ParenthesizedType | NullableType | TypeReference)
+
+ParenthesizedUserType =
+  '(' (UserType | ParenthesizedUserType) ')'
+
+DefinitelyNonNullableType =
+  TypeModifiers? (UserType | ParenthesizedUserType) '&' TypeModifiers? (UserType | ParenthesizedUserType)
+
+
+//*************************//
+//       Statements        //
+//*************************//
+
+Statements =
+  Statement*
+
+Statement =
+  Label* Annotation* (Declaration | Assignment | LoopStatement | Expression)
+
+Label =
+  name:SimpleIdentifier '@'
+
+ControlStructureBody =
+  Block
+| Statement
+
+Block =
+  '{' Statements? '}'
+
+LoopStatement =
+  ForStatement
+| WhileStatement
+| DoWhileStatement
+
+ForStatement =
+  'for' '(' Annotation* (VariableDeclaration | MultiVariableDeclaration) 'in' iterable:Expression ')' loop_body:ControlStructureBody?
+
+WhileStatement =
+  'while' '(' cond:Expression ')' loop_body:(ControlStructureBody | ';')
+
+DoWhileStatement =
+  'do' loop_body:ControlStructureBody? 'while' '(' cond:Expression ')'
+
+Assignment =
+  (DirectlyAssignableExpression '=' | AssignableExpression AssignmentAndOperator) Expression
+
+
+//*************************//
+//       Expressions       //
+//*************************//
+
+Expression =
+  Disjunction
+
+Disjunction =
+  Conjunction ('||' Conjunction)*
+
+Conjunction =
+  Equality ('&&' Equality)*
+
+Equality =
+  Comparison (EqualityOperator Comparison)*
+
+Comparison =
+  GenericCallLikeComparison (ComparisonOperator GenericCallLikeComparison)*
+
+GenericCallLikeComparison =
+  InfixOperation CallSuffix*
+
+InfixOperation =
+  ElvisExpression (InOperator ElvisExpression | IsOperator Type)*
+
+ElvisExpression =
+  InfixFunctionCall ('?:' InfixFunctionCall)*
+
+InfixFunctionCall =
+  RangeExpression (SimpleIdentifier RangeExpression)*
+
+RangeExpression =
+  AdditiveExpression (('..' | '..<') AdditiveExpression)*
+
+AdditiveExpression =
+  MultiplicativeExpression (AdditiveOperator MultiplicativeExpression)*
+
+MultiplicativeExpression =
+  AsExpression (MultiplicativeOperator AsExpression)*
+
+AsExpression =
+  PrefixUnaryExpression (AsOperator Type)*
+
+PrefixUnaryExpression =
+  UnaryPrefix* PostfixUnaryExpression
+
+UnaryPrefix =
+  Annotation
+| Label
+| PrefixUnaryOperator
+
+PostfixUnaryExpression =
+  PrimaryExpression PostfixUnarySuffix*
+
+PostfixUnarySuffix =
+  PostfixUnaryOperator
+| TypeArguments
+| CallSuffix
+| IndexingSuffix
+| NavigationSuffix
+
+DirectlyAssignableExpression =
+  PostfixUnaryExpression AssignableSuffix
+| SimpleIdentifier
+| ParenthesizedDirectlyAssignableExpression
+
+ParenthesizedDirectlyAssignableExpression =
+  '(' DirectlyAssignableExpression ')'
+
+AssignableExpression =
+  PrefixUnaryExpression
+| ParenthesizedAssignableExpression
+
+ParenthesizedAssignableExpression =
+  '(' AssignableExpression ')'
+
+AssignableSuffix =
+  TypeArguments
+| IndexingSuffix
+| NavigationSuffix
+
+IndexingSuffix =
+  '[' Expression (',' Expression)* ','? ']'
+
+NavigationSuffix =
+  MemberAccessOperator (SimpleIdentifier | ParenthesizedExpression | 'class')
+
+CallSuffix =
+  TypeArguments? (ValueArguments? AnnotatedLambda | ValueArguments)
+
+AnnotatedLambda =
+  Annotation* Label? LambdaLiteral
+
+TypeArguments =
+  '<' (TypeProjection (',' TypeProjection)* ','?)? '>'
+
+ValueArguments =
+  '(' (ValueArgument (',' ValueArgument)* ','?)? ')'
+
+ValueArgument =
+  Annotation? (SimpleIdentifier '=')? '*'? Expression
+
+PrimaryExpression =
+  ParenthesizedExpression
+| SimpleIdentifier
+| LiteralConstant
+| StringLiteral
+| CallableReference
+| FunctionLiteral
+| ObjectLiteral
+| CollectionLiteral
+| ThisExpression
+| SuperExpression
+| IfExpression
+| WhenExpression
+| TryExpression
+| JumpExpression
+
+ParenthesizedExpression =
+  '(' Expression ')'
+
+CollectionLiteral =
+  '[' (Expression (',' Expression)* ','?)? ']'
+
+LiteralConstant =
+  '@bool' | '@int' | '@hex' | '@bin' | '@char' | '@float' | 'null' | '@long' | '@unsigned'
+
+StringLiteral =
+  LineStringLiteral
+| MultiLineStringLiteral
+
+LineStringLiteral =
+  '"' (LineStringContent | LineStringExpression)* '"'
+
+MultiLineStringLiteral =
+  '"""' (MultiLineStringContent | MultiLineStringExpression)* '"""'
+
+LineStringContent =
+  '@text' | '@escaped' | LineStrRef
+
+LineStrRef =
+  '$' SimpleIdentifier
+
+LineStringExpression =
+  '${' Expression '}'
+
+MultiLineStringContent =
+  '@text' | LineStrRef
+
+MultiLineStringExpression =
+  '${' Expression '}'
+
+LambdaLiteral =
+  '{' (LambdaParameters? '->')? Statements? '}'
+
+LambdaParameters =
+  LambdaParameter (',' LambdaParameter)* ','?
+
+LambdaParameter =
+  VariableDeclaration
+| MultiVariableDeclaration (':' Type)?
+
+AnonymousFunction =
+  'suspend'? 'fun' (Type '.')? ParametersWithOptionalType (':' Type)? TypeConstraints? FunctionBody?
+
+FunctionLiteral =
+  LambdaLiteral
+| AnonymousFunction
+
+ObjectLiteral =
+  'data'? 'object' (':' DelegationSpecifiers)? ClassBody?
+
+ThisExpression =
+  'this' | 'this@'
+
+SuperExpression =
+  'super' ('<' Type '>')? ('@' SimpleIdentifier)? | 'super@'
+
+IfExpression =
+  'if' '(' Expression ')' ( then_branch:ControlStructureBody | then_branch:ControlStructureBody? 'else' else_branch:ControlStructureBody | ';')
+
+WhenSubject =
+  '(' (Annotation* 'val' VariableDeclaration '=')? Expression ')'
+
+WhenExpression =
+  'when' WhenSubject? '{' WhenEntry* '}'
+
+WhenEntry =
+  WhenCondition (',' WhenCondition)* ','? '->' ControlStructureBody
+| 'else' '->' ControlStructureBody
+
+WhenCondition =
+  Expression
+| RangeTest
+| TypeTest
+
+RangeTest =
+  InOperator Expression
+
+TypeTest =
+  IsOperator Type
+
+TryExpression =
+  'try' Block ((CatchBlock+ FinallyBlock?) | FinallyBlock)
+
+CatchBlock =
+  'catch' '(' Annotation* name:SimpleIdentifier ':' Type ','? ')' Block
+
+FinallyBlock =
+  'finally' Block
+
+JumpExpression =
+  'throw' Expression
+| ('return' | 'return@') Expression?
+| 'continue'
+| 'continue@'
+| 'break'
+| 'break@'
+
+CallableReference =
+  ReceiverType? '::' (name:SimpleIdentifier | 'class')
+
+AssignmentAndOperator =
+  '+=' | '-=' | '*=' | '/=' | '%='
+
+EqualityOperator =
+  '!=' | '!==' | '==' | '==='
+
+ComparisonOperator =
+  '<' | '>' | '<=' | '>='
+
+InOperator =
+  'in' | '!in'
+
+IsOperator =
+  'is' | '!is'
+
+AdditiveOperator =
+  '+' | '-'
+
+MultiplicativeOperator =
+  '*' | '/' | '%'
+
+AsOperator =
+  'as' | 'as?'
+
+PrefixUnaryOperator =
+  '++' | '--' | '-' | '+' | '!'
+
+PostfixUnaryOperator =
+  '++' | '--' | '!'
+
+MemberAccessOperator =
+  '.' | '?.' | '::'
+
+
+//*************************//
+//        Modifiers        //
+//*************************//
+
+Modifiers =
+  (Annotation | Modifier)+
+
+ParameterModifiers =
+  (Annotation | ParameterModifier)+
+
+Modifier =
+  ClassModifier
+| MemberModifier
+| VisibilityModifier
+| FunctionModifier
+| PropertyModifier
+| InheritanceModifier
+| ParameterModifier
+| PlatformModifier
+
+TypeModifiers =
+  TypeModifier+
+
+TypeModifier =
+  Annotation
+| 'suspend'
+
+ClassModifier =
+  'enum' | 'sealed' | 'annotation' | 'data' | 'inner' | 'value'
+
+MemberModifier =
+  'override' | 'lateinit'
+
+VisibilityModifier =
+  'public' | 'private' | 'internal' | 'protected'
+
+VarianceModifier =
+  'in' | 'out'
+
+TypeParameterModifiers =
+  TypeParameterModifier+
+
+TypeParameterModifier =
+  ReificationModifier
+| VarianceModifier
+| Annotation
+
+FunctionModifier =
+  'tailrec' | 'operator' | 'infix' | 'inline' | 'external' | 'suspend'
+
+PropertyModifier =
+  'const'
+
+InheritanceModifier =
+  'abstract' | 'final' | 'open'
+
+ParameterModifier =
+  'vararg' | 'noinline' | 'crossinline'
+
+ReificationModifier =
+  'reified'
+
+PlatformModifier =
+  'expect' | 'actual'
+
+
+//*************************//
+//       Annotations       //
+//*************************//
+
+Annotation =
+  SingleAnnotation | MultiAnnotation
+
+SingleAnnotation =
+  (AnnotationUseSiteTarget | '@') UnescapedAnnotation
+
+MultiAnnotation =
+  (AnnotationUseSiteTarget | '@') '[' unescaped_annotations:UnescapedAnnotation+ ']'
+
+AnnotationUseSiteTarget =
+  '@' ( 'field' | 'property' | 'get' | 'set' | 'receiver' | 'param' | 'setparam' | 'delegate' ) ':'
+
+UnescapedAnnotation =
+  ConstructorInvocation
+| UserType
+
+
+//*************************//
+//       Identifiers       //
+//*************************//
+
+SimpleIdentifier =
+  '#ident'
+| 'abstract' | 'annotation' | 'by' | 'catch' | 'companion' | 'constructor' | 'crossinline'
+| 'data' | 'dynamic' | 'enum' | 'external' | 'final' | 'finally' | 'get' | 'import' | 'infix'
+| 'init' | 'inline' | 'inner' | 'internal' | 'lateinit' | 'noinline' | 'open' | 'operator' | 'out'
+| 'override' | 'private' | 'protected' | 'public' | 'reified' | 'sealed' | 'tailrec' | 'set'
+| 'vararg' | 'where' | 'field' | 'property' | 'receiver' | 'param' | 'setparam' | 'delegate' | 'file'
+
+Identifier =
+  SimpleIdentifier ('.' SimpleIdentifier)*
