@@ -1,7 +1,4 @@
-use std::{
-    fmt, fs, mem,
-    path::{Path, PathBuf},
-};
+use std::{fs, mem, path::Path};
 
 use xshell::{Shell, cmd};
 
@@ -10,11 +7,7 @@ use crate::{
     project_root,
 };
 
-pub(crate) mod assists_doc_tests;
-pub(crate) mod diagnostics_docs;
-pub(crate) mod feature_docs;
 mod grammar;
-mod lints;
 mod parser_inline_tests;
 
 impl flags::Codegen {
@@ -22,19 +15,12 @@ impl flags::Codegen {
         match self.codegen_type.unwrap_or_default() {
             flags::CodegenType::All => {
                 grammar::generate(self.check);
-                assists_doc_tests::generate(self.check);
                 parser_inline_tests::generate(self.check);
-                feature_docs::generate(self.check);
-                diagnostics_docs::generate(self.check);
                 // lints::generate(self.check) Updating clones the rust repo, so don't run it unless
                 // explicitly asked for
             }
             flags::CodegenType::Grammar => grammar::generate(self.check),
-            flags::CodegenType::AssistsDocTests => assists_doc_tests::generate(self.check),
-            flags::CodegenType::DiagnosticsDocs => diagnostics_docs::generate(self.check),
-            flags::CodegenType::LintDefinitions => lints::generate(self.check),
             flags::CodegenType::ParserTests => parser_inline_tests::generate(self.check),
-            flags::CodegenType::FeatureDocs => feature_docs::generate(self.check),
         }
         Ok(())
     }
@@ -49,6 +35,7 @@ pub(crate) struct CommentBlock {
 }
 
 impl CommentBlock {
+    #[allow(dead_code)]
     fn extract(tag: &str, text: &str) -> Vec<CommentBlock> {
         assert!(tag.starts_with(char::is_uppercase));
 
@@ -75,8 +62,12 @@ impl CommentBlock {
 
         let lines = text.lines().map(str::trim_start);
 
-        let dummy_block =
-            CommentBlock { id: String::new(), line: 0, contents: Vec::new(), is_doc: false };
+        let dummy_block = CommentBlock {
+            id: String::new(),
+            line: 0,
+            contents: Vec::new(),
+            is_doc: false,
+        };
         let mut block = dummy_block.clone();
         for (line_num, line) in lines.enumerate() {
             match line.strip_prefix("//") {
@@ -106,32 +97,13 @@ impl CommentBlock {
     }
 }
 
-#[derive(Debug)]
-pub(crate) struct Location {
-    pub(crate) file: PathBuf,
-    pub(crate) line: usize,
-}
-
-impl fmt::Display for Location {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let path = self.file.strip_prefix(project_root()).unwrap().display().to_string();
-        let path = path.replace('\\', "/");
-        let name = self.file.file_name().unwrap();
-        write!(
-            f,
-            " [{}](https://github.com/rust-lang/rust-analyzer/blob/master/{}#L{}) ",
-            name.to_str().unwrap(),
-            path,
-            self.line
-        )
-    }
-}
-
 fn reformat(text: String) -> String {
     let sh = Shell::new().unwrap();
     let rustfmt_toml = project_root().join("rustfmt.toml");
     let toolchain = &std::env::var("RUSTFMT_TOOLCHAIN").unwrap_or("stable".to_owned());
-    let version = cmd!(sh, "rustup run {toolchain} rustfmt --version").read().unwrap_or_default();
+    let version = cmd!(sh, "rustup run {toolchain} rustfmt --version")
+        .read()
+        .unwrap_or_default();
 
     // First try explicitly requesting the stable channel via rustup in case nightly is being used by default,
     // then plain rustfmt in case rustup isn't being used to manage the compiler (e.g. when using Nix).
@@ -143,10 +115,13 @@ fn reformat(text: String) -> String {
                  Please run `rustup component add rustfmt --toolchain {toolchain}` to install it.",
             );
         } else {
-            cmd!(sh, "rustfmt --config-path {rustfmt_toml} --config fn_single_line=true")
-                .stdin(text)
-                .read()
-                .unwrap()
+            cmd!(
+                sh,
+                "rustfmt --config-path {rustfmt_toml} --config fn_single_line=true"
+            )
+            .stdin(text)
+            .read()
+            .unwrap()
         }
     } else {
         cmd!(

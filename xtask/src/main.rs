@@ -19,10 +19,10 @@
 mod flags;
 
 mod codegen;
+mod util;
 
-use anyhow::bail;
 use std::{env, path::PathBuf};
-use xshell::{cmd, Shell};
+use xshell::Shell;
 
 fn main() -> anyhow::Result<()> {
     let flags = flags::Xtask::from_env_or_exit();
