@@ -7,38 +7,35 @@ use crate::codegen::grammar::to_upper_snake_case;
 #[derive(Copy, Clone, Debug)]
 pub(crate) struct KindsSrc {
     pub(crate) punct: &'static [(&'static str, &'static str)],
+    pub(crate) compound_keywords: &'static [(&'static str, &'static str)],
     pub(crate) keywords: &'static [&'static str],
-    pub(crate) contextual_keywords: &'static [&'static str],
+    pub(crate) soft_keywords: &'static [&'static str],
     pub(crate) literals: &'static [&'static str],
     pub(crate) tokens: &'static [&'static str],
     pub(crate) nodes: &'static [&'static str],
     pub(crate) _enums: &'static [&'static str],
-    pub(crate) edition_dependent_keywords: &'static [(&'static str, Edition)],
+    pub(crate) version_dependent_keywords: &'static [(&'static str, Version)],
 }
 
 #[allow(dead_code)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub(super) enum Edition {
-    Edition2015,
-    Edition2018,
-    Edition2021,
-    Edition2024,
+pub(super) enum Version {
+    V1_3,
+    V1_5,
+    V1_7,
 }
 
-impl ToTokens for Edition {
+impl ToTokens for Version {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
         match self {
-            Edition::Edition2015 => {
-                tokens.extend(quote::quote! { Edition::Edition2015 });
+            Version::V1_3 => {
+                tokens.extend(quote::quote! { Version::V1_3 });
             }
-            Edition::Edition2018 => {
-                tokens.extend(quote::quote! { Edition::Edition2018 });
+            Version::V1_5 => {
+                tokens.extend(quote::quote! { Version::V1_5 });
             }
-            Edition::Edition2021 => {
-                tokens.extend(quote::quote! { Edition::Edition2021 });
-            }
-            Edition::Edition2024 => {
-                tokens.extend(quote::quote! { Edition::Edition2024 });
+            Version::V1_7 => {
+                tokens.extend(quote::quote! { Version::V1_7 });
             }
         }
     }
@@ -46,123 +43,165 @@ impl ToTokens for Edition {
 
 /// The punctuations of the language.
 const PUNCT: &[(&str, &str)] = &[
-    // KEEP THE DOLLAR AT THE TOP ITS SPECIAL
     ("$", "DOLLAR"),
-    (";", "SEMICOLON"),
+    (".", "DOT"),
     (",", "COMMA"),
     ("(", "L_PAREN"),
     (")", "R_PAREN"),
-    ("{", "L_CURLY"),
-    ("}", "R_CURLY"),
-    ("[", "L_BRACK"),
-    ("]", "R_BRACK"),
+    ("[", "L_SQUARE"),
+    ("]", "R_SQUARE"),
+    ("{", "L_CURL"),
+    ("}", "R_CURL"),
+    ("*", "MULT"),
+    ("%", "MOD"),
+    ("/", "DIV"),
+    ("+", "ADD"),
+    ("-", "SUB"),
+    ("-=", "SUB_ASSIGNMENT"),
+    ("++", "INCR"),
+    ("--", "DECR"),
+    ("&&", "CONJ"),
+    ("||", "DISJ"),
+    ("!", "EXCL"),
+    (":", "COLON"),
+    (";", "SEMICOLON"),
+    ("=", "ASSIGNMENT_TOKEN"),
+    ("+=", "ADD_ASSIGNMENT"),
+    ("*=", "MULT_ASSIGNMENT"),
+    ("/=", "DIV_ASSIGNMENT"),
+    ("%=", "MOD_ASSIGNMENT"),
+    ("->", "ARROW"),
+    ("..", "RANGE"),
+    ("..<", "RANGE_UNTIL"),
+    ("::", "COLON_COLON"),
+    ("@", "AT"),
+    ("?", "QUEST"),
     ("<", "L_ANGLE"),
     (">", "R_ANGLE"),
-    ("@", "AT"),
-    ("#", "POUND"),
-    ("~", "TILDE"),
-    ("?", "QUESTION"),
+    ("<=", "LE"),
+    (">=", "GE"),
+    ("!=", "EXCL_EQ"),
+    ("!==", "EXCL_EQ_EQ"),
+    ("==", "EQ_EQ"),
+    ("===", "EQ_EQ_EQ"),
     ("&", "AMP"),
-    ("|", "PIPE"),
-    ("+", "PLUS"),
-    ("*", "STAR"),
-    ("/", "SLASH"),
-    ("^", "CARET"),
-    ("%", "PERCENT"),
-    ("_", "UNDERSCORE"),
-    (".", "DOT"),
-    ("..", "DOT2"),
-    ("...", "DOT3"),
-    ("..=", "DOT2EQ"),
-    (":", "COLON"),
-    ("::", "COLON2"),
-    ("=", "EQ"),
-    ("==", "EQ2"),
-    ("=>", "FAT_ARROW"),
-    ("!", "BANG"),
-    ("!=", "NEQ"),
-    ("-", "MINUS"),
-    ("->", "THIN_ARROW"),
-    ("<=", "LTEQ"),
-    (">=", "GTEQ"),
-    ("+=", "PLUSEQ"),
-    ("-=", "MINUSEQ"),
-    ("|=", "PIPEEQ"),
-    ("&=", "AMPEQ"),
-    ("^=", "CARETEQ"),
-    ("/=", "SLASHEQ"),
-    ("*=", "STAREQ"),
-    ("%=", "PERCENTEQ"),
-    ("&&", "AMP2"),
-    ("||", "PIPE2"),
-    ("<<", "SHL"),
-    (">>", "SHR"),
-    ("<<=", "SHLEQ"),
-    (">>=", "SHREQ"),
+    ("\"", "QUOTE"),
+    (r#"""""#, "TRIPLE_QUOTE"),
 ];
-const TOKENS: &[&str] = &["ERROR", "WHITESPACE", "NEWLINE", "COMMENT"];
+const TOKENS: &[&str] = &[
+    "ERROR",
+    "WHITESPACE",
+    "NEWLINE",
+    "SHEBANG_LINE",
+    "IDENTIFIER",
+    "LINE_COMMENT",
+    "DELIMITED_COMMENT",
+];
 // &["ERROR", "IDENT", "WHITESPACE", "LIFETIME_IDENT", "COMMENT", "SHEBANG"],;
 
 const EOF: &str = "EOF";
+const COMPOUND_RESERVED: &[(&str, &str)] = &[
+    ("!in", "notIn"),
+    ("!is", "notIs"),
+    ("as?", "asSafe"),
+    ("return@", "returnAt"),
+    ("continue@", "continueAt"),
+    ("break@", "breakAt"),
+    ("this@", "thisAt"),
+    ("super@", "superAt"),
+];
 
 const RESERVED: &[&str] = &[
-    "abstract", "become", "box", "do", "final", "macro", "override", "priv", "typeof", "unsized",
-    "virtual", "yield",
+    "annotation",
+    "as",
+    "break",
+    "class",
+    "do",
+    "else",
+    "false",
+    "for",
+    "fun",
+    "if",
+    "in",
+    "interface",
+    "is",
+    "null",
+    "object",
+    "package",
+    "param",
+    "return",
+    "super",
+    "this",
+    "throw",
+    "true",
+    "try",
+    "typealias",
+    "typeof",
+    "val",
+    "var",
+    "when",
+    "while",
+    "continue",
 ];
 // keywords that are keywords only in specific parse contexts
 #[doc(alias = "WEAK_KEYWORDS")]
-const CONTEXTUAL_KEYWORDS: &[&str] = &[
-    "macro_rules",
-    "union",
-    "default",
-    "raw",
-    "dyn",
-    "auto",
-    "yeet",
-    "safe",
-    "bikeshed",
-    "cfg_attr",
-    "cfg",
-    "null",
-];
-// keywords we use for special macro expansions
-const CONTEXTUAL_BUILTIN_KEYWORDS: &[&str] = &[
-    "asm",
-    "naked_asm",
-    "global_asm",
-    "att_syntax",
-    "builtin",
-    "clobber_abi",
-    "format_args",
-    // "in",
-    "inlateout",
-    "inout",
-    "label",
-    "lateout",
-    "may_unwind",
-    "nomem",
-    "noreturn",
-    "nostack",
-    "offset_of",
-    "options",
+const SOFT_KEYWORDS: &[&str] = &[
+    "abstract",
+    "actual",
+    "annotation",
+    "by",
+    "catch",
+    "companion",
+    "const",
+    "constructor",
+    "crossinline",
+    "data",
+    "delegate",
+    "dynamic",
+    "enum",
+    "expect",
+    "external",
+    "field",
+    "file",
+    "final",
+    "finally",
+    "get",
+    "import",
+    "infix",
+    "init",
+    "inline",
+    "inner",
+    "internal",
+    "lateinit",
+    "noinline",
+    "open",
+    "operator",
     "out",
-    "preserves_flags",
-    "pure",
-    // "raw",
-    "readonly",
-    "sym",
-    "deref",
-    "pattern_type",
-    "is",
+    "override",
+    "param",
+    "private",
+    "property",
+    "protected",
+    "public",
+    "receiver",
+    "reified",
+    "sealed",
+    "set",
+    "setparam",
+    "suspend",
+    "tailrec",
+    "value",
+    "context",
+    "vararg",
+    "where",
 ];
 
 // keywords that are keywords depending on the edition
-const EDITION_DEPENDENT_KEYWORDS: &[(&str, Edition)] = &[
-    ("try", Edition::Edition2018),
-    ("dyn", Edition::Edition2018),
-    ("async", Edition::Edition2018),
-    ("await", Edition::Edition2018),
-    ("gen", Edition::Edition2024),
+const VERSION_DEPENDENT_KEYWORDS: &[(&str, Version)] = &[
+    ("contract", Version::V1_3),
+    // fun interface => Version::V1_4
+    ("value", Version::V1_5),
+    ("context", Version::V1_7),
 ];
 
 pub(crate) fn generate_kind_src(
@@ -170,15 +209,16 @@ pub(crate) fn generate_kind_src(
     enums: &[AstEnumSrc],
     grammar: &ungrammar::Grammar,
 ) -> KindsSrc {
-    let mut contextual_keywords: Vec<&_> =
-        CONTEXTUAL_KEYWORDS.iter().chain(CONTEXTUAL_BUILTIN_KEYWORDS).copied().collect();
+    let mut soft_keywords: Vec<&_> = SOFT_KEYWORDS.iter().copied().collect();
 
     let mut keywords: Vec<&_> = Vec::new();
     let mut tokens: Vec<&_> = TOKENS.to_vec();
     let mut literals: Vec<&_> = Vec::new();
     let mut used_puncts = vec![false; PUNCT.len()];
+    let compound_keywords: Vec<&_> = COMPOUND_RESERVED.iter().map(|(token, _kw)| *token).collect();
     // Mark $ as used
     used_puncts[0] = true;
+
     grammar.tokens().for_each(|token| {
         let name = &*grammar[token].name;
         if name == EOF {
@@ -191,10 +231,11 @@ pub(crate) fn generate_kind_src(
             ("#", token) if !token.is_empty() => {
                 tokens.push(String::leak(to_upper_snake_case(token)));
             }
-            _ if contextual_keywords.contains(&name) => {}
+            _ if soft_keywords.contains(&name) => {}
             _ if name.chars().all(char::is_alphabetic) => {
                 keywords.push(String::leak(name.to_owned()));
             }
+            _ if compound_keywords.contains(&name) => {}
             _ => {
                 let idx = PUNCT
                     .iter()
@@ -210,14 +251,14 @@ pub(crate) fn generate_kind_src(
     keywords.extend(RESERVED.iter().copied());
     keywords.sort();
     keywords.dedup();
-    contextual_keywords.sort();
-    contextual_keywords.dedup();
-    let mut edition_dependent_keywords: Vec<(&_, _)> = EDITION_DEPENDENT_KEYWORDS.to_vec();
-    edition_dependent_keywords.sort();
-    edition_dependent_keywords.dedup();
+    soft_keywords.sort();
+    soft_keywords.dedup();
+    let mut version_dependent_keywords: Vec<(&_, _)> = VERSION_DEPENDENT_KEYWORDS.to_vec();
+    version_dependent_keywords.sort();
+    version_dependent_keywords.dedup();
 
-    keywords.retain(|&it| !contextual_keywords.contains(&it));
-    keywords.retain(|&it| !edition_dependent_keywords.iter().any(|&(kw, _)| kw == it));
+    keywords.retain(|&it| !soft_keywords.contains(&it));
+    keywords.retain(|&it| !version_dependent_keywords.iter().any(|&(kw, _)| kw == it));
 
     // we leak things here for simplicity, that way we don't have to deal with lifetimes
     // The execution is a one shot job so thats fine
@@ -240,8 +281,8 @@ pub(crate) fn generate_kind_src(
     let enums = Vec::leak(enums);
     enums.sort();
     let keywords = Vec::leak(keywords);
-    let contextual_keywords = Vec::leak(contextual_keywords);
-    let edition_dependent_keywords = Vec::leak(edition_dependent_keywords);
+    let soft_keywords = Vec::leak(soft_keywords);
+    let version_dependent_keywords = Vec::leak(version_dependent_keywords);
     let literals = Vec::leak(literals);
     literals.sort();
     let tokens = Vec::leak(tokens);
@@ -252,8 +293,9 @@ pub(crate) fn generate_kind_src(
         nodes,
         _enums: enums,
         keywords,
-        contextual_keywords,
-        edition_dependent_keywords,
+        compound_keywords: COMPOUND_RESERVED,
+        soft_keywords,
+        version_dependent_keywords,
         literals,
         tokens,
     }

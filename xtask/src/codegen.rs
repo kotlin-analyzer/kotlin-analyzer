@@ -62,12 +62,8 @@ impl CommentBlock {
 
         let lines = text.lines().map(str::trim_start);
 
-        let dummy_block = CommentBlock {
-            id: String::new(),
-            line: 0,
-            contents: Vec::new(),
-            is_doc: false,
-        };
+        let dummy_block =
+            CommentBlock { id: String::new(), line: 0, contents: Vec::new(), is_doc: false };
         let mut block = dummy_block.clone();
         for (line_num, line) in lines.enumerate() {
             match line.strip_prefix("//") {
@@ -101,9 +97,7 @@ fn reformat(text: String) -> String {
     let sh = Shell::new().unwrap();
     let rustfmt_toml = project_root().join("rustfmt.toml");
     let toolchain = &std::env::var("RUSTFMT_TOOLCHAIN").unwrap_or("stable".to_owned());
-    let version = cmd!(sh, "rustup run {toolchain} rustfmt --version")
-        .read()
-        .unwrap_or_default();
+    let version = cmd!(sh, "rustup run {toolchain} rustfmt --version").read().unwrap_or_default();
 
     // First try explicitly requesting the stable channel via rustup in case nightly is being used by default,
     // then plain rustfmt in case rustup isn't being used to manage the compiler (e.g. when using Nix).
@@ -115,13 +109,10 @@ fn reformat(text: String) -> String {
                  Please run `rustup component add rustfmt --toolchain {toolchain}` to install it.",
             );
         } else {
-            cmd!(
-                sh,
-                "rustfmt --config-path {rustfmt_toml} --config fn_single_line=true"
-            )
-            .stdin(text)
-            .read()
-            .unwrap()
+            cmd!(sh, "rustfmt --config-path {rustfmt_toml} --config fn_single_line=true")
+                .stdin(text)
+                .read()
+                .unwrap()
         }
     } else {
         cmd!(

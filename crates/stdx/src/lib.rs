@@ -161,23 +161,20 @@ pub fn to_camel_case(ident: &str) -> String {
 
             camel_cased_component
         })
-        .fold(
-            (String::new(), None),
-            |(mut acc, prev): (_, Option<String>), next| {
-                // separate two components with an underscore if their boundary cannot
-                // be distinguished using an uppercase/lowercase case distinction
-                let join = prev
-                    .and_then(|prev| {
-                        let f = next.chars().next()?;
-                        let l = prev.chars().last()?;
-                        Some(!char_has_case(l) && !char_has_case(f))
-                    })
-                    .unwrap_or(false);
-                acc.push_str(if join { "_" } else { "" });
-                acc.push_str(&next);
-                (acc, Some(next))
-            },
-        )
+        .fold((String::new(), None), |(mut acc, prev): (_, Option<String>), next| {
+            // separate two components with an underscore if their boundary cannot
+            // be distinguished using an uppercase/lowercase case distinction
+            let join = prev
+                .and_then(|prev| {
+                    let f = next.chars().next()?;
+                    let l = prev.chars().last()?;
+                    Some(!char_has_case(l) && !char_has_case(f))
+                })
+                .unwrap_or(false);
+            acc.push_str(if join { "_" } else { "" });
+            acc.push_str(&next);
+            (acc, Some(next))
+        })
         .0
 }
 
@@ -189,8 +186,7 @@ pub const fn char_has_case(c: char) -> bool {
 
 #[must_use]
 pub fn is_upper_snake_case(s: &str) -> bool {
-    s.chars()
-        .all(|c| c.is_uppercase() || c == '_' || c.is_numeric())
+    s.chars().all(|c| c.is_uppercase() || c == '_' || c.is_numeric())
 }
 
 pub fn replace(buf: &mut String, from: char, to: &str) {
@@ -216,13 +212,11 @@ pub fn trim_indent(mut text: &str) -> String {
     }
     let indent = indent_of(text);
     text.split_inclusive('\n')
-        .map(|line| {
-            if line.len() <= indent {
-                line.trim_start_matches(' ')
-            } else {
-                &line[indent..]
-            }
-        })
+        .map(
+            |line| {
+                if line.len() <= indent { line.trim_start_matches(' ') } else { &line[indent..] }
+            },
+        )
         .collect()
 }
 
@@ -240,11 +234,7 @@ pub fn dedent_by(spaces: usize, text: &str) -> String {
     text.split_inclusive('\n')
         .map(|line| {
             let trimmed = line.trim_start_matches(' ');
-            if line.len() - trimmed.len() <= spaces {
-                trimmed
-            } else {
-                &line[spaces..]
-            }
+            if line.len() - trimmed.len() <= spaces { trimmed } else { &line[spaces..] }
         })
         .collect()
 }

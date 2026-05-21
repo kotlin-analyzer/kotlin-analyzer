@@ -17,7 +17,7 @@ lexer = { path = "./crates/lexer" }
 macros = { path = "./libs/macros" }
 parser = { path = "./crates/parser" }
 stdx = { path = "./crates/stdx" }
-syntax = { path = "./libs/syntax" }
+syntax = { path = "./crates/syntax" }
 
 # non-local dependencies
 anyhow = "1.0.98"

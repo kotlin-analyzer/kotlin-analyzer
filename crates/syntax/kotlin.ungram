@@ -38,10 +38,10 @@ Script =
   Statement*
 
 ShebangLine =
-  '#!'
+  '#shebangLine'
 
 FileAnnotation =
-  '@' 'file' ':' ('[' unescaped_annotations:UnescapedAnnotation+ ']' | UnescapedAnnotation)
+  '@' 'file' ':' ('[' UnescapedAnnotation* ']' | UnescapedAnnotation)
 
 PackageHeader =
   'package' Identifier
@@ -56,14 +56,16 @@ TopLevelObject =
   Declaration
 
 TypeAlias =
-  Modifiers? 'typealias' name:SimpleIdentifier TypeParameters? '=' Type
+  Modifiers? 'typealias' SimpleIdentifier TypeParameters? '=' Type
 
 Declaration =
-  ClassDeclaration
-| ObjectDeclaration
-| FunctionDeclaration
-| PropertyDeclaration
-| TypeAlias
+  decl:(
+    ClassDeclaration
+  | ObjectDeclaration
+  | FunctionDeclaration
+  | PropertyDeclaration
+  | TypeAlias
+)
 
 
 //*************************//
@@ -73,7 +75,7 @@ Declaration =
 ClassDeclaration =
   Modifiers?
   ( 'class' | 'fun'? 'interface' )
-  name:SimpleIdentifier
+  SimpleIdentifier
   TypeParameters?
   PrimaryConstructor?
   (':' DelegationSpecifiers)?
@@ -90,7 +92,7 @@ ClassParameters =
   '(' (ClassParameter ( ',' ClassParameter )* ','?)? ')'
 
 ClassParameter =
-  Modifiers? ('val' | 'var')? name:SimpleIdentifier ':' Type ('=' Expression)?
+  Modifiers? ('val' | 'var')? SimpleIdentifier ':' Type ('=' Expression)?
 
 DelegationSpecifiers =
   AnnotatedDelegationSpecifier (',' AnnotatedDelegationSpecifier)*
@@ -115,13 +117,13 @@ TypeParameters =
   '<' (TypeParameter (',' TypeParameter)* ','?)? '>'
 
 TypeParameter =
-  TypeParameterModifiers? name:SimpleIdentifier (':' Type)?
+  TypeParameterModifiers? SimpleIdentifier (':' Type)?
 
 TypeConstraints =
-  'where' TypeConstraint (',' TypeConstraint)*
+  'where' constraints:(TypeConstraint (',' TypeConstraint)*)
 
 TypeConstraint =
-  Annotation* name:SimpleIdentifier ':' Type
+  Annotation* SimpleIdentifier ':' Type
 
 
 //*************************//
@@ -132,7 +134,7 @@ ClassMemberDeclarations =
   ClassMemberDeclaration*
 
 ClassMemberDeclaration =
-  Declaration
+Declaration  
 | CompanionObject
 | AnonymousInitializer
 | SecondaryConstructor
@@ -141,7 +143,7 @@ AnonymousInitializer =
   'init' Block
 
 CompanionObject =
-  Modifiers? 'companion' 'data'? 'object' name:SimpleIdentifier? (':' DelegationSpecifiers)? ClassBody?
+  Modifiers? 'companion' 'data'? 'object' SimpleIdentifier? (':' DelegationSpecifiers)? ClassBody?
 
 FunctionValueParameters =
   '(' (FunctionValueParameter (',' FunctionValueParameter)* ','?)? ')'
@@ -151,7 +153,7 @@ FunctionValueParameter =
 
 FunctionDeclaration =
   Modifiers?
-  'fun' TypeParameters? (ReceiverType '.')? name:SimpleIdentifier
+  'fun' TypeParameters? (ReceiverType '.')? SimpleIdentifier
   FunctionValueParameters
   (':' Type)?
   TypeConstraints?
@@ -162,7 +164,7 @@ FunctionBody =
 | '=' Expression
 
 VariableDeclaration =
-  Annotation* name:SimpleIdentifier (':' Type)?
+  Annotation* SimpleIdentifier (':' Type)?
 
 MultiVariableDeclaration =
   '(' (VariableDeclaration (',' VariableDeclaration)* ','?)? ')'
@@ -192,13 +194,13 @@ FunctionValueParameterWithOptionalType =
   ParameterModifiers? ParameterWithOptionalType ('=' Expression)?
 
 ParameterWithOptionalType =
-  name:SimpleIdentifier (':' Type)?
+  SimpleIdentifier (':' Type)?
 
 Parameter =
-  name:SimpleIdentifier ':' Type
+  SimpleIdentifier ':' Type
 
 ObjectDeclaration =
-  Modifiers? 'object' name:SimpleIdentifier (':' DelegationSpecifiers)? ClassBody?
+  Modifiers? 'object' SimpleIdentifier (':' DelegationSpecifiers)? ClassBody?
 
 SecondaryConstructor =
   Modifiers? 'constructor' FunctionValueParameters (':' ConstructorDelegationCall)? Block?
@@ -218,7 +220,7 @@ EnumEntries =
   EnumEntry (',' EnumEntry)* ','?
 
 EnumEntry =
-  Modifiers? name:SimpleIdentifier ValueArguments? ClassBody?
+  Modifiers? SimpleIdentifier ValueArguments? ClassBody?
 
 
 //*************************//
@@ -226,11 +228,11 @@ EnumEntry =
 //*************************//
 
 Type =
-  TypeReference
+  ty:(TypeReference
 | NullableType
 | FunctionType
 | ParenthesizedType
-| DefinitelyNonNullableType
+| DefinitelyNonNullableType)
 
 TypeReference =
   UserType
@@ -243,14 +245,14 @@ UserType =
   SimpleUserType ('.' SimpleUserType)*
 
 SimpleUserType =
-  name:SimpleIdentifier TypeArguments?
+  SimpleIdentifier TypeArguments?
 
 TypeProjection =
   TypeProjectionModifiers? Type
 | '*'
 
 TypeProjectionModifiers =
-  TypeProjectionModifier+
+  TypeProjectionModifier*
 
 TypeProjectionModifier =
   VarianceModifier | Annotation
@@ -259,7 +261,10 @@ FunctionType =
   (ReceiverType '.')? FunctionTypeParameters '->' Type
 
 FunctionTypeParameters =
-  '(' (Parameter | Type)? (',' (Parameter | Type))* ','? ')'
+  '(' parameters:(ParameterOrType (',' ParameterOrType)* ','?)? ')'
+
+ParameterOrType =
+  Parameter | Type
 
 ParenthesizedType =
   '(' Type ')'
@@ -285,7 +290,7 @@ Statement =
   Label* Annotation* (Declaration | Assignment | LoopStatement | Expression)
 
 Label =
-  name:SimpleIdentifier '@'
+  SimpleIdentifier '@'
 
 ControlStructureBody =
   Block
@@ -335,10 +340,16 @@ GenericCallLikeComparison =
   InfixOperation CallSuffix*
 
 InfixOperation =
-  ElvisExpression (InOperator ElvisExpression | IsOperator Type)*
+  ElvisExpression IsOrInExpression*
+
+IsOrInExpression =
+  InOperator ElvisExpression | IsOperator Type
 
 ElvisExpression =
-  InfixFunctionCall ('?:' InfixFunctionCall)*
+  InfixFunctionCall (Elvis InfixFunctionCall)*
+
+Elvis =
+  '?' ':'
 
 InfixFunctionCall =
   RangeExpression (SimpleIdentifier RangeExpression)*
@@ -353,7 +364,11 @@ MultiplicativeExpression =
   AsExpression (MultiplicativeOperator AsExpression)*
 
 AsExpression =
-  PrefixUnaryExpression (AsOperator Type)*
+  PrefixUnaryExpression AsType*
+
+AsType =
+  AsOperator Type
+
 
 PrefixUnaryExpression =
   UnaryPrefix* PostfixUnaryExpression
@@ -394,7 +409,7 @@ AssignableSuffix =
 | NavigationSuffix
 
 IndexingSuffix =
-  '[' Expression (',' Expression)* ','? ']'
+  '[' (Expression (',' Expression)* ','?) ']'
 
 NavigationSuffix =
   MemberAccessOperator (SimpleIdentifier | ParenthesizedExpression | 'class')
@@ -440,14 +455,20 @@ LiteralConstant =
   '@bool' | '@int' | '@hex' | '@bin' | '@char' | '@float' | 'null' | '@long' | '@unsigned'
 
 StringLiteral =
-  LineStringLiteral
-| MultiLineStringLiteral
+  str:(LineStringLiteral
+| MultiLineStringLiteral)
 
 LineStringLiteral =
-  '"' (LineStringContent | LineStringExpression)* '"'
+  '"' LineStringContentOrExpression* '"'
+
+LineStringContentOrExpression =
+  LineStringContent | LineStringExpression
 
 MultiLineStringLiteral =
-  '"""' (MultiLineStringContent | MultiLineStringExpression)* '"""'
+  '"""' MultiLineStringContentOrExpression* '"""'
+
+MultiLineStringContentOrExpression =
+  MultiLineStringContent | MultiLineStringExpression
 
 LineStringContent =
   '@text' | '@escaped' | LineStrRef
@@ -455,14 +476,17 @@ LineStringContent =
 LineStrRef =
   '$' SimpleIdentifier
 
+StrExprStart =
+  '$' '{'
+
 LineStringExpression =
-  '${' Expression '}'
+  StrExprStart Expression '}'
 
 MultiLineStringContent =
   '@text' | LineStrRef
 
 MultiLineStringExpression =
-  '${' Expression '}'
+  StrExprStart Expression '}'
 
 LambdaLiteral =
   '{' (LambdaParameters? '->')? Statements? '}'
@@ -478,14 +502,14 @@ AnonymousFunction =
   'suspend'? 'fun' (Type '.')? ParametersWithOptionalType (':' Type)? TypeConstraints? FunctionBody?
 
 FunctionLiteral =
-  LambdaLiteral
-| AnonymousFunction
+  fn:(LambdaLiteral
+| AnonymousFunction)
 
 ObjectLiteral =
   'data'? 'object' (':' DelegationSpecifiers)? ClassBody?
 
 ThisExpression =
-  'this' | 'this@'
+  'this' | ('this' '@')
 
 SuperExpression =
   'super' ('<' Type '>')? ('@' SimpleIdentifier)? | 'super@'
@@ -500,7 +524,7 @@ WhenExpression =
   'when' WhenSubject? '{' WhenEntry* '}'
 
 WhenEntry =
-  WhenCondition (',' WhenCondition)* ','? '->' ControlStructureBody
+  (WhenCondition (',' WhenCondition)* ','?) '->' ControlStructureBody
 | 'else' '->' ControlStructureBody
 
 WhenCondition =
@@ -515,10 +539,10 @@ TypeTest =
   IsOperator Type
 
 TryExpression =
-  'try' Block ((CatchBlock+ FinallyBlock?) | FinallyBlock)
+  'try' Block ((CatchBlock* FinallyBlock?) | FinallyBlock)
 
 CatchBlock =
-  'catch' '(' Annotation* name:SimpleIdentifier ':' Type ','? ')' Block
+  'catch' '(' Annotation* SimpleIdentifier ':' Type ','? ')' Block
 
 FinallyBlock =
   'finally' Block
@@ -532,7 +556,7 @@ JumpExpression =
 | 'break@'
 
 CallableReference =
-  ReceiverType? '::' (name:SimpleIdentifier | 'class')
+  ReceiverType? '::' (SimpleIdentifier | 'class')
 
 AssignmentAndOperator =
   '+=' | '-=' | '*=' | '/=' | '%='
@@ -565,7 +589,7 @@ PostfixUnaryOperator =
   '++' | '--' | '!'
 
 MemberAccessOperator =
-  '.' | '?.' | '::'
+  '.' | ('?' '.') | '::'
 
 
 //*************************//
@@ -573,23 +597,30 @@ MemberAccessOperator =
 //*************************//
 
 Modifiers =
-  (Annotation | Modifier)+
+  AnnotationOrModifier*
+
+AnnotationOrModifier =
+  Annotation | Modifier
 
 ParameterModifiers =
-  (Annotation | ParameterModifier)+
+  AnnotationOrParameterModifier*
+
+AnnotationOrParameterModifier =
+  Annotation | ParameterModifier
+
 
 Modifier =
-  ClassModifier
+  mod:(ClassModifier
 | MemberModifier
 | VisibilityModifier
 | FunctionModifier
 | PropertyModifier
 | InheritanceModifier
 | ParameterModifier
-| PlatformModifier
+| PlatformModifier)
 
 TypeModifiers =
-  TypeModifier+
+  TypeModifier*
 
 TypeModifier =
   Annotation
@@ -608,7 +639,7 @@ VarianceModifier =
   'in' | 'out'
 
 TypeParameterModifiers =
-  TypeParameterModifier+
+  TypeParameterModifier*
 
 TypeParameterModifier =
   ReificationModifier
@@ -639,13 +670,13 @@ PlatformModifier =
 //*************************//
 
 Annotation =
-  SingleAnnotation | MultiAnnotation
+  anno:(SingleAnnotation | MultiAnnotation)
 
 SingleAnnotation =
   (AnnotationUseSiteTarget | '@') UnescapedAnnotation
 
 MultiAnnotation =
-  (AnnotationUseSiteTarget | '@') '[' unescaped_annotations:UnescapedAnnotation+ ']'
+  (AnnotationUseSiteTarget | '@') '[' UnescapedAnnotation* ']'
 
 AnnotationUseSiteTarget =
   '@' ( 'field' | 'property' | 'get' | 'set' | 'receiver' | 'param' | 'setparam' | 'delegate' ) ':'
@@ -660,7 +691,7 @@ UnescapedAnnotation =
 //*************************//
 
 SimpleIdentifier =
-  '#ident'
+  '#identifier'
 | 'abstract' | 'annotation' | 'by' | 'catch' | 'companion' | 'constructor' | 'crossinline'
 | 'data' | 'dynamic' | 'enum' | 'external' | 'final' | 'finally' | 'get' | 'import' | 'infix'
 | 'init' | 'inline' | 'inner' | 'internal' | 'lateinit' | 'noinline' | 'open' | 'operator' | 'out'

@@ -27,7 +27,7 @@ mod ast_src;
 use self::ast_src::{AstEnumSrc, AstNodeSrc, AstSrc, Cardinality, Field, KindsSrc};
 
 pub(crate) fn generate(check: bool) {
-    let grammar = fs::read_to_string(project_root().join("crates/syntax/rust.ungram"))
+    let grammar = fs::read_to_string(project_root().join("crates/syntax/kotlin.ungram"))
         .unwrap()
         .parse()
         .unwrap();
@@ -473,9 +473,10 @@ fn generate_syntax_kinds(grammar: KindsSrc) -> String {
         if "{}[]()".contains(token) {
             let c = token.chars().next().unwrap();
             quote! { #c }
-            // underscore is an identifier in the proc-macro api
-        } else if *token == "_" {
-            quote! { _ }
+        } else if *&token.starts_with("\"") {
+            quote! { '"' }
+        } else if *token == "\"\"\"" {
+            quote! { triple_quote }
         } else {
             let cs = token.chars().map(|c| Punct::new(c, Spacing::Joint));
             quote! { #(#cs)* }
@@ -490,59 +491,67 @@ fn generate_syntax_kinds(grammar: KindsSrc) -> String {
         name => format_ident!("{}_KW", to_upper_snake_case(name)),
     };
     let strict_keywords = grammar.keywords;
-    let strict_keywords_variants =
-        strict_keywords.iter().map(fmt_kw_as_variant).collect::<Vec<_>>();
-    let strict_keywords_tokens = strict_keywords.iter().map(|it| format_ident!("{it}"));
+    let strict_compound_keywords = grammar.compound_keywords;
+    let strict_keywords_variants = strict_keywords
+        .iter()
+        .chain(strict_compound_keywords.iter().map(|(_token, variant)| variant))
+        .map(fmt_kw_as_variant)
+        .collect::<Vec<_>>();
+    let strict_keywords_tokens = strict_keywords
+        .iter()
+        .chain(strict_compound_keywords.iter().map(|(token, _variant)| token))
+        .map(|token| {
+            quote! { #token }
+        });
 
-    let edition_dependent_keywords_variants_match_arm = grammar
-        .edition_dependent_keywords
+    let version_dependent_keywords_variants_match_arm = grammar
+        .version_dependent_keywords
         .iter()
         .map(|(kw, ed)| {
             let kw = fmt_kw_as_variant(kw);
-            quote! { #kw if #ed <= edition }
+            quote! { #kw if #ed <= version }
         })
         .collect::<Vec<_>>();
-    let edition_dependent_keywords_str_match_arm = grammar
-        .edition_dependent_keywords
+    let version_dependent_keywords_str_match_arm = grammar
+        .version_dependent_keywords
         .iter()
         .map(|(kw, ed)| {
-            quote! { #kw if #ed <= edition }
+            quote! { #kw if #ed <= version }
         })
         .collect::<Vec<_>>();
-    let edition_dependent_keywords = grammar.edition_dependent_keywords.iter().map(|&(it, _)| it);
-    let edition_dependent_keywords_variants = grammar
-        .edition_dependent_keywords
+    let version_dependent_keywords = grammar.version_dependent_keywords.iter().map(|&(it, _)| it);
+    let version_dependent_keywords_variants = grammar
+        .version_dependent_keywords
         .iter()
         .map(|(kw, _)| fmt_kw_as_variant(kw))
         .collect::<Vec<_>>();
-    let edition_dependent_keywords_tokens =
-        grammar.edition_dependent_keywords.iter().map(|(it, _)| format_ident!("{it}"));
+    let version_dependent_keywords_tokens =
+        grammar.version_dependent_keywords.iter().map(|(it, _)| format_ident!("{it}"));
 
-    let contextual_keywords = grammar.contextual_keywords;
-    let contextual_keywords_variants =
-        contextual_keywords.iter().map(fmt_kw_as_variant).collect::<Vec<_>>();
-    let contextual_keywords_tokens = contextual_keywords.iter().map(|it| format_ident!("{it}"));
-    let contextual_keywords_str_match_arm = grammar.contextual_keywords.iter().map(|kw| {
-        match grammar.edition_dependent_keywords.iter().find(|(ed_kw, _)| ed_kw == kw) {
-            Some((_, ed)) => quote! { #kw if edition < #ed },
+    let soft_keywords = grammar.soft_keywords;
+    let soft_keywords_variants = soft_keywords.iter().map(fmt_kw_as_variant).collect::<Vec<_>>();
+    let soft_keywords_tokens = soft_keywords.iter().map(|it| format_ident!("{it}"));
+    let soft_keywords_str_match_arm = grammar.soft_keywords.iter().map(|kw| {
+        match grammar.version_dependent_keywords.iter().find(|(ed_kw, _)| ed_kw == kw) {
+            Some((_, ed)) => quote! { #kw if version < #ed },
             None => quote! { #kw },
         }
     });
-    let contextual_keywords_variants_match_arm = grammar
-        .contextual_keywords
+    let soft_keywords_variants_match_arm = grammar
+        .soft_keywords
         .iter()
         .map(|kw_s| {
             let kw = fmt_kw_as_variant(kw_s);
-            match grammar.edition_dependent_keywords.iter().find(|(ed_kw, _)| ed_kw == kw_s) {
-                Some((_, ed)) => quote! { #kw if edition < #ed },
+            match grammar.version_dependent_keywords.iter().find(|(ed_kw, _)| ed_kw == kw_s) {
+                Some((_, ed)) => quote! { #kw if version < #ed },
                 None => quote! { #kw },
             }
         })
         .collect::<Vec<_>>();
 
-    let non_strict_keyword_variants = contextual_keywords_variants
+    let non_strict_keyword_variants = soft_keywords_variants
         .iter()
-        .chain(edition_dependent_keywords_variants.iter())
+        .chain(version_dependent_keywords_variants.iter())
         .sorted()
         .dedup()
         .collect::<Vec<_>>();
@@ -591,36 +600,36 @@ fn generate_syntax_kinds(grammar: KindsSrc) -> String {
                     #( | #tokens )* => panic!("no text for these `SyntaxKind`s"),
                     #( #punctuation => #punctuation_texts ,)*
                     #( #strict_keywords_variants => #strict_keywords ,)*
-                    #( #contextual_keywords_variants => #contextual_keywords ,)*
-                    #( #edition_dependent_keywords_variants => #edition_dependent_keywords ,)*
+                    #( #soft_keywords_variants => #soft_keywords ,)*
+                    #( #version_dependent_keywords_variants => #version_dependent_keywords ,)*
                 }
             }
 
-            /// Checks whether this syntax kind is a strict keyword for the given edition.
+            /// Checks whether this syntax kind is a strict keyword for the given version.
             /// Strict keywords are identifiers that are always considered keywords.
-            pub fn is_strict_keyword(self, edition: Edition) -> bool {
+            pub fn is_strict_keyword(self, version: Version) -> bool {
                 matches!(self, #(#strict_keywords_variants)|*)
                 || match self {
-                    #(#edition_dependent_keywords_variants_match_arm => true,)*
+                    #(#version_dependent_keywords_variants_match_arm => true,)*
                     _ => false,
                 }
             }
 
-            /// Checks whether this syntax kind is a weak keyword for the given edition.
-            /// Weak keywords are identifiers that are considered keywords only in certain contexts.
-            pub fn is_contextual_keyword(self, edition: Edition) -> bool {
+            /// Checks whether this syntax kind is a soft keyword for the given version.
+            /// Soft keywords are identifiers that are considered keywords only in certain contexts.
+            pub fn is_soft_keyword(self, version: Version) -> bool {
                 match self {
-                    #(#contextual_keywords_variants_match_arm => true,)*
+                    #(#soft_keywords_variants_match_arm => true,)*
                     _ => false,
                 }
             }
 
-            /// Checks whether this syntax kind is a strict or weak keyword for the given edition.
-            pub fn is_keyword(self, edition: Edition) -> bool {
+            /// Checks whether this syntax kind is a strict or soft keyword for the given version.
+            pub fn is_keyword(self, version: Version) -> bool {
                 matches!(self, #(#strict_keywords_variants)|*)
                 || match self {
-                    #(#edition_dependent_keywords_variants_match_arm => true,)*
-                    #(#contextual_keywords_variants_match_arm => true,)*
+                    #(#version_dependent_keywords_variants_match_arm => true,)*
+                    #(#soft_keywords_variants_match_arm => true,)*
                     _ => false,
                 }
             }
@@ -633,18 +642,18 @@ fn generate_syntax_kinds(grammar: KindsSrc) -> String {
                 matches!(self, #(#literals)|*)
             }
 
-            pub fn from_keyword(ident: &str, edition: Edition) -> Option<SyntaxKind> {
+            pub fn from_keyword(ident: &str, version: Version) -> Option<SyntaxKind> {
                 let kw = match ident {
                     #(#strict_keywords => #strict_keywords_variants,)*
-                    #(#edition_dependent_keywords_str_match_arm => #edition_dependent_keywords_variants,)*
+                    #(#version_dependent_keywords_str_match_arm => #version_dependent_keywords_variants,)*
                     _ => return None,
                 };
                 Some(kw)
             }
 
-            pub fn from_contextual_keyword(ident: &str, edition: Edition) -> Option<SyntaxKind> {
+            pub fn from_contextual_keyword(ident: &str, version: Version) -> Option<SyntaxKind> {
                 let kw = match ident {
-                    #(#contextual_keywords_str_match_arm => #contextual_keywords_variants,)*
+                    #(#soft_keywords_str_match_arm => #soft_keywords_variants,)*
                     _ => return None,
                 };
                 Some(kw)
@@ -664,8 +673,8 @@ fn generate_syntax_kinds(grammar: KindsSrc) -> String {
         macro_rules! T_ {
             #([#punctuation_values] => { $crate::SyntaxKind::#punctuation };)*
             #([#strict_keywords_tokens] => { $crate::SyntaxKind::#strict_keywords_variants };)*
-            #([#contextual_keywords_tokens] => { $crate::SyntaxKind::#contextual_keywords_variants };)*
-            #([#edition_dependent_keywords_tokens] => { $crate::SyntaxKind::#edition_dependent_keywords_variants };)*
+            #([#soft_keywords_tokens] => { $crate::SyntaxKind::#soft_keywords_variants };)*
+            #([#version_dependent_keywords_tokens] => { $crate::SyntaxKind::#version_dependent_keywords_variants };)*
             [lifetime_ident] => { $crate::SyntaxKind::LIFETIME_IDENT };
             [int_number] => { $crate::SyntaxKind::INT_NUMBER };
             [ident] => { $crate::SyntaxKind::IDENT };
@@ -780,11 +789,35 @@ impl Field {
     }
     fn token_kind(&self) -> Option<proc_macro2::TokenStream> {
         match self {
-            Field::Token { token, .. } => {
-                let token: proc_macro2::TokenStream = token.parse().unwrap();
+            t @ Field::Token { .. } => {
+                let id = t.t_id().unwrap();
+                let token: proc_macro2::TokenStream =
+                    id.parse().expect(&format!("token `{id}` is not a valid Rust token"));
                 Some(quote! { T![#token] })
             }
             _ => None,
+        }
+    }
+    fn t_id(&self) -> Option<String> {
+        match self {
+            Field::Token { token, .. } => {
+                let name = match token.as_str() {
+                    "'" => "single_quote",
+                    "!in" => "not_in",
+                    "!is" => "not_is",
+                    "as?" => "as_safe",
+                    "return@" => "return_at",
+                    "continue@" => "continue_at",
+                    "break@" => "break_at",
+                    "this@" => "this_at",
+                    "super@" => "super_at",
+                    "\"\"\"" => "triple_quote",
+                    "\"" => "quote",
+                    _ => token,
+                };
+                Some(name.to_owned())
+            }
+            Field::Node { .. } => None,
         }
     }
     fn method_name(&self) -> String {
@@ -794,35 +827,61 @@ impl Field {
                     return name.clone();
                 }
                 let name = match token.as_str() {
+                    "$" => "dollar",
                     ";" => "semicolon",
-                    "->" => "thin_arrow",
-                    "'{'" => "l_curly",
-                    "'}'" => "r_curly",
+                    "->" => "arrow",
+                    "=>" => "double_arrow",
+                    "'{'" => "l_curl",
+                    "'}'" => "r_curl",
                     "'('" => "l_paren",
                     "')'" => "r_paren",
-                    "'['" => "l_brack",
-                    "']'" => "r_brack",
+                    "'['" => "l_square",
+                    "']'" => "r_square",
                     "<" => "l_angle",
                     ">" => "r_angle",
-                    "=" => "eq",
                     "!" => "excl",
-                    "*" => "star",
+                    "*" => "mult",
+                    "%" => "mod",
+                    "/" => "div",
+                    "+" => "add",
+                    "-" => "sub",
+                    "++" => "incr",
+                    "--" => "decr",
+                    "&&" => "conj",
+                    "||" => "disj",
                     "&" => "amp",
-                    "-" => "minus",
-                    "_" => "underscore",
+                    "=" => "assign",
+                    "+=" => "add_assign",
+                    "-=" => "sub_assign",
+                    "*=" => "mul_assign",
+                    "/=" => "div_assign",
+                    "%=" => "mod_assign",
                     "." => "dot",
-                    ".." => "dotdot",
-                    "..." => "dotdotdot",
-                    "..=" => "dotdoteq",
-                    "=>" => "fat_arrow",
+                    ".." => "range",
+                    "..<" => "range_until",
                     "@" => "at",
                     ":" => "colon",
                     "::" => "coloncolon",
-                    "#" => "pound",
-                    "?" => "question_mark",
+                    "#" => "hash",
+                    "?" => "quest",
                     "," => "comma",
-                    "|" => "pipe",
-                    "~" => "tilde",
+                    "<=" => "le",
+                    ">=" => "ge",
+                    "!=" => "excl_eq",
+                    "!==" => "excl_eqeq",
+                    "==" => "eq",
+                    "===" => "eqeqeq",
+                    "'" => "single_quote",
+                    "!in" => "not_in",
+                    "!is" => "not_is",
+                    "as?" => "as_safe",
+                    "return@" => "return_at",
+                    "continue@" => "continue_at",
+                    "break@" => "break_at",
+                    "this@" => "this_at",
+                    "super@" => "super_at",
+                    "\"\"\"" => "triple_quote",
+                    "\"" => "quote",
                     _ => token,
                 };
                 format!("{name}_token",)
@@ -951,16 +1010,14 @@ fn lower_rule(acc: &mut Vec<Field>, grammar: &Grammar, label: Option<&String>, r
                 l.as_str(),
                 "lhs"
                     | "rhs"
-                    | "then_branch"
-                    | "else_branch"
+                    // | "then_branch"
+                    // | "else_branch"
                     | "start"
                     | "end"
                     | "op"
                     | "index"
                     | "base"
                     | "value"
-                    | "trait"
-                    | "self_ty"
                     | "iterable"
                     | "condition"
                     | "args"
@@ -1072,9 +1129,9 @@ fn extract_enums(ast: &mut AstSrc) {
 }
 
 const TRAITS: &[(&str, &[&str])] = &[
-    ("HasAttrs", &["attrs"]),
-    ("HasName", &["name"]),
-    ("HasVisibility", &["visibility"]),
+    ("HasAnnotations", &["modifiers", "annotation"]),
+    ("HasName", &["SimpleIdentifier", "Identifier"]),
+    ("HasVisibility", &["modifiers"]),
     ("HasGenericParams", &["generic_param_list", "where_clause"]),
     ("HasGenericArgs", &["generic_arg_list"]),
     ("HasTypeBounds", &["type_bound_list", "colon_token"]),
@@ -1091,26 +1148,20 @@ fn extract_struct_traits(ast: &mut AstSrc) {
     }
 
     let nodes_with_doc_comments = [
-        "SourceFile",
-        "Fn",
-        "Struct",
-        "Union",
-        "RecordField",
-        "TupleField",
-        "Enum",
-        "Variant",
-        "Trait",
-        "Module",
-        "Static",
-        "Const",
+        "KotlinFile",
+        "Script",
+        "ClassDeclaration",
+        "ObjectDeclaration",
+        "FunctionDeclaration",
+        "PropertyDeclaration",
+        "Parameter",
+        "FunctionValueParameter",
+        "Getter",
+        "Setter",
+        "SecondaryConstructor",
+        "PackageHeader",
+        "ImportHeader",
         "TypeAlias",
-        "Impl",
-        "ExternBlock",
-        "ExternCrate",
-        "MacroCall",
-        "MacroRules",
-        "MacroDef",
-        "Use",
     ];
 
     for node in &mut ast.nodes {
@@ -1143,7 +1194,12 @@ fn extract_enum_traits(ast: &mut AstSrc) {
         let mut variant_traits = enm
             .variants
             .iter()
-            .map(|var| nodes.iter().find(|it| &it.name == var).unwrap())
+            .map(|var| {
+                nodes
+                    .iter()
+                    .find(|it| &it.name == var)
+                    .expect(&format!("var is {var}, enum is {:?}", enm))
+            })
             .map(|node| node.traits.iter().cloned().collect::<BTreeSet<_>>());
 
         let mut enum_traits = match variant_traits.next() {

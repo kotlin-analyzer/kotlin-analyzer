@@ -10,3 +10,10 @@ license.workspace = true
 
 [lib]
 doctest = false
+
+[dependencies]
+backtrace = { version = "0.3.75", optional = true }
+
+[features]
+# Uncomment to enable for the whole crate graph
+default = ["backtrace"]
