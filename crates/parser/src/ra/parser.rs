@@ -24,32 +24,19 @@ pub(crate) struct Parser<'t> {
     steps: Cell<u32>,
 }
 
-const PARSER_STEP_LIMIT: usize = if cfg!(debug_assertions) {
-    150_000
-} else {
-    15_000_000
-};
+const PARSER_STEP_LIMIT: usize = if cfg!(debug_assertions) { 150_000 } else { 15_000_000 };
 
 impl<'t> Parser<'t> {
     pub(super) fn new(inp: &'t Input) -> Parser<'t> {
-        Parser {
-            inp,
-            pos: 0,
-            events: Vec::with_capacity(2 * inp.len()),
-            steps: Cell::new(0),
-        }
+        Parser { inp, pos: 0, events: Vec::with_capacity(2 * inp.len()), steps: Cell::new(0) }
     }
 
-    pub(crate) fn finish(self) -> Vec<Event> {
-        self.events
-    }
+    pub(crate) fn finish(self) -> Vec<Event> { self.events }
 
     /// Returns the kind of the current token.
     /// If parser has already reached the end of input,
     /// the special `EOF` kind is returned.
-    pub(crate) fn current(&self) -> SyntaxKind {
-        self.nth(0)
-    }
+    pub(crate) fn current(&self) -> SyntaxKind { self.nth(0) }
 
     /// Lookahead operation: returns the kind of the next nth
     /// token.
@@ -57,19 +44,14 @@ impl<'t> Parser<'t> {
         assert!(n <= 3);
 
         let steps = self.steps.get();
-        assert!(
-            (steps as usize) < PARSER_STEP_LIMIT,
-            "the parser seems stuck"
-        );
+        assert!((steps as usize) < PARSER_STEP_LIMIT, "the parser seems stuck");
         self.steps.set(steps + 1);
 
         self.inp.kind(self.pos + n)
     }
 
     /// Checks if the current token is `kind`.
-    pub(crate) fn at(&self, kind: SyntaxKind) -> bool {
-        self.nth_at(0, kind)
-    }
+    pub(crate) fn at(&self, kind: SyntaxKind) -> bool { self.nth_at(0, kind) }
 
     pub(crate) fn nth_at(&self, n: usize, kind: SyntaxKind) -> bool {
         self.inp.kind(self.pos + n) == kind
@@ -85,19 +67,13 @@ impl<'t> Parser<'t> {
     }
 
     /// Checks if the current token is in `kinds`.
-    pub(crate) fn at_ts(&self, kinds: TokenSet) -> bool {
-        kinds.contains(self.current())
-    }
+    pub(crate) fn at_ts(&self, kinds: TokenSet) -> bool { kinds.contains(self.current()) }
 
     /// Checks if the current token is a `(` preceded by whitespace.
-    pub(crate) fn at_lparen_after_ws(&self) -> bool {
-        self.at(T!['(']) && self.has_ws_before()
-    }
+    pub(crate) fn at_lparen_after_ws(&self) -> bool { self.at(T!['(']) && self.has_ws_before() }
 
     /// Checks if the current token has a whitespace before it.
-    pub(crate) fn has_ws_before(&self) -> bool {
-        self.inp.has_ws_before(self.pos)
-    }
+    pub(crate) fn has_ws_before(&self) -> bool { self.inp.has_ws_before(self.pos) }
     /// Starts a new node in the syntax tree. All nodes and tokens
     /// consumed between the `start` and the corresponding `Marker::complete`
     /// belong to the same node.
@@ -189,13 +165,9 @@ impl<'t> Parser<'t> {
         self.push_event(Event::Token { kind, n_raw_tokens });
     }
 
-    fn push_event(&mut self, event: Event) {
-        self.events.push(event);
-    }
+    fn push_event(&mut self, event: Event) { self.events.push(event); }
 
-    pub(crate) fn current_version(&self) -> KtVersion {
-        self.inp.version(self.pos)
-    }
+    pub(crate) fn current_version(&self) -> KtVersion { self.inp.version(self.pos) }
 }
 
 /// See [`Parser::start`].
@@ -207,10 +179,7 @@ pub(crate) struct Marker {
 
 impl Marker {
     fn new(pos: u32) -> Marker {
-        Marker {
-            pos,
-            bomb: DropBomb::new("Marker must be either completed or abandoned"),
-        }
+        Marker { pos, bomb: DropBomb::new("Marker must be either completed or abandoned") }
     }
 
     /// Finishes the syntax tree node and assigns `kind` to it,
@@ -238,10 +207,7 @@ impl Marker {
         if idx == parser.events.len() - 1 {
             assert!(matches!(
                 parser.events.pop(),
-                Some(Event::Start {
-                    kind: TOMBSTONE,
-                    forward_parent: None
-                })
+                Some(Event::Start { kind: TOMBSTONE, forward_parent: None })
             ));
         }
     }
@@ -256,11 +222,7 @@ pub(crate) struct CompletedMarker {
 
 impl CompletedMarker {
     fn new(start_pos: u32, end_pos: u32, kind: SyntaxKind) -> Self {
-        CompletedMarker {
-            start_pos,
-            end_pos,
-            kind,
-        }
+        CompletedMarker { start_pos, end_pos, kind }
     }
 
     /// This method allows to create a new node which starts
@@ -301,19 +263,14 @@ impl CompletedMarker {
         self
     }
 
-    pub(crate) fn kind(&self) -> SyntaxKind {
-        self.kind
-    }
+    pub(crate) fn kind(&self) -> SyntaxKind { self.kind }
 
     pub(crate) fn last_token(&self, parser: &Parser<'_>) -> Option<SyntaxKind> {
         let end_pos = self.end_pos as usize;
         debug_assert_eq!(parser.events[end_pos - 1], Event::Finish);
-        parser.events[..end_pos]
-            .iter()
-            .rev()
-            .find_map(|event| match event {
-                Event::Token { kind, .. } => Some(*kind),
-                _ => None,
-            })
+        parser.events[..end_pos].iter().rev().find_map(|event| match event {
+            Event::Token { kind, .. } => Some(*kind),
+            _ => None,
+        })
     }
 }

@@ -57,9 +57,7 @@ fn enum_entry(
     modifiers_marker: Option<CompletedMarker>,
 ) -> Option<CompletedMarker> {
     let has_modifiers = modifiers_marker.is_some();
-    let m = modifiers_marker
-        .map(|cm| cm.precede(parser))
-        .unwrap_or_else(|| parser.start());
+    let m = modifiers_marker.map(|cm| cm.precede(parser)).unwrap_or_else(|| parser.start());
 
     if !has_modifiers {
         modifiers(parser);

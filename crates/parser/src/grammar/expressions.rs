@@ -31,9 +31,7 @@ macro_rules! define_operator {
                 }
             }
 
-            pub(crate) fn is(parser: &mut Parser<'_>) -> bool {
-                matches!(parser.current(), $mat)
-            }
+            pub(crate) fn is(parser: &mut Parser<'_>) -> bool { matches!(parser.current(), $mat) }
         }
     };
 }
@@ -141,9 +139,7 @@ fn generic_call_like_comparison(parser: &mut Parser<'_>) -> Option<Expression> {
             seen += 1;
         }
         if seen > 0 {
-            Some(Expression::Other(
-                m.complete(parser, GENERIC_CALL_LIKE_COMPARISON),
-            ))
+            Some(Expression::Other(m.complete(parser, GENERIC_CALL_LIKE_COMPARISON)))
         } else {
             m.abandon(parser);
             Some(ex)
@@ -203,9 +199,7 @@ fn elvis_expression(parser: &mut Parser<'_>) -> Option<Expression> {
     }
 }
 
-fn is_elvis(parser: &mut Parser<'_>) -> bool {
-    parser.at(T![?]) && !parser.nth_at(1, T![:])
-}
+fn is_elvis(parser: &mut Parser<'_>) -> bool { parser.at(T![?]) && !parser.nth_at(1, T![:]) }
 
 fn elvis(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     if is_elvis(parser) {
@@ -285,9 +279,7 @@ fn multiplicative_expression(parser: &mut Parser<'_>) -> Option<Expression> {
                     break;
                 }
             }
-            Some(Expression::Other(
-                m.complete(parser, MULTIPLICATIVE_EXPRESSION),
-            ))
+            Some(Expression::Other(m.complete(parser, MULTIPLICATIVE_EXPRESSION)))
         } else {
             Some(cm)
         }
@@ -342,10 +334,7 @@ fn directly_assignable_expression(parser: &mut Parser<'_>) -> Option<CompletedMa
         .or_else(|| {
             simple_identifier(parser)
                 .or_else(|| parenthesized_directly_assignable_expression(parser))
-                .map(|cm| {
-                    cm.precede(parser)
-                        .complete(parser, DIRECTLY_ASSIGNABLE_EXPRESSION)
-                })
+                .map(|cm| cm.precede(parser).complete(parser, DIRECTLY_ASSIGNABLE_EXPRESSION))
         })
 }
 
@@ -410,9 +399,7 @@ pub(crate) fn prefix_unary_expression(parser: &mut Parser<'_>) -> Option<Affixed
 
     if postfix.is_some() {
         if has_prefix {
-            Some(AffixedExpression::Prefix(
-                m.complete(parser, PREFIX_UNARY_EXPRESSION),
-            ))
+            Some(AffixedExpression::Prefix(m.complete(parser, PREFIX_UNARY_EXPRESSION)))
         } else {
             postfix
         }
@@ -474,9 +461,7 @@ fn indexing_suffix(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
 fn navigation_suffix(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     if let Some(cm) = member_access_operator(parser) {
         let m = cm.precede(parser);
-        if simple_identifier(parser)
-            .or_else(|| parenthesized_expression(parser))
-            .is_none()
+        if simple_identifier(parser).or_else(|| parenthesized_expression(parser)).is_none()
             && !parser.eat(T![class])
         {
             parser.error("expected an expression or `class`");
@@ -1110,10 +1095,7 @@ fn callable_reference(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     Some(m.complete(parser, CALLABLE_REFERENCE))
 }
 
-define_operator!(
-    assignment_and_operator,
-    T![+=] | T![-=] | T![/=] | T![*=] | T![%=]
-);
+define_operator!(assignment_and_operator, T![+=] | T![-=] | T![/=] | T![*=] | T![%=]);
 define_operator!(equality_operator, T![==] | T![!=] | T![===] | T![!==]);
 define_operator!(comparison_operator, T![<] | T![>] | T![<=] | T![>=]);
 define_operator!(in_operator, T![in] | T![!in]);
@@ -1134,10 +1116,7 @@ mod prefix_unary_operator {
         }
     }
     pub(crate) fn is(parser: &mut Parser<'_>) -> bool {
-        matches!(
-            parser.current(),
-            T![++] | T![--] | T![+] | T![-] | T![!] | EXCL_WS
-        )
+        matches!(parser.current(), T![++] | T![--] | T![+] | T![-] | T![!] | EXCL_WS)
     }
 }
 mod postfix_unary_operator {
@@ -1156,10 +1135,7 @@ mod postfix_unary_operator {
         }
     }
     pub(crate) fn is(parser: &mut Parser<'_>) -> bool {
-        matches!(
-            (parser.current(), parser.nth(1)),
-            (T![++] | T![--], _) | (T![!], T![!] | EXCL_WS)
-        )
+        matches!((parser.current(), parser.nth(1)), (T![++] | T![--], _) | (T![!], T![!] | EXCL_WS))
     }
 }
 
@@ -1173,9 +1149,7 @@ pub(crate) mod range_operator {
             false
         }
     }
-    pub(crate) fn is(parser: &mut Parser<'_>) -> bool {
-        parser.at(T![..]) || parser.at(T![..<])
-    }
+    pub(crate) fn is(parser: &mut Parser<'_>) -> bool { parser.at(T![..]) || parser.at(T![..<]) }
 }
 
 fn excl(parser: &mut Parser<'_>) -> Option<CompletedMarker> {

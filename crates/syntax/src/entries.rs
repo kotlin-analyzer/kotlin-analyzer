@@ -430,9 +430,7 @@ pub type SyntaxToken = rowan::SyntaxToken<Lang>;
 pub type SyntaxElement = rowan::NodeOrToken<SyntaxNode, SyntaxToken>;
 
 impl From<SyntaxKind> for rowan::SyntaxKind {
-    fn from(kind: SyntaxKind) -> Self {
-        Self(kind as u16)
-    }
+    fn from(kind: SyntaxKind) -> Self { Self(kind as u16) }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -440,13 +438,9 @@ pub struct Lang;
 
 impl rowan::Language for Lang {
     type Kind = SyntaxKind;
-    fn kind_from_raw(raw: rowan::SyntaxKind) -> Self::Kind {
-        Self::Kind::from(raw.0)
-    }
+    fn kind_from_raw(raw: rowan::SyntaxKind) -> Self::Kind { Self::Kind::from(raw.0) }
 
-    fn kind_to_raw(kind: Self::Kind) -> rowan::SyntaxKind {
-        kind.into()
-    }
+    fn kind_to_raw(kind: Self::Kind) -> rowan::SyntaxKind { kind.into() }
 }
 
 impl From<u16> for SyntaxKind {
@@ -459,9 +453,7 @@ impl From<u16> for SyntaxKind {
 }
 
 impl From<Token> for SyntaxKind {
-    fn from(value: Token) -> Self {
-        Self::from(value as u16)
-    }
+    fn from(value: Token) -> Self { Self::from(value as u16) }
 }
 
 impl SyntaxKind {
@@ -487,9 +479,6 @@ mod test {
     #[test]
     fn test_conversion() {
         assert_eq!(Lang::kind_from_raw(rowan::SyntaxKind(ROOT as u16)), ROOT);
-        assert_eq!(
-            Lang::kind_from_raw(rowan::SyntaxKind(SHEBANG_LINE as u16)),
-            SHEBANG_LINE
-        );
+        assert_eq!(Lang::kind_from_raw(rowan::SyntaxKind(SHEBANG_LINE as u16)), SHEBANG_LINE);
     }
 }

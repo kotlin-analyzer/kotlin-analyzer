@@ -24,10 +24,7 @@ impl ops::Add for Config {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self::Output {
-        Self {
-            name: self.name.or(rhs.name),
-            ignore: self.ignore || rhs.ignore,
-        }
+        Self { name: self.name.or(rhs.name), ignore: self.ignore || rhs.ignore }
     }
 }
 
@@ -61,38 +58,27 @@ pub(crate) enum BasicParseEntry {
 #[derive(Clone, Debug)]
 pub enum ParseEntry {
     Basic(BasicParseEntry),
-    Choice {
-        entries: Vec<BasicParseEntry>,
-        config: Config,
-    },
+    Choice { entries: Vec<BasicParseEntry>, config: Config },
 }
 
 impl BasicParseEntry {
     fn flatten(self) -> Self {
         match self {
-            BasicParseEntry::Optional {
-                bracket_token,
-                entries,
-                config,
-            } => BasicParseEntry::Optional {
-                bracket_token,
-                entries: entries.into_iter().map(|e| e.flatten()).collect(),
-                config,
-            },
-            BasicParseEntry::Repeated {
-                brace_token,
-                entries,
-                config,
-            } => BasicParseEntry::Repeated {
-                brace_token,
-                entries: entries.into_iter().map(|e| e.flatten()).collect(),
-                config,
-            },
-            BasicParseEntry::Group {
-                paren_token,
-                entries,
-                config,
-            } => BasicParseEntry::Group {
+            BasicParseEntry::Optional { bracket_token, entries, config } => {
+                BasicParseEntry::Optional {
+                    bracket_token,
+                    entries: entries.into_iter().map(|e| e.flatten()).collect(),
+                    config,
+                }
+            }
+            BasicParseEntry::Repeated { brace_token, entries, config } => {
+                BasicParseEntry::Repeated {
+                    brace_token,
+                    entries: entries.into_iter().map(|e| e.flatten()).collect(),
+                    config,
+                }
+            }
+            BasicParseEntry::Group { paren_token, entries, config } => BasicParseEntry::Group {
                 paren_token,
                 entries: entries.into_iter().map(|e| e.flatten()).collect(),
                 config,
@@ -108,65 +94,35 @@ impl ParseEntry {
         use ParseEntry::*;
 
         match self {
-            Basic(Optional {
-                bracket_token,
-                entries,
-                config,
-            }) => Basic(Optional {
+            Basic(Optional { bracket_token, entries, config }) => Basic(Optional {
                 bracket_token,
                 entries: entries.into_iter().map(|e| e.flatten()).collect(),
                 config,
             }),
-            Basic(Repeated {
-                brace_token,
-                entries,
-                config,
-            }) => Basic(Repeated {
+            Basic(Repeated { brace_token, entries, config }) => Basic(Repeated {
                 brace_token,
                 entries: entries.into_iter().map(|e| e.flatten()).collect(),
                 config,
             }),
-            Basic(Group {
-                entries,
-                config: p_config,
-                ..
-            }) if entries.len() == 1 => {
+            Basic(Group { entries, config: p_config, .. }) if entries.len() == 1 => {
                 let first = entries.into_iter().next().unwrap();
                 match first {
                     Basic(basic) => match basic {
-                        Token {
-                            token,
-                            span,
-                            config,
-                        } => Basic(Token {
-                            token,
-                            span,
-                            config: p_config + config,
-                        }),
+                        Token { token, span, config } => {
+                            Basic(Token { token, span, config: p_config + config })
+                        }
                         Ident(ident, config) => Basic(Ident(ident, p_config + config)),
-                        Optional {
-                            bracket_token,
-                            entries,
-                            config,
-                        } => Basic(Optional {
+                        Optional { bracket_token, entries, config } => Basic(Optional {
                             bracket_token,
                             entries: entries.into_iter().map(|e| e.flatten()).collect(),
                             config: p_config + config,
                         }),
-                        Repeated {
-                            brace_token,
-                            entries,
-                            config,
-                        } => Basic(Repeated {
+                        Repeated { brace_token, entries, config } => Basic(Repeated {
                             brace_token,
                             entries: entries.into_iter().map(|e| e.flatten()).collect(),
                             config: p_config + config,
                         }),
-                        Group {
-                            paren_token,
-                            entries,
-                            config,
-                        } => Basic(Group {
+                        Group { paren_token, entries, config } => Basic(Group {
                             paren_token,
                             entries: entries.into_iter().map(|e| e.flatten()).collect(),
                             config: p_config + config,
@@ -178,10 +134,9 @@ impl ParseEntry {
                     },
                 }
             }
-            Choice { entries, config } => Choice {
-                entries: entries.into_iter().map(|e| e.flatten()).collect(),
-                config,
-            },
+            Choice { entries, config } => {
+                Choice { entries: entries.into_iter().map(|e| e.flatten()).collect(), config }
+            }
             rest => rest,
         }
     }
@@ -218,9 +173,7 @@ pub(crate) struct GenAst {
 
 impl fmt::Debug for GenAst {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("GenAst")
-            .field("entries", &self.entries)
-            .finish()
+        f.debug_struct("GenAst").field("entries", &self.entries).finish()
     }
 }
 
@@ -248,28 +201,11 @@ fn resolve_token(name: &str, span: Span) -> Result<syntax::Token> {
 
 fn parse_lits(input: ParseStream) -> Result<BasicParseEntry> {
     Configured::<Lit>::parse(input).and_then(|Configured { config, parsed: x }| match x {
-        Lit::Str(literal) => {
-            resolve_token(&literal.value().to_string(), literal.span()).map(|token| {
-                BasicParseEntry::Token {
-                    token,
-                    span: literal.span(),
-                    config,
-                }
-            })
-        }
-        Lit::Char(literal) => {
-            resolve_token(&literal.value().to_string(), literal.span()).map(|token| {
-                BasicParseEntry::Token {
-                    token,
-                    span: literal.span(),
-                    config,
-                }
-            })
-        }
-        _ => Err(syn::Error::new(
-            x.span(),
-            "expected a string or char literal",
-        )),
+        Lit::Str(literal) => resolve_token(&literal.value().to_string(), literal.span())
+            .map(|token| BasicParseEntry::Token { token, span: literal.span(), config }),
+        Lit::Char(literal) => resolve_token(&literal.value().to_string(), literal.span())
+            .map(|token| BasicParseEntry::Token { token, span: literal.span(), config }),
+        _ => Err(syn::Error::new(x.span(), "expected a string or char literal")),
     })
 }
 
@@ -292,10 +228,7 @@ fn parse_basic_entry(input: ParseStream) -> Result<BasicParseEntry> {
             Ok(BasicParseEntry::Group {
                 entries: seq.0,
                 paren_token,
-                config: Config {
-                    name: name_config,
-                    ignore,
-                },
+                config: Config { name: name_config, ignore },
             })
         })
         .or_else(|_| {
@@ -311,10 +244,7 @@ fn parse_basic_entry(input: ParseStream) -> Result<BasicParseEntry> {
             Ok(BasicParseEntry::Optional {
                 bracket_token,
                 entries: seq.0,
-                config: Config {
-                    name: name_config,
-                    ignore,
-                },
+                config: Config { name: name_config, ignore },
             })
         })
         .or_else(|_| {
@@ -330,24 +260,17 @@ fn parse_basic_entry(input: ParseStream) -> Result<BasicParseEntry> {
             Ok(BasicParseEntry::Repeated {
                 entries: seq.0,
                 brace_token,
-                config: Config {
-                    name: name_config,
-                    ignore,
-                },
+                config: Config { name: name_config, ignore },
             })
         })
 }
 
 impl Parse for BasicParseEntry {
-    fn parse(input: ParseStream) -> Result<Self> {
-        parse_basic_entry(input)
-    }
+    fn parse(input: ParseStream) -> Result<Self> { parse_basic_entry(input) }
 }
 
 impl From<BasicParseEntry> for ParseEntry {
-    fn from(value: BasicParseEntry) -> Self {
-        ParseEntry::Basic(value)
-    }
+    fn from(value: BasicParseEntry) -> Self { ParseEntry::Basic(value) }
 }
 
 impl Parse for ParseEntry {
@@ -359,10 +282,7 @@ impl Parse for ParseEntry {
         let res = if result.len() == 1 {
             result.into_iter().next().unwrap().into()
         } else {
-            ParseEntry::Choice {
-                entries: result.into_iter().collect(),
-                config: Config::default(),
-            }
+            ParseEntry::Choice { entries: result.into_iter().collect(), config: Config::default() }
         };
 
         Ok(res.flatten())
@@ -381,20 +301,14 @@ where
     fn parse(input: ParseStream) -> Result<Configured<P>> {
         let lookahead = input.lookahead1();
 
-        let ignore = if lookahead.peek(Token![_]) {
-            input.parse::<Token![_]>().is_ok()
-        } else {
-            false
-        };
+        let ignore =
+            if lookahead.peek(Token![_]) { input.parse::<Token![_]>().is_ok() } else { false };
 
         let parsed = input.parse::<P>()?;
         let name_config: Optional<InOrder<Token![@], Ident>> = input.parse()?;
         let name_config = name_config.0.map(|e| e.second);
 
-        let config = Config {
-            name: name_config,
-            ignore,
-        };
+        let config = Config { name: name_config, ignore };
 
         Ok(Configured { config, parsed })
     }
@@ -411,18 +325,12 @@ impl Parse for TopLevelParseEntry {
             result.push(next);
         }
         if result.is_empty() {
-            return Err(syn::Error::new(
-                fork.span(),
-                "expected rules after rule name",
-            ));
+            return Err(syn::Error::new(fork.span(), "expected rules after rule name"));
         }
 
         input.advance_to(&fork);
 
-        Ok(TopLevelParseEntry {
-            field,
-            asts: result,
-        })
+        Ok(TopLevelParseEntry { field, asts: result })
     }
 }
 
@@ -481,10 +389,7 @@ impl ParseEntry {
                 let first = &entries[0];
                 let last = &entries[entries.len() - 1];
                 // NOTE: This works since we are on nightly
-                first
-                    .span()
-                    .join(last.span())
-                    .expect("Span join returned None")
+                first.span().join(last.span()).expect("Span join returned None")
             }
         }
     }
@@ -529,10 +434,7 @@ mod test {
         P: Parse,
     {
         fn parse(input: ParseStream) -> Result<Self> {
-            Ok(ParseTillEnd {
-                main: input.parse()?,
-                rest: input.parse()?,
-            })
+            Ok(ParseTillEnd { main: input.parse()?, rest: input.parse()? })
         }
     }
 
@@ -566,20 +468,14 @@ mod test {
                 disjunction
         };
         let top = syn::parse2::<TopLevelParseEntry>(stream)?;
-        assert!(matches!(
-            &top.asts[..],
-            &[ParseEntry::Basic(BasicParseEntry::Ident(..))]
-        ));
+        assert!(matches!(&top.asts[..], &[ParseEntry::Basic(BasicParseEntry::Ident(..))]));
 
         let stream: TokenStream = tt! {
               propertyModifier:
                 "const"
         };
         let top = syn::parse2::<TopLevelParseEntry>(stream)?;
-        assert!(matches!(
-            &top.asts[..],
-            &[ParseEntry::Basic(BasicParseEntry::Token { .. })]
-        ));
+        assert!(matches!(&top.asts[..], &[ParseEntry::Basic(BasicParseEntry::Token { .. })]));
         Ok(())
     }
 

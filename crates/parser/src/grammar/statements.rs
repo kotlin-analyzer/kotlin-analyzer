@@ -90,10 +90,7 @@ fn for_statement(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
 
         while annotation(parser).is_some() {}
         let mut has_variable_declaration = true;
-        if variable_declaration(parser)
-            .or_else(|| multi_variable_declaration(parser))
-            .is_none()
-        {
+        if variable_declaration(parser).or_else(|| multi_variable_declaration(parser)).is_none() {
             has_variable_declaration = false;
             parser.error("expected variable declaration");
         }
@@ -279,9 +276,7 @@ mod assignment {
             Expression::Affixed(AffixedExpression::Prefix(_) | AffixedExpression::Postfix(_))
                 if assignment_and_operator::is(p) =>
             {
-                Some(AssignmentFragment::AssignableExpression(
-                    m.complete(p, ASSIGNABLE_EXPRESSION),
-                ))
+                Some(AssignmentFragment::AssignableExpression(m.complete(p, ASSIGNABLE_EXPRESSION)))
             }
             Expression::Affixed(AffixedExpression::Postfix(_))
                 if assignable_suffix(p).is_some() || p.at(T![=]) =>
@@ -316,14 +311,12 @@ mod assignment {
             match frag {
                 AssignmentFragment::DirectlyAssignableExpression(cm) => {
                     Some(AssignmentFragment::DirectlyAssignableExpression(
-                        cm.precede(p)
-                            .complete(p, PARENTHESIZED_DIRECTLY_ASSIGNABLE_EXPRESSION),
+                        cm.precede(p).complete(p, PARENTHESIZED_DIRECTLY_ASSIGNABLE_EXPRESSION),
                     ))
                 }
                 AssignmentFragment::AssignableExpression(cm) => {
                     Some(AssignmentFragment::AssignableExpression(
-                        cm.precede(p)
-                            .complete(p, PARENTHESIZED_ASSIGNABLE_EXPRESSION),
+                        cm.precede(p).complete(p, PARENTHESIZED_ASSIGNABLE_EXPRESSION),
                     ))
                 }
                 AssignmentFragment::UnAssignable(cm) => Some(AssignmentFragment::UnAssignable(

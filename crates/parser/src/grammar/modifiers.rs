@@ -23,10 +23,7 @@ pub(crate) fn modifiers(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
 pub(crate) fn parameter_modifiers(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     if let Some(cm) = annotation(parser).or_else(|| parameter_modifier(parser)) {
         let m = cm.precede(parser);
-        while annotation(parser)
-            .or_else(|| parameter_modifier(parser))
-            .is_some()
-        {}
+        while annotation(parser).or_else(|| parameter_modifier(parser)).is_some() {}
         Some(m.complete(parser, PARAMETER_MODIFIERS))
     } else {
         None

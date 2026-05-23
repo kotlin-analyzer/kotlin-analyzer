@@ -157,9 +157,7 @@ fn type_alias(
     if !parser.at(T![typealias]) {
         return None;
     }
-    let m = modifiers_marker
-        .map(|cm| cm.precede(parser))
-        .unwrap_or_else(|| parser.start());
+    let m = modifiers_marker.map(|cm| cm.precede(parser)).unwrap_or_else(|| parser.start());
 
     parser.bump(T![typealias]);
 

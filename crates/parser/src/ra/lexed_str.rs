@@ -60,26 +60,18 @@ impl<'a> LexedStr<'a> {
         }
     }
 
-    pub fn as_str(&self) -> &str {
-        self.text
-    }
+    pub fn as_str(&self) -> &str { self.text }
 
-    pub fn len(&self) -> usize {
-        self.kind.len() - 1
-    }
+    pub fn len(&self) -> usize { self.kind.len() - 1 }
 
-    pub fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
+    pub fn is_empty(&self) -> bool { self.len() == 0 }
 
     pub fn kind(&self, i: usize) -> SyntaxKind {
         assert!(i < self.len());
         self.kind[i]
     }
 
-    pub fn text(&self, i: usize) -> &str {
-        self.range_text(i..i + 1)
-    }
+    pub fn text(&self, i: usize) -> &str { self.range_text(i..i + 1) }
 
     pub fn range_text(&self, r: ops::Range<usize>) -> &str {
         assert!(r.start < r.end && r.end <= self.len());
@@ -107,17 +99,12 @@ impl<'a> LexedStr<'a> {
 
     pub fn error(&self, i: usize) -> Option<&str> {
         assert!(i < self.len());
-        let err = self
-            .error
-            .binary_search_by_key(&(i as u32), |i| i.token)
-            .ok()?;
+        let err = self.error.binary_search_by_key(&(i as u32), |i| i.token).ok()?;
         Some(self.error[err].msg.as_str())
     }
 
     pub fn errors(&self) -> impl Iterator<Item = (usize, &str)> + '_ {
-        self.error
-            .iter()
-            .map(|it| (it.token as usize, it.msg.as_str()))
+        self.error.iter().map(|it| (it.token as usize, it.msg.as_str()))
     }
 
     fn push(&mut self, kind: SyntaxKind, offset: usize) {
@@ -144,14 +131,9 @@ impl<'a> Converter<'a> {
         }
     }
 
-    fn push(&mut self, kind: SyntaxKind, offset: usize) {
-        self.res.push(kind, offset);
-    }
+    fn push(&mut self, kind: SyntaxKind, offset: usize) { self.res.push(kind, offset); }
 
     fn push_err(&mut self, msg: String) {
-        self.res.error.push(LexError {
-            msg,
-            token: self.res.len() as u32,
-        });
+        self.res.error.push(LexError { msg, token: self.res.len() as u32 });
     }
 }

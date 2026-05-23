@@ -18,14 +18,10 @@ trait ParseFn<'a>: Fn(Step<'a>) -> Option<Step<'a>> {
     }
 
     #[inline]
-    fn and(&self, p: impl ParseFn<'a>) -> impl ParseFn<'a> {
-        and(self, p)
-    }
+    fn and(&self, p: impl ParseFn<'a>) -> impl ParseFn<'a> { and(self, p) }
 
     #[inline]
-    fn or(&self, p: impl ParseFn<'a>) -> impl ParseFn<'a> {
-        or(self, p)
-    }
+    fn or(&self, p: impl ParseFn<'a>) -> impl ParseFn<'a> { or(self, p) }
 }
 
 trait CharExt {
@@ -41,9 +37,7 @@ impl CharExt for char {
             || self.is_letter_modifier()
     }
 
-    fn can_be_in_ident(&self) -> bool {
-        self.is_kotlin_letter() || self.is_number_decimal_digit()
-    }
+    fn can_be_in_ident(&self) -> bool { self.is_kotlin_letter() || self.is_number_decimal_digit() }
 }
 
 impl<'a, F> ParseFn<'a> for F where F: Fn(Step<'a>) -> Option<Step<'a>> {}
@@ -59,15 +53,9 @@ pub struct TokenInfo {
 }
 
 impl TokenInfo {
-    pub fn new(token: Token, span: Span) -> Self {
-        Self { token, span }
-    }
-    pub fn token(&self) -> &Token {
-        &self.token
-    }
-    pub fn span(&self) -> &Span {
-        &self.span
-    }
+    pub fn new(token: Token, span: Span) -> Self { Self { token, span } }
+    pub fn token(&self) -> &Token { &self.token }
+    pub fn span(&self) -> &Span { &self.span }
 }
 
 impl Display for TokenInfo {
@@ -98,17 +86,11 @@ pub struct Lexer<'a> {
 struct Mode(VecDeque<LexGrammarMode>);
 
 impl Mode {
-    fn peek(&self) -> &LexGrammarMode {
-        self.0.back().unwrap_or(&LexGrammarMode::Normal)
-    }
+    fn peek(&self) -> &LexGrammarMode { self.0.back().unwrap_or(&LexGrammarMode::Normal) }
 
-    fn pop(&mut self) {
-        self.0.pop_back();
-    }
+    fn pop(&mut self) { self.0.pop_back(); }
 
-    fn set(&mut self, mode: LexGrammarMode) {
-        self.0.push_back(mode)
-    }
+    fn set(&mut self, mode: LexGrammarMode) { self.0.push_back(mode) }
 }
 
 /// This is a single step in the lexer that contains the current position,
@@ -125,12 +107,7 @@ impl<'a> Step<'a> {
     #[cfg(test)]
     fn new(input: &'a str, token: Option<Token>) -> Self {
         match token {
-            Some(token) => Self {
-                pos: 0,
-                res: token,
-                mode: Mode::default(),
-                input,
-            },
+            Some(token) => Self { pos: 0, res: token, mode: Mode::default(), input },
             None => Self {
                 pos: 0,
                 // fine to start with Err here, since we won't use it
@@ -155,15 +132,11 @@ impl<'a> Step<'a> {
     }
 
     fn get_till_end(&self, incr: usize) -> Option<&'a str> {
-        self.pos
-            .checked_add(incr)
-            .and_then(|start| self.input.get(start..))
+        self.pos.checked_add(incr).and_then(|start| self.input.get(start..))
     }
 
     fn get_until(&self, incr: usize) -> Option<&'a str> {
-        self.pos
-            .checked_add(incr)
-            .and_then(|end| self.input.get(self.pos..end))
+        self.pos.checked_add(incr).and_then(|end| self.input.get(self.pos..end))
     }
 
     fn find(&self, incr: usize, pat: impl Fn(char) -> bool) -> usize {
@@ -181,11 +154,9 @@ impl<'a> Step<'a> {
     }
 
     fn prev_char(&self) -> Option<char> {
-        self.pos.checked_sub(1).and_then(|start| {
-            self.input
-                .get(start..self.pos)
-                .and_then(|s| s.chars().next())
-        })
+        self.pos
+            .checked_sub(1)
+            .and_then(|start| self.input.get(start..self.pos).and_then(|s| s.chars().next()))
     }
 }
 
@@ -197,47 +168,27 @@ pub struct SpannedWithSource<'a> {
 }
 
 impl SpannedWithSource<'_> {
-    pub fn token(&self) -> &Token {
-        &self.token
-    }
+    pub fn token(&self) -> &Token { &self.token }
 
-    pub fn span(&self) -> &Span {
-        &self.span
-    }
+    pub fn span(&self) -> &Span { &self.span }
 
-    pub fn substring(&self) -> &str {
-        self.substring
-    }
+    pub fn substring(&self) -> &str { self.substring }
 
-    pub fn is_keyword(&self) -> bool {
-        Token::from_keyword(self.substring()).is_some()
-    }
+    pub fn is_keyword(&self) -> bool { Token::from_keyword(self.substring()).is_some() }
 
-    pub fn is_soft_keyword(&self) -> bool {
-        Token::from_soft_keyword(self.substring()).is_some()
-    }
+    pub fn is_soft_keyword(&self) -> bool { Token::from_soft_keyword(self.substring()).is_some() }
 
-    pub fn is_operator(&self) -> bool {
-        Token::from_operator(self.substring()).is_some()
-    }
+    pub fn is_operator(&self) -> bool { Token::from_operator(self.substring()).is_some() }
 }
 
 impl Display for SpannedWithSource<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{:?}@{:?} => {:?}",
-            self.token(),
-            self.span(),
-            self.substring()
-        )
+        write!(f, "{:?}@{:?} => {:?}", self.token(), self.span(), self.substring())
     }
 }
 
 impl Debug for SpannedWithSource<'_> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self)
-    }
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "{}", self) }
 }
 
 impl<'a> Lexer<'a> {
@@ -253,18 +204,13 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn apply_step(&mut self, step: Step<'a>) {
-        self.step = step;
-    }
+    fn apply_step(&mut self, step: Step<'a>) { self.step = step; }
 
     /// This method returns an iterator over the tokens in the input string.
     /// alongside their spans
     pub fn spanned(self) -> impl Iterator<Item = TokenInfo> + 'a {
         self.scan(0, |start, step| {
-            let next = TokenInfo {
-                token: step.0,
-                span: (*start)..step.1,
-            };
+            let next = TokenInfo { token: step.0, span: (*start)..step.1 };
             *start = step.1;
             Some(next)
         })
@@ -272,12 +218,11 @@ impl<'a> Lexer<'a> {
 
     pub fn spanned_with_src(self) -> impl Iterator<Item = SpannedWithSource<'a>> + 'a {
         let input = self.step.input;
-        self.spanned()
-            .map(|TokenInfo { token, span }| SpannedWithSource {
-                token,
-                span: span.clone(),
-                substring: input.get(span).unwrap_or_default(),
-            })
+        self.spanned().map(|TokenInfo { token, span }| SpannedWithSource {
+            token,
+            span: span.clone(),
+            substring: input.get(span).unwrap_or_default(),
+        })
     }
 
     fn tokenize_next(&self) -> Option<Step<'a>> {
@@ -399,11 +344,10 @@ fn parse_operator(step: Step<'_>) -> Option<Step<'_>> {
 }
 
 fn unicode_char_lit(step: Step<'_>) -> Option<Step<'_>> {
-    tag("\\u").and(repeat::<4>(
-        char_range('0'..='9')
-            .or(char_range('a'..='f'))
-            .or(char_range('A'..='F')),
-    ))(step)
+    tag("\\u")
+        .and(repeat::<4>(char_range('0'..='9').or(char_range('a'..='f')).or(char_range('A'..='F'))))(
+        step,
+    )
 }
 
 fn escaped_identifier(step: Step<'_>) -> Option<Step<'_>> {
@@ -423,9 +367,7 @@ fn handle_operator<'a>(mut step: Step<'a>, token: &Token) -> Option<Step<'a>> {
     match token {
         SINGLE_QUOTE => unicode_char_lit
             .or(escaped_identifier)
-            .or(not(
-                tag("'").or(tag("\u{000A}").or(tag("\u{000D}")).or(tag("\\")))
-            ))
+            .or(not(tag("'").or(tag("\u{000A}").or(tag("\u{000D}")).or(tag("\\")))))
             .and(tag("'"))
             .with(CHARACTER_LITERAL)(step),
         QUOTE_OPEN => {
@@ -454,11 +396,7 @@ fn handle_operator<'a>(mut step: Step<'a>, token: &Token) -> Option<Step<'a>> {
 }
 
 fn parse_keyword(step: Step<'_>) -> Option<Step<'_>> {
-    if step
-        .prev_char()
-        .map(|ch| ch.can_be_in_ident())
-        .unwrap_or_default()
-    {
+    if step.prev_char().map(|ch| ch.can_be_in_ident()).unwrap_or_default() {
         return None;
     }
 
@@ -497,16 +435,11 @@ fn handle_keyword<'a>(step: Step<'a>, token: &Token) -> Option<Step<'a>> {
 }
 
 fn ws(step: Step<'_>) -> Option<Step<'_>> {
-    tag("\u{0020}")
-        .or(tag("\u{0009}"))
-        .or(tag("\u{000C}"))
-        .with(WS)(step)
+    tag("\u{0020}").or(tag("\u{0009}")).or(tag("\u{000C}")).with(WS)(step)
 }
 
 fn nl(step: Step<'_>) -> Option<Step<'_>> {
-    tag("\u{000A}")
-        .or(tag("\u{000D}").and(opt(tag("\u{000A}"))))
-        .with(WS)(step)
+    tag("\u{000A}").or(tag("\u{000D}").and(opt(tag("\u{000A}")))).with(WS)(step)
 }
 
 fn hidden(step: Step<'_>) -> Option<Step<'_>> {
@@ -514,15 +447,11 @@ fn hidden(step: Step<'_>) -> Option<Step<'_>> {
 }
 
 fn shebang(step: Step<'_>) -> Option<Step<'_>> {
-    tag("#!")
-        .and(many0(not(tag("\u{000A}").or(tag("\u{000D}")))))
-        .with(SHEBANG_LINE_TOKEN)(step)
+    tag("#!").and(many0(not(tag("\u{000A}").or(tag("\u{000D}"))))).with(SHEBANG_LINE_TOKEN)(step)
 }
 
 fn line_comment(step: Step<'_>) -> Option<Step<'_>> {
-    tag("//")
-        .and(many0(not(tag("\u{000A}").or(tag("\u{000D}")))))
-        .with(LINE_COMMENT)(step)
+    tag("//").and(many0(not(tag("\u{000A}").or(tag("\u{000D}"))))).with(LINE_COMMENT)(step)
 }
 
 fn delimited_comment(step: Step<'_>) -> Option<Step<'_>> {
@@ -535,11 +464,7 @@ fn delimited_comment(step: Step<'_>) -> Option<Step<'_>> {
 #[inline]
 fn or<'a>(p1: impl ParseFn<'a>, p2: impl ParseFn<'a>) -> impl ParseFn<'a> {
     move |step| {
-        if let Some(step) = p1(step.clone()) {
-            Some(step)
-        } else {
-            p2(step)
-        }
+        if let Some(step) = p1(step.clone()) { Some(step) } else { p2(step) }
     }
 }
 
@@ -549,11 +474,7 @@ fn not<'a>(p: impl ParseFn<'a>) -> impl ParseFn<'a> {
         if step.pos >= step.input.len() {
             return None;
         }
-        if p(step.clone()).is_some() {
-            None
-        } else {
-            Some(step.advance(1))
-        }
+        if p(step.clone()).is_some() { None } else { Some(step.advance(1)) }
     }
 }
 
@@ -571,17 +492,12 @@ fn bin_or_hex_lit(step: Step<'_>) -> Option<Step<'_>> {
                 return None;
             }
             if entry.ends_with('_') {
-                return index
-                    .checked_sub(1)
-                    .map(|incr| step.advance_with(incr, BIN_LITERAL));
+                return index.checked_sub(1).map(|incr| step.advance_with(incr, BIN_LITERAL));
             }
             Some(step.advance_with(index, BIN_LITERAL))
         }
         Some("0x" | "0X") => {
-            let index = step.find(
-                2,
-                |ch| !matches!(ch, '0'..='9' | 'a'..='f' | 'A'..='F' | '_'),
-            );
+            let index = step.find(2, |ch| !matches!(ch, '0'..='9' | 'a'..='f' | 'A'..='F' | '_'));
 
             let entry = step
                 .pos
@@ -593,9 +509,7 @@ fn bin_or_hex_lit(step: Step<'_>) -> Option<Step<'_>> {
                 return None;
             }
             if entry.ends_with('_') {
-                return index
-                    .checked_sub(1)
-                    .map(|incr| step.advance_with(incr, HEX_LITERAL));
+                return index.checked_sub(1).map(|incr| step.advance_with(incr, HEX_LITERAL));
             }
             Some(step.advance_with(index, HEX_LITERAL))
         }
@@ -611,9 +525,7 @@ fn int_lit(step: Step<'_>) -> Option<Step<'_>> {
             let entry = &step.get_until(index)?;
 
             if entry.ends_with('_') {
-                return index
-                    .checked_sub(1)
-                    .map(|incr| step.advance_with(incr, INTEGER_LITERAL));
+                return index.checked_sub(1).map(|incr| step.advance_with(incr, INTEGER_LITERAL));
             }
 
             if entry.contains('_') && !('1'..'9').contains(&fc) {
@@ -638,9 +550,7 @@ fn dec_digits(step: Step<'_>) -> Option<Step<'_>> {
             let entry = &step.get_until(index)?;
 
             if entry.ends_with('_') {
-                return index
-                    .checked_sub(1)
-                    .map(|incr| step.advance_with(incr, INTEGER_LITERAL));
+                return index.checked_sub(1).map(|incr| step.advance_with(incr, INTEGER_LITERAL));
             }
 
             Some(step.advance_with(index, INTEGER_LITERAL))
@@ -652,11 +562,7 @@ fn dec_digits(step: Step<'_>) -> Option<Step<'_>> {
 #[inline]
 fn tag<'a>(pattern: &'static str) -> impl ParseFn<'a> {
     move |step| {
-        if step
-            .get_until(pattern.len())
-            .map(|t| t == pattern)
-            .unwrap_or_default()
-        {
+        if step.get_until(pattern.len()).map(|t| t == pattern).unwrap_or_default() {
             Some(step.advance_with(pattern.len(), IDENTIFIER_TOKEN))
         } else {
             None
@@ -688,20 +594,14 @@ fn many<'a>(p: impl ParseFn<'a>) -> impl ParseFn<'a> {
                 break;
             }
         }
-        if start == next_step.pos {
-            None
-        } else {
-            Some(next_step)
-        }
+        if start == next_step.pos { None } else { Some(next_step) }
     }
 }
 
 /// This matches multiple entities of the same type zero or more times.
 /// For one or more times, use `many`
 #[inline]
-fn many0<'a>(p: impl ParseFn<'a>) -> impl ParseFn<'a> {
-    opt(many(p))
-}
+fn many0<'a>(p: impl ParseFn<'a>) -> impl ParseFn<'a> { opt(many(p)) }
 
 fn char_range<'a>(range: RangeInclusive<char>) -> impl ParseFn<'a> {
     move |step| {
@@ -725,18 +625,12 @@ fn repeat<'a, const N: usize>(p1: impl ParseFn<'a>) -> impl ParseFn<'a> {
 fn long_lit(step: Step<'_>) -> Option<Step<'_>> {
     or(bin_or_hex_lit, int_lit).and(or(
         tag("l").or(tag("L")).with(LONG_LITERAL),
-        tag("u")
-            .or(tag("U"))
-            .and(opt(or(tag("l"), tag("L"))))
-            .with(UNSIGNED_LITERAL),
+        tag("u").or(tag("U")).and(opt(or(tag("l"), tag("L")))).with(UNSIGNED_LITERAL),
     ))(step)
 }
 
 fn exponent_lit(step: Step<'_>) -> Option<Step<'_>> {
-    and(
-        and(tag("e").or(tag("E")), opt(or(tag("+"), tag("-")))),
-        dec_digits,
-    )(step)
+    and(and(tag("e").or(tag("E")), opt(or(tag("+"), tag("-")))), dec_digits)(step)
 }
 
 fn letter(step: Step<'_>) -> Option<Step<'_>> {
@@ -744,33 +638,24 @@ fn letter(step: Step<'_>) -> Option<Step<'_>> {
 }
 
 fn quoted_symbol(step: Step<'_>) -> Option<Step<'_>> {
-    tag("`")
-        .and(many0(not(tag("\u{000A}").or(tag("\u{000D}").or(tag("`"))))))
-        .and(tag("`"))(step)
+    tag("`").and(many0(not(tag("\u{000A}").or(tag("\u{000D}").or(tag("`")))))).and(tag("`"))(step)
 }
 
 fn parse_identifier(step: Step<'_>) -> Option<Step<'_>> {
-    quoted_symbol
-        .or(letter.and(many0(when(|ch| ch.can_be_in_ident()))))
-        .with(IDENTIFIER_TOKEN)(step)
+    quoted_symbol.or(letter.and(many0(when(|ch| ch.can_be_in_ident())))).with(IDENTIFIER_TOKEN)(
+        step,
+    )
 }
 
 fn double_lit(step: Step<'_>) -> Option<Step<'_>> {
     or(
-        and(
-            and(opt(dec_digits), and(tag("."), dec_digits)),
-            opt(exponent_lit),
-        ),
+        and(and(opt(dec_digits), and(tag("."), dec_digits)), opt(exponent_lit)),
         and(dec_digits, exponent_lit),
     )(step)
 }
 
 fn real_lit(step: Step<'_>) -> Option<Step<'_>> {
-    or(
-        and(or(double_lit, dec_digits), or(tag("f"), tag("F"))),
-        double_lit,
-    )
-    .with(REAL_LITERAL)(step)
+    or(and(or(double_lit, dec_digits), or(tag("f"), tag("F"))), double_lit).with(REAL_LITERAL)(step)
 }
 
 fn parse_literals(step: Step<'_>) -> Option<Step<'_>> {
@@ -783,11 +668,7 @@ where
     F: ParseFn<'a>,
 {
     move |step| {
-        if let Some(step) = p(step.clone()) {
-            Some(step)
-        } else {
-            Some(step)
-        }
+        if let Some(step) = p(step.clone()) { Some(step) } else { Some(step) }
     }
 }
 
@@ -798,11 +679,7 @@ where
     F2: ParseFn<'a>,
 {
     move |step| {
-        if let Some(step1) = p1(step) {
-            p2(step1)
-        } else {
-            None
-        }
+        if let Some(step1) = p1(step) { p2(step1) } else { None }
     }
 }
 
@@ -829,15 +706,11 @@ fn str_expr_start(mut step: Step<'_>) -> Option<Step<'_>> {
 }
 
 fn line_str_text(step: Step<'_>) -> Option<Step<'_>> {
-    many(not(tag("\\").or(tag("\"")).or(tag("$"))))
-        .or(tag("$"))
-        .with(LINE_STR_TEXT)(step)
+    many(not(tag("\\").or(tag("\"")).or(tag("$")))).or(tag("$")).with(LINE_STR_TEXT)(step)
 }
 
 fn multi_line_str_text(step: Step<'_>) -> Option<Step<'_>> {
-    many(not(tag("\"").or(tag("$"))))
-        .or(tag("$"))
-        .with(MULTI_LINE_STR_TEXT)(step)
+    many(not(tag("\"").or(tag("$")))).or(tag("$")).with(MULTI_LINE_STR_TEXT)(step)
 }
 
 fn quote_close(step: Step<'_>) -> Option<Step<'_>> {
@@ -917,12 +790,7 @@ mod test {
         assert_success!(shebang, "#!\n", 2, SHEBANG_LINE_TOKEN);
         assert_success!(shebang, "#! sh echo", 10, SHEBANG_LINE_TOKEN);
         assert_success!(shebang, "#! comment // nested", 20, SHEBANG_LINE_TOKEN);
-        assert_success!(
-            shebang,
-            "#! comment // nested #! deep /* more */",
-            39,
-            SHEBANG_LINE_TOKEN
-        );
+        assert_success!(shebang, "#! comment // nested #! deep /* more */", 39, SHEBANG_LINE_TOKEN);
 
         assert_failure!(shebang, "// comment");
         assert_failure!(shebang, "/* comment */");
@@ -934,12 +802,7 @@ mod test {
         assert_success!(line_comment, "//\n", 2, LINE_COMMENT);
         assert_success!(line_comment, "// line comment", 15, LINE_COMMENT);
         assert_success!(line_comment, "// comment // nested", 20, LINE_COMMENT);
-        assert_success!(
-            line_comment,
-            "// comment // nested /* delimited */",
-            36,
-            LINE_COMMENT
-        );
+        assert_success!(line_comment, "// comment // nested /* delimited */", 36, LINE_COMMENT);
 
         assert_failure!(line_comment, "/* comment");
         assert_failure!(line_comment, "#! shebang");

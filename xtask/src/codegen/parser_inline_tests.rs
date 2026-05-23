@@ -220,6 +220,4 @@ fn existing_tests(dir: &Path, ok: TestKind) -> Result<HashMap<String, (PathBuf, 
 }
 
 #[test]
-fn test() {
-    generate(true);
-}
+fn test() { generate(true); }

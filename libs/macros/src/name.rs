@@ -13,13 +13,7 @@ enum CompositeKind {
 }
 
 impl CompositeKind {
-    fn new(parent: &Name) -> Self {
-        if parent.is_choice() {
-            Self::Variant
-        } else {
-            Self::Segment
-        }
-    }
+    fn new(parent: &Name) -> Self { if parent.is_choice() { Self::Variant } else { Self::Segment } }
 }
 
 #[derive(Debug, Clone)]
@@ -66,12 +60,7 @@ impl NameForm<'_> {
                     ident.to_string()
                 }
             }
-            NameForm::Composite(CompositeName {
-                parent,
-                position,
-                kind,
-                ..
-            }) => {
+            NameForm::Composite(CompositeName { parent, position, kind, .. }) => {
                 let kind = match kind {
                     CompositeKind::Segment => "Segment",
                     CompositeKind::Variant => "Variant",
@@ -91,9 +80,7 @@ impl NameForm<'_> {
         }
     }
 
-    fn is_unknown(&self) -> bool {
-        matches!(self, Self::Composite(..) | Self::FromConfig(..))
-    }
+    fn is_unknown(&self) -> bool { matches!(self, Self::Composite(..) | Self::FromConfig(..)) }
 }
 
 impl Name<'_> {
@@ -105,25 +92,15 @@ impl Name<'_> {
         }
     }
 
-    fn name(&self) -> String {
-        self.form().name()
-    }
+    fn name(&self) -> String { self.form().name() }
 
-    pub fn span(&self) -> Span {
-        self.form().span()
-    }
+    pub fn span(&self) -> Span { self.form().span() }
 
-    pub fn is_unknown(&self) -> bool {
-        self.form().is_unknown()
-    }
+    pub fn is_unknown(&self) -> bool { self.form().is_unknown() }
 
-    pub fn is_choice(&self) -> bool {
-        matches!(self, Self::Choice(..))
-    }
+    pub fn is_choice(&self) -> bool { matches!(self, Self::Choice(..)) }
 
-    pub fn type_name(&self) -> Ident {
-        Ident::new(&self.name().to_pascal_case(), self.span())
-    }
+    pub fn type_name(&self) -> Ident { Ident::new(&self.name().to_pascal_case(), self.span()) }
 
     pub fn cast_closure(&self) -> ExprPath {
         let type_name = self.type_name();
@@ -188,10 +165,9 @@ pub trait ToName {
 impl ToName for BasicParseEntry {
     fn to_name<'a, 'b: 'a>(&'a self, ctx: NameCtx<'b>) -> Result<Name<'a>> {
         match self {
-            BasicParseEntry::Token { token, span, .. } => Ok(Name::Single(NameForm::Token {
-                token: *token,
-                span: *span,
-            })),
+            BasicParseEntry::Token { token, span, .. } => {
+                Ok(Name::Single(NameForm::Token { token: *token, span: *span }))
+            }
             BasicParseEntry::Ident(id, ..) => {
                 if id.to_string().starts_with(char::is_lowercase) {
                     Ok(Name::Single(NameForm::Ident(id)))
@@ -207,10 +183,9 @@ impl ToName for BasicParseEntry {
                         form.span(),
                         "Unexpected optional nested inside a repeatition",
                     )),
-                    Name::Many(form) => Err(syn::Error::new(
-                        form.span(),
-                        "Unexpected nested repeatition",
-                    )),
+                    Name::Many(form) => {
+                        Err(syn::Error::new(form.span(), "Unexpected nested repeatition"))
+                    }
                 }
             }
             BasicParseEntry::Optional { entries, .. } if entries.len() == 1 => {

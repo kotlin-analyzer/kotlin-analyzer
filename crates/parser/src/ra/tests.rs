@@ -75,11 +75,7 @@ fn parse_ok() {
     for case in TestCase::list("parser/ok") {
         let _guard = panic_context!("{:?}", case.kt);
         let (actual, errors) = parse(ty, &case.text, KtVersion::V2_3);
-        assert!(
-            !errors,
-            "errors in an OK file {}:\n{actual}",
-            case.kt.display()
-        );
+        assert!(!errors, "errors in an OK file {}:\n{actual}", case.kt.display());
         expect_file![case.kast].assert_eq(&actual);
     }
 }
@@ -89,11 +85,7 @@ fn parse_err() {
     for case in TestCase::list("parser/err") {
         let _guard = panic_context!("{:?}", case.kt);
         let (actual, errors) = parse(ty, &case.text, KtVersion::V2_3);
-        assert!(
-            errors,
-            "no errors in an ERR file {}:\n{actual}",
-            case.kt.display()
-        );
+        assert!(errors, "no errors in an ERR file {}:\n{actual}", case.kt.display());
         expect_file![case.kast].assert_eq(&actual)
     }
 }
@@ -194,20 +186,14 @@ fn run_and_expect_no_errors(path: &str) {
 }
 
 #[track_caller]
-fn run_and_expect_errors(path: &str) {
-    run_and_expect_errors_with_version(path, KtVersion::V2_3)
-}
+fn run_and_expect_errors(path: &str) { run_and_expect_errors_with_version(path, KtVersion::V2_3) }
 
 #[track_caller]
 fn run_and_expect_no_errors_with_version(path: &str, version: KtVersion) {
     let path = PathBuf::from(path);
     let text = std::fs::read_to_string(&path).unwrap();
     let (actual, errors) = parse(annotation, &text, version);
-    assert!(
-        !errors,
-        "errors in an OK file {}:\n{actual}",
-        path.display()
-    );
+    assert!(!errors, "errors in an OK file {}:\n{actual}", path.display());
     let mut p = PathBuf::from("..");
     p.push(path);
     p.set_extension("kast");
@@ -219,11 +205,7 @@ fn run_and_expect_errors_with_version(path: &str, version: KtVersion) {
     let path = PathBuf::from(path);
     let text = std::fs::read_to_string(&path).unwrap();
     let (actual, errors) = parse(annotation, &text, version);
-    assert!(
-        errors,
-        "no errors in an ERR file {}:\n{actual}",
-        path.display()
-    );
+    assert!(errors, "no errors in an ERR file {}:\n{actual}", path.display());
     let mut p = PathBuf::from("..");
     p.push(path);
     p.set_extension("kast");

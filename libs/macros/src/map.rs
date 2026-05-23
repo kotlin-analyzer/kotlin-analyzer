@@ -18,10 +18,8 @@ where
 {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let entries: Separated<InOrder<K, InOrder<Token![=>], V>>, Token![,]> = input.parse()?;
-        let items = entries
-            .items()
-            .map(|InOrder { first, second }| (first, second.second))
-            .collect();
+        let items =
+            entries.items().map(|InOrder { first, second }| (first, second.second)).collect();
         Ok(Map(items))
     }
 }

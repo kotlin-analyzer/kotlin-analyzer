@@ -37,11 +37,8 @@ pub fn gen_ast_debug(input: TokenStream) -> TokenStream {
 
     match ast.generate() {
         Ok(stream) => {
-            std::fs::write(
-                cargo_path.join("debug.rs"),
-                pretty_print(stream.clone().into()),
-            )
-            .expect("unable to create debug.rs file");
+            std::fs::write(cargo_path.join("debug.rs"), pretty_print(stream.clone().into()))
+                .expect("unable to create debug.rs file");
             stream.into()
         }
         Err(err) => err.to_compile_error().into(),

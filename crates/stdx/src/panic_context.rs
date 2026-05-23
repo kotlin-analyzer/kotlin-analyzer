@@ -10,9 +10,7 @@ pub struct PanicContext {
 }
 
 impl Drop for PanicContext {
-    fn drop(&mut self) {
-        with_ctx(|ctx| assert!(ctx.pop().is_some()));
-    }
+    fn drop(&mut self) { with_ctx(|ctx| assert!(ctx.pop().is_some())); }
 }
 
 pub fn enter(frame: String) -> PanicContext {

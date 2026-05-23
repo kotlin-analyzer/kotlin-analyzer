@@ -33,10 +33,7 @@ fn class_member_declaration(
     modifiers_marker: Option<CompletedMarker>,
 ) -> Option<CompletedMarker> {
     if let Some(cm) = anonymous_initializer(parser) {
-        return Some(
-            cm.precede(parser)
-                .complete(parser, CLASS_MEMBER_DECLARATION),
-        );
+        return Some(cm.precede(parser).complete(parser, CLASS_MEMBER_DECLARATION));
     }
     let m = parser.start();
     let modifiers_marker = modifiers_marker.or_else(|| modifiers(parser));
@@ -72,9 +69,7 @@ fn companion_object(
         return None;
     }
 
-    let m = modifiers_marker
-        .map(|cm| cm.precede(parser))
-        .unwrap_or_else(|| parser.start());
+    let m = modifiers_marker.map(|cm| cm.precede(parser)).unwrap_or_else(|| parser.start());
 
     parser.eat(T![companion]);
     parser.eat(T![data]);
@@ -104,9 +99,7 @@ pub(crate) fn function_declaration(
         return None;
     }
 
-    let m = modifiers_marker
-        .map(|cm| cm.precede(parser))
-        .unwrap_or_else(|| parser.start());
+    let m = modifiers_marker.map(|cm| cm.precede(parser)).unwrap_or_else(|| parser.start());
 
     parser.bump(T![fun]);
     type_parameters(parser);
@@ -150,9 +143,7 @@ pub(crate) fn object_declaration(
     if !parser.at(T![object]) {
         return None;
     }
-    let m = modifiers_marker
-        .map(|cm| cm.precede(parser))
-        .unwrap_or_else(|| parser.start());
+    let m = modifiers_marker.map(|cm| cm.precede(parser)).unwrap_or_else(|| parser.start());
 
     parser.eat(T![object]);
     if simple_identifier(parser).is_none() {
@@ -233,9 +224,7 @@ pub(crate) fn property_declaration(
     if !parser.at_ts(PROPERTY_DECLARATION_START) {
         return None;
     }
-    let m = modifiers_marker
-        .map(|cm| cm.precede(parser))
-        .unwrap_or_else(|| parser.start());
+    let m = modifiers_marker.map(|cm| cm.precede(parser)).unwrap_or_else(|| parser.start());
 
     parser.bump_any();
     type_parameters(parser);
@@ -243,9 +232,7 @@ pub(crate) fn property_declaration(
     multi_variable_declaration(parser).or_else(|| variable_declaration(parser));
     type_constraints(parser);
     if parser.eat(T![=])
-        && property_delegate(parser)
-            .or_else(|| expression(parser).map(|e| e.marker()))
-            .is_none()
+        && property_delegate(parser).or_else(|| expression(parser).map(|e| e.marker())).is_none()
     {
         parser.error("expected an expression");
     }
@@ -277,9 +264,7 @@ fn getter(
     if !parser.at(GET) {
         return None;
     }
-    let m = modifiers_marker
-        .map(|cm| cm.precede(parser))
-        .unwrap_or_else(|| parser.start());
+    let m = modifiers_marker.map(|cm| cm.precede(parser)).unwrap_or_else(|| parser.start());
 
     if parser.eat(T!['(']) {
         if !parser.eat(T![')']) {
@@ -302,9 +287,7 @@ fn setter(
     if !parser.at(SET) {
         return None;
     }
-    let m = modifiers_marker
-        .map(|cm| cm.precede(parser))
-        .unwrap_or_else(|| parser.start());
+    let m = modifiers_marker.map(|cm| cm.precede(parser)).unwrap_or_else(|| parser.start());
     if parser.eat(T!['(']) {
         if function_value_parameter_with_optional_type(parser).is_some() {
             parser.eat(T![,]);
@@ -393,9 +376,7 @@ fn secondary_constructor(
     if !parser.at(T![constructor]) {
         return None;
     }
-    let m = modifiers_marker
-        .map(|cm| cm.precede(parser))
-        .unwrap_or_else(|| parser.start());
+    let m = modifiers_marker.map(|cm| cm.precede(parser)).unwrap_or_else(|| parser.start());
     parser.eat(T![constructor]);
     function_value_parameters(parser);
     if parser.eat(T![:]) {

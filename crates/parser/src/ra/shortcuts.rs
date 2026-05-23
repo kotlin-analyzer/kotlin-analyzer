@@ -50,19 +50,13 @@ impl LexedStr<'_> {
 
     /// NB: only valid to call with Output from Reparser/TopLevelEntry.
     pub fn intersperse_trivia(&self, output: &Output, sink: &mut dyn FnMut(StrStep<'_>)) -> bool {
-        let mut builder = Builder {
-            lexed: self,
-            pos: 0,
-            state: State::PendingEnter,
-            sink,
-        };
+        let mut builder = Builder { lexed: self, pos: 0, state: State::PendingEnter, sink };
 
         for event in output.iter() {
             match event {
-                Step::Token {
-                    kind,
-                    n_input_tokens: n_raw_tokens,
-                } => builder.token(kind, n_raw_tokens),
+                Step::Token { kind, n_input_tokens: n_raw_tokens } => {
+                    builder.token(kind, n_raw_tokens)
+                }
                 Step::Enter { kind } => builder.enter(kind),
                 Step::Exit => builder.exit(),
                 Step::Error { msg } => {
@@ -121,15 +115,12 @@ impl Builder<'_, '_> {
             State::Normal => (),
         }
 
-        let n_trivias = (self.pos..self.lexed.len())
-            .take_while(|&it| self.lexed.kind(it).is_trivia())
-            .count();
+        let n_trivias =
+            (self.pos..self.lexed.len()).take_while(|&it| self.lexed.kind(it).is_trivia()).count();
         let leading_trivias = self.pos..self.pos + n_trivias;
         let n_attached_trivias = n_attached_trivias(
             kind,
-            leading_trivias
-                .rev()
-                .map(|it| (self.lexed.kind(it), self.lexed.text(it))),
+            leading_trivias.rev().map(|it| (self.lexed.kind(it), self.lexed.text(it))),
         );
         self.eat_n_trivias(n_trivias - n_attached_trivias);
         (self.sink)(StrStep::Enter { kind });

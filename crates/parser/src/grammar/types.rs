@@ -52,10 +52,7 @@ fn type_suffix(parser: &mut Parser<'_>, lhs: TypeResult) -> Option<TypeResult> {
             let m = lhs.marker().precede(parser);
             parser.bump(T![&]);
             type_modifiers(parser);
-            if user_type(parser)
-                .or_else(|| parenthesized_user_type(parser))
-                .is_none()
-            {
+            if user_type(parser).or_else(|| parenthesized_user_type(parser)).is_none() {
                 // FIXME: recovery
                 parser.error("expected type after `&`");
             }
@@ -477,9 +474,8 @@ fn type_projection_modifiers(parser: &mut Parser<'_>) -> Option<CompletedMarker>
 
 fn type_projection_modifier(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     let mut is_variance = false;
-    if let Some(cm) = variance_modifier(parser)
-        .inspect(|_| is_variance = true)
-        .or_else(|| annotation(parser))
+    if let Some(cm) =
+        variance_modifier(parser).inspect(|_| is_variance = true).or_else(|| annotation(parser))
     {
         let m = cm.precede(parser);
         Some(m.complete(parser, TYPE_PROJECTION_MODIFIER))

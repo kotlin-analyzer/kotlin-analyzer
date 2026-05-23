@@ -36,10 +36,6 @@ macro_rules! dbg_lexer {
 #[macro_export]
 macro_rules! trim_idents {
     ($source: literal) => {
-        $source
-            .lines()
-            .map(|l| l.trim_start())
-            .collect::<Vec<_>>()
-            .join("\n")
+        $source.lines().map(|l| l.trim_start()).collect::<Vec<_>>().join("\n")
     };
 }

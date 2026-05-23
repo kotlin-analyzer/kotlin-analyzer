@@ -23,9 +23,7 @@ pub(crate) fn class_declaration(
         return None;
     }
 
-    let m = modifiers_marker
-        .map(|cm| cm.precede(parser))
-        .unwrap_or_else(|| parser.start());
+    let m = modifiers_marker.map(|cm| cm.precede(parser)).unwrap_or_else(|| parser.start());
 
     if parser.at(T![class]) || parser.at(T![interface]) {
         parser.bump_any();

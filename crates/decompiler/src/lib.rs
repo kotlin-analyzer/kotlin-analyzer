@@ -53,18 +53,12 @@ mod tests {
 
         let result = generate_definitions(path);
 
-        assert!(
-            result.is_ok(),
-            "Expected Ok from generate_definitions, got Err"
-        );
+        assert!(result.is_ok(), "Expected Ok from generate_definitions, got Err");
 
         let definitions = result.unwrap();
 
         let class = definitions.get("com/jstart/JavaClass.class");
-        assert!(
-            class.is_some(),
-            "Expected to find class com.jstart.JavaClass, got None"
-        );
+        assert!(class.is_some(), "Expected to find class com.jstart.JavaClass, got None");
 
         let class = class.unwrap();
         assert!(

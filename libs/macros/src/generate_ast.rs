@@ -22,9 +22,7 @@ struct ImplKey {
 }
 
 impl ImplKey {
-    fn new(target: Ident, name: String) -> Self {
-        Self { target, name }
-    }
+    fn new(target: Ident, name: String) -> Self { Self { target, name } }
 }
 
 #[derive(Debug, Default)]
@@ -49,11 +47,8 @@ trait Generate {
 
 impl GenAst {
     pub fn generate(self) -> Result<TokenStream> {
-        let entries = self
-            .entries
-            .into_iter()
-            .map(|tp| tp.generate())
-            .collect::<Result<Vec<_>>>()?;
+        let entries =
+            self.entries.into_iter().map(|tp| tp.generate()).collect::<Result<Vec<_>>>()?;
 
         Ok(quote! {
             #(#entries)*
@@ -75,16 +70,11 @@ impl TopLevelParseEntry {
             e.generate(
                 &mut sink,
                 NameCtx::new(&name, pos),
-                GenContext {
-                    is_nested: asts_len > 1,
-                },
+                GenContext { is_nested: asts_len > 1 },
             )?;
         }
 
-        let GeneratedSink {
-            impls,
-            top_level_items: new_types,
-        } = sink;
+        let GeneratedSink { impls, top_level_items: new_types } = sink;
 
         let groups = impls
             .into_iter()
@@ -123,11 +113,7 @@ impl Generate for ParseEntry {
         // If it is nested, then it is the name of the
         // TODO: it might be best to always use parent here, check generated code
         // This is because nested enum always tend to be inside a group
-        let node = if gen_ctx.is_nested {
-            &name
-        } else {
-            name_ctx.parent
-        };
+        let node = if gen_ctx.is_nested { &name } else { name_ctx.parent };
 
         let children_names = self.get_children_names(node)?;
 
@@ -218,11 +204,7 @@ impl Generate for ParseEntry {
                     .enumerate()
                     .filter(|(_, e)| e.is_composite())
                     .map(|(pos, e)| {
-                        e.generate(
-                            sink,
-                            NameCtx::new(node, pos),
-                            GenContext { is_nested: true },
-                        )
+                        e.generate(sink, NameCtx::new(node, pos), GenContext { is_nested: true })
                     })
                     .collect::<Result<Vec<_>>>()?;
 
@@ -338,11 +320,7 @@ impl BasicParseEntry {
             .iter()
             .enumerate()
             .map(|(pos, e)| {
-                e.generate(
-                    sink,
-                    NameCtx::new(&name, pos),
-                    GenContext { is_nested: true },
-                )
+                e.generate(sink, NameCtx::new(&name, pos), GenContext { is_nested: true })
             })
             .collect::<Result<Vec<_>>>()?;
 

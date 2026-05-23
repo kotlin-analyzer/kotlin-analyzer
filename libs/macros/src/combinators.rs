@@ -65,10 +65,7 @@ where
         }
 
         if result.is_empty() {
-            return Err(syn::Error::new(
-                input.span(),
-                "Seq expects at list one matching entry",
-            ));
+            return Err(syn::Error::new(input.span(), "Seq expects at list one matching entry"));
         }
 
         Ok(Seq(result))
@@ -97,33 +94,18 @@ where
     match trailing {
         TrailingOpt::Optional => {
             if let Ok(last) = input.parse::<T>() {
-                Ok(Separated {
-                    items: result,
-                    last: Some(last),
-                })
+                Ok(Separated { items: result, last: Some(last) })
             } else if result.is_empty() {
-                Err(syn::Error::new(
-                    input.span(),
-                    "Separated expectes at least one match",
-                ))
+                Err(syn::Error::new(input.span(), "Separated expectes at least one match"))
             } else {
-                Ok(Separated {
-                    items: result,
-                    last: None,
-                })
+                Ok(Separated { items: result, last: None })
             }
         }
         TrailingOpt::Enforced => {
             if result.is_empty() {
-                return Err(syn::Error::new(
-                    input.span(),
-                    "Separated expectes at least one match",
-                ));
+                return Err(syn::Error::new(input.span(), "Separated expectes at least one match"));
             }
-            Ok(Separated {
-                items: result,
-                last: None,
-            })
+            Ok(Separated { items: result, last: None })
         }
         TrailingOpt::Deny => input
             .parse::<T>()
@@ -137,10 +119,7 @@ where
                     },
                 )
             })
-            .map(|last| Separated {
-                items: result,
-                last: Some(last),
-            }),
+            .map(|last| Separated { items: result, last: Some(last) }),
     }
 }
 
@@ -150,9 +129,7 @@ impl<T> Parse for Optional<T>
 where
     T: Parse,
 {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
-        Ok(Optional(input.parse::<T>().ok()))
-    }
+    fn parse(input: ParseStream) -> syn::Result<Self> { Ok(Optional(input.parse::<T>().ok())) }
 }
 
 impl<T, S> Parse for Separated<T, S>

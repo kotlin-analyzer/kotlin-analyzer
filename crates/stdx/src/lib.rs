@@ -7,9 +7,7 @@ use std::{cmp::Ordering, ops, time::Instant};
 pub mod panic_context;
 
 #[inline(always)]
-pub const fn is_ci() -> bool {
-    option_env!("CI").is_some()
-}
+pub const fn is_ci() -> bool { option_env!("CI").is_some() }
 
 pub fn hash_once<Hasher: std::hash::Hasher + Default>(thing: impl std::hash::Hash) -> u64 {
     std::hash::BuildHasher::hash_one(&std::hash::BuildHasherDefault::<Hasher>::default(), thing)
@@ -46,23 +44,15 @@ pub trait TupleExt {
 impl<T, U> TupleExt for (T, U) {
     type Head = T;
     type Tail = U;
-    fn head(self) -> Self::Head {
-        self.0
-    }
-    fn tail(self) -> Self::Tail {
-        self.1
-    }
+    fn head(self) -> Self::Head { self.0 }
+    fn tail(self) -> Self::Tail { self.1 }
 }
 
 impl<T, U, V> TupleExt for (T, U, V) {
     type Head = T;
     type Tail = V;
-    fn head(self) -> Self::Head {
-        self.0
-    }
-    fn tail(self) -> Self::Tail {
-        self.2
-    }
+    fn head(self) -> Self::Head { self.0 }
+    fn tail(self) -> Self::Tail { self.2 }
 }
 
 impl<T> TupleExt for &T
@@ -71,20 +61,12 @@ where
 {
     type Head = T::Head;
     type Tail = T::Tail;
-    fn head(self) -> Self::Head {
-        (*self).head()
-    }
-    fn tail(self) -> Self::Tail {
-        (*self).tail()
-    }
+    fn head(self) -> Self::Head { (*self).head() }
+    fn tail(self) -> Self::Tail { (*self).tail() }
 }
 
-pub fn to_lower_snake_case(s: &str) -> String {
-    to_snake_case(s, char::to_lowercase)
-}
-pub fn to_upper_snake_case(s: &str) -> String {
-    to_snake_case(s, char::to_uppercase)
-}
+pub fn to_lower_snake_case(s: &str) -> String { to_snake_case(s, char::to_lowercase) }
+pub fn to_upper_snake_case(s: &str) -> String { to_snake_case(s, char::to_uppercase) }
 
 // Code partially taken from rust/compiler/rustc_lint/src/nonstandard_style.rs
 // commit: 9626f2b
@@ -180,9 +162,7 @@ pub fn to_camel_case(ident: &str) -> String {
 
 // Taken from rustc.
 #[must_use]
-pub const fn char_has_case(c: char) -> bool {
-    c.is_lowercase() || c.is_uppercase()
-}
+pub const fn char_has_case(c: char) -> bool { c.is_lowercase() || c.is_uppercase() }
 
 #[must_use]
 pub fn is_upper_snake_case(s: &str) -> bool {
@@ -286,15 +266,11 @@ pub struct JodChild(pub std::process::Child);
 
 impl ops::Deref for JodChild {
     type Target = std::process::Child;
-    fn deref(&self) -> &std::process::Child {
-        &self.0
-    }
+    fn deref(&self) -> &std::process::Child { &self.0 }
 }
 
 impl ops::DerefMut for JodChild {
-    fn deref_mut(&mut self) -> &mut std::process::Child {
-        &mut self.0
-    }
+    fn deref_mut(&mut self) -> &mut std::process::Child { &mut self.0 }
 }
 
 impl Drop for JodChild {
@@ -305,9 +281,7 @@ impl Drop for JodChild {
 }
 
 impl JodChild {
-    pub fn spawn(mut command: Command) -> sio::Result<Self> {
-        command.spawn().map(Self)
-    }
+    pub fn spawn(mut command: Command) -> sio::Result<Self> { command.spawn().map(Self) }
 
     #[must_use]
     #[cfg(not(target_arch = "wasm32"))]

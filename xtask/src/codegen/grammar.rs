@@ -779,14 +779,10 @@ fn to_pascal_case(s: &str) -> String {
     buf
 }
 
-fn pluralize(s: &str) -> String {
-    format!("{s}s")
-}
+fn pluralize(s: &str) -> String { format!("{s}s") }
 
 impl Field {
-    fn is_many(&self) -> bool {
-        matches!(self, Field::Node { cardinality: Cardinality::Many, .. })
-    }
+    fn is_many(&self) -> bool { matches!(self, Field::Node { cardinality: Cardinality::Many, .. }) }
     fn token_kind(&self) -> Option<proc_macro2::TokenStream> {
         match self {
             t @ Field::Token { .. } => {
@@ -1222,6 +1218,4 @@ impl AstNodeSrc {
 }
 
 #[test]
-fn test() {
-    generate(true);
-}
+fn test() { generate(true); }
