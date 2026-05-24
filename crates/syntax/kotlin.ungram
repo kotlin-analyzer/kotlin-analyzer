@@ -502,8 +502,7 @@ AnonymousFunction =
   'suspend'? 'fun' (Type '.')? ParametersWithOptionalType (':' Type)? TypeConstraints? FunctionBody?
 
 FunctionLiteral =
-  fn:(LambdaLiteral
-| AnonymousFunction)
+  (LambdaLiteral | AnonymousFunction)
 
 ObjectLiteral =
   'data'? 'object' (':' DelegationSpecifiers)? ClassBody?
@@ -610,7 +609,7 @@ AnnotationOrParameterModifier =
 
 
 Modifier =
-  mod:(ClassModifier
+  (ClassModifier
 | MemberModifier
 | VisibilityModifier
 | FunctionModifier

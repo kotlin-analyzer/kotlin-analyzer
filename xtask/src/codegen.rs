@@ -109,16 +109,19 @@ fn reformat(text: String) -> String {
                  Please run `rustup component add rustfmt --toolchain {toolchain}` to install it.",
             );
         } else {
-            cmd!(sh, "cargo fmt -- --config-path {rustfmt_toml} --config fn_single_line=true")
+            cmd!(sh, "rustfmt --config-path {rustfmt_toml} --config fn_single_line=true")
                 .stdin(text)
                 .read()
                 .unwrap()
         }
     } else {
-        cmd!(sh, "cargo fmt -- --config-path {rustfmt_toml} --config fn_single_line=true")
-            .stdin(text)
-            .read()
-            .unwrap()
+        cmd!(
+            sh,
+            "rustup run {toolchain} rustfmt --config-path {rustfmt_toml} --config fn_single_line=true"
+        )
+        .stdin(text)
+        .read()
+        .unwrap()
     };
     if !stdout.ends_with('\n') {
         stdout.push('\n');
@@ -171,4 +174,6 @@ fn ensure_file_contents(cg: CodegenType, file: &Path, contents: &str, check: boo
     }
 }
 
-fn normalize_newlines(s: &str) -> String { s.replace("\r\n", "\n") }
+fn normalize_newlines(s: &str) -> String {
+    s.replace("\r\n", "\n")
+}

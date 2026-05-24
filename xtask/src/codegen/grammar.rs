@@ -779,10 +779,14 @@ fn to_pascal_case(s: &str) -> String {
     buf
 }
 
-fn pluralize(s: &str) -> String { format!("{s}s") }
+fn pluralize(s: &str) -> String {
+    format!("{s}s")
+}
 
 impl Field {
-    fn is_many(&self) -> bool { matches!(self, Field::Node { cardinality: Cardinality::Many, .. }) }
+    fn is_many(&self) -> bool {
+        matches!(self, Field::Node { cardinality: Cardinality::Many, .. })
+    }
     fn token_kind(&self) -> Option<proc_macro2::TokenStream> {
         match self {
             t @ Field::Token { .. } => {
@@ -1183,9 +1187,6 @@ fn extract_struct_trait(node: &mut AstNodeSrc, trait_name: &str, methods: &[&str
 
 fn extract_enum_traits(ast: &mut AstSrc) {
     for enm in &mut ast.enums {
-        if enm.name == "Stmt" {
-            continue;
-        }
         let nodes = &ast.nodes;
         let mut variant_traits = enm
             .variants
@@ -1218,4 +1219,6 @@ impl AstNodeSrc {
 }
 
 #[test]
-fn test() { generate(true); }
+fn test() {
+    generate(true);
+}
