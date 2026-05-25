@@ -39,7 +39,7 @@ pub(crate) fn generate(check: bool) {
 
     let ok_tests = tests.ok.values().sorted_by(|a, b| a.name.cmp(&b.name)).map(|test| {
         let test_name = quote::format_ident!("{}", test.name);
-        let test_file = format!("test_data/parser/inline/ok/{test_name}.rs");
+        let test_file = format!("test_data/parser/inline/ok/{test_name}.kt");
         let (test_func, args) = match &test.edition {
             Some(edition) => {
                 let edition = quote::format_ident!("Edition{edition}");
@@ -59,7 +59,7 @@ pub(crate) fn generate(check: bool) {
     });
     let err_tests = tests.err.values().sorted_by(|a, b| a.name.cmp(&b.name)).map(|test| {
         let test_name = quote::format_ident!("{}", test.name);
-        let test_file = format!("test_data/parser/inline/err/{test_name}.rs");
+        let test_file = format!("test_data/parser/inline/err/{test_name}.kt");
         let (test_func, args) = match &test.edition {
             Some(edition) => {
                 let edition = quote::format_ident!("Edition{edition}");
@@ -112,7 +112,7 @@ fn install_tests(tests: &HashMap<String, Test>, tests_dir: PathBuf, check: bool)
     for (name, test) in tests {
         let path = match existing.get(name) {
             Some((path, _test)) => path.clone(),
-            None => tests_dir.join(name).with_extension("rs"),
+            None => tests_dir.join(name).with_extension("kt"),
         };
         if ensure_file_contents(crate::flags::CodegenType::ParserTests, &path, &test.text, check) {
             some_file_was_updated = true;
@@ -203,7 +203,7 @@ fn existing_tests(dir: &Path, ok: TestKind) -> Result<HashMap<String, (PathBuf, 
     let mut res = HashMap::new();
     for file in fs::read_dir(dir)? {
         let path = file?.path();
-        let rust_file = path.extension().and_then(|ext| ext.to_str()) == Some("rs");
+        let rust_file = path.extension().and_then(|ext| ext.to_str()) == Some("kt");
 
         if rust_file {
             let name = path.file_stem().map(|x| x.to_string_lossy().to_string()).unwrap();
@@ -220,4 +220,6 @@ fn existing_tests(dir: &Path, ok: TestKind) -> Result<HashMap<String, (PathBuf, 
 }
 
 #[test]
-fn test() { generate(true); }
+fn test() {
+    generate(true);
+}

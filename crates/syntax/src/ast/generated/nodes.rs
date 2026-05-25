@@ -723,15 +723,6 @@ impl FunctionDeclaration {
     #[inline]
     pub fn fun_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![fun]) }
 }
-pub struct FunctionLiteral {
-    pub(crate) syntax: SyntaxNode,
-}
-impl FunctionLiteral {
-    #[inline]
-    pub fn variant(&self) -> Option<LambdaLiteral> { support::child(&self.syntax) }
-    #[inline]
-    pub fn variant(&self) -> Option<AnonymousFunction> { support::child(&self.syntax) }
-}
 pub struct FunctionModifier {
     pub(crate) syntax: SyntaxNode,
 }
@@ -1170,27 +1161,6 @@ impl MemberModifier {
     pub fn override_token(&self) -> Option<SyntaxToken> {
         support::token(&self.syntax, T![override])
     }
-}
-pub struct Modifier {
-    pub(crate) syntax: SyntaxNode,
-}
-impl Modifier {
-    #[inline]
-    pub fn variant(&self) -> Option<ClassModifier> { support::child(&self.syntax) }
-    #[inline]
-    pub fn variant(&self) -> Option<MemberModifier> { support::child(&self.syntax) }
-    #[inline]
-    pub fn variant(&self) -> Option<VisibilityModifier> { support::child(&self.syntax) }
-    #[inline]
-    pub fn variant(&self) -> Option<FunctionModifier> { support::child(&self.syntax) }
-    #[inline]
-    pub fn variant(&self) -> Option<PropertyModifier> { support::child(&self.syntax) }
-    #[inline]
-    pub fn variant(&self) -> Option<InheritanceModifier> { support::child(&self.syntax) }
-    #[inline]
-    pub fn variant(&self) -> Option<ParameterModifier> { support::child(&self.syntax) }
-    #[inline]
-    pub fn variant(&self) -> Option<PlatformModifier> { support::child(&self.syntax) }
 }
 pub struct Modifiers {
     pub(crate) syntax: SyntaxNode,
@@ -2266,7 +2236,14 @@ impl WhileStatement {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum AnnotationOrModifier {
     Annotation(Annotation),
-    Modifier(Modifier),
+    ClassModifier(ClassModifier),
+    FunctionModifier(FunctionModifier),
+    InheritanceModifier(InheritanceModifier),
+    MemberModifier(MemberModifier),
+    ParameterModifier(ParameterModifier),
+    PlatformModifier(PlatformModifier),
+    PropertyModifier(PropertyModifier),
+    VisibilityModifier(VisibilityModifier),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -2303,6 +2280,12 @@ pub enum ControlStructureBody {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum FunctionLiteral {
+    AnonymousFunction(AnonymousFunction),
+    LambdaLiteral(LambdaLiteral),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum LineStringContentOrExpression {
     LineStringContent(LineStringContent),
     LineStringExpression(LineStringExpression),
@@ -2313,6 +2296,18 @@ pub enum LoopStatement {
     DoWhileStatement(DoWhileStatement),
     ForStatement(ForStatement),
     WhileStatement(WhileStatement),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum Modifier {
+    ClassModifier(ClassModifier),
+    FunctionModifier(FunctionModifier),
+    InheritanceModifier(InheritanceModifier),
+    MemberModifier(MemberModifier),
+    ParameterModifier(ParameterModifier),
+    PlatformModifier(PlatformModifier),
+    PropertyModifier(PropertyModifier),
+    VisibilityModifier(VisibilityModifier),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -2338,11 +2333,12 @@ pub enum PostfixUnarySuffix {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum PrimaryExpression {
+    AnonymousFunction(AnonymousFunction),
     CallableReference(CallableReference),
     CollectionLiteral(CollectionLiteral),
-    FunctionLiteral(FunctionLiteral),
     IfExpression(IfExpression),
     JumpExpression(JumpExpression),
+    LambdaLiteral(LambdaLiteral),
     LiteralConstant(LiteralConstant),
     ObjectLiteral(ObjectLiteral),
     ParenthesizedExpression(ParenthesizedExpression),
@@ -4045,38 +4041,6 @@ impl fmt::Debug for FunctionDeclaration {
         f.debug_struct("FunctionDeclaration").field("syntax", &self.syntax).finish()
     }
 }
-impl AstNode for FunctionLiteral {
-    #[inline]
-    fn kind() -> SyntaxKind
-    where
-        Self: Sized,
-    {
-        FUNCTION_LITERAL
-    }
-    #[inline]
-    fn can_cast(kind: SyntaxKind) -> bool { kind == FUNCTION_LITERAL }
-    #[inline]
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
-    }
-    #[inline]
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-impl hash::Hash for FunctionLiteral {
-    fn hash<H: hash::Hasher>(&self, state: &mut H) { self.syntax.hash(state); }
-}
-impl Eq for FunctionLiteral {}
-impl PartialEq for FunctionLiteral {
-    fn eq(&self, other: &Self) -> bool { self.syntax == other.syntax }
-}
-impl Clone for FunctionLiteral {
-    fn clone(&self) -> Self { Self { syntax: self.syntax.clone() } }
-}
-impl fmt::Debug for FunctionLiteral {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("FunctionLiteral").field("syntax", &self.syntax).finish()
-    }
-}
 impl AstNode for FunctionModifier {
     #[inline]
     fn kind() -> SyntaxKind
@@ -5101,38 +5065,6 @@ impl Clone for MemberModifier {
 impl fmt::Debug for MemberModifier {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("MemberModifier").field("syntax", &self.syntax).finish()
-    }
-}
-impl AstNode for Modifier {
-    #[inline]
-    fn kind() -> SyntaxKind
-    where
-        Self: Sized,
-    {
-        MODIFIER
-    }
-    #[inline]
-    fn can_cast(kind: SyntaxKind) -> bool { kind == MODIFIER }
-    #[inline]
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
-    }
-    #[inline]
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-impl hash::Hash for Modifier {
-    fn hash<H: hash::Hasher>(&self, state: &mut H) { self.syntax.hash(state); }
-}
-impl Eq for Modifier {}
-impl PartialEq for Modifier {
-    fn eq(&self, other: &Self) -> bool { self.syntax == other.syntax }
-}
-impl Clone for Modifier {
-    fn clone(&self) -> Self { Self { syntax: self.syntax.clone() } }
-}
-impl fmt::Debug for Modifier {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Modifier").field("syntax", &self.syntax).finish()
     }
 }
 impl AstNode for Modifiers {
@@ -7541,18 +7473,94 @@ impl From<Annotation> for AnnotationOrModifier {
     #[inline]
     fn from(node: Annotation) -> AnnotationOrModifier { AnnotationOrModifier::Annotation(node) }
 }
-impl From<Modifier> for AnnotationOrModifier {
+impl From<ClassModifier> for AnnotationOrModifier {
     #[inline]
-    fn from(node: Modifier) -> AnnotationOrModifier { AnnotationOrModifier::Modifier(node) }
+    fn from(node: ClassModifier) -> AnnotationOrModifier {
+        AnnotationOrModifier::ClassModifier(node)
+    }
+}
+impl From<FunctionModifier> for AnnotationOrModifier {
+    #[inline]
+    fn from(node: FunctionModifier) -> AnnotationOrModifier {
+        AnnotationOrModifier::FunctionModifier(node)
+    }
+}
+impl From<InheritanceModifier> for AnnotationOrModifier {
+    #[inline]
+    fn from(node: InheritanceModifier) -> AnnotationOrModifier {
+        AnnotationOrModifier::InheritanceModifier(node)
+    }
+}
+impl From<MemberModifier> for AnnotationOrModifier {
+    #[inline]
+    fn from(node: MemberModifier) -> AnnotationOrModifier {
+        AnnotationOrModifier::MemberModifier(node)
+    }
+}
+impl From<ParameterModifier> for AnnotationOrModifier {
+    #[inline]
+    fn from(node: ParameterModifier) -> AnnotationOrModifier {
+        AnnotationOrModifier::ParameterModifier(node)
+    }
+}
+impl From<PlatformModifier> for AnnotationOrModifier {
+    #[inline]
+    fn from(node: PlatformModifier) -> AnnotationOrModifier {
+        AnnotationOrModifier::PlatformModifier(node)
+    }
+}
+impl From<PropertyModifier> for AnnotationOrModifier {
+    #[inline]
+    fn from(node: PropertyModifier) -> AnnotationOrModifier {
+        AnnotationOrModifier::PropertyModifier(node)
+    }
+}
+impl From<VisibilityModifier> for AnnotationOrModifier {
+    #[inline]
+    fn from(node: VisibilityModifier) -> AnnotationOrModifier {
+        AnnotationOrModifier::VisibilityModifier(node)
+    }
 }
 impl AstNode for AnnotationOrModifier {
     #[inline]
-    fn can_cast(kind: SyntaxKind) -> bool { matches!(kind, ANNOTATION | MODIFIER) }
+    fn can_cast(kind: SyntaxKind) -> bool {
+        matches!(
+            kind,
+            ANNOTATION
+                | CLASS_MODIFIER
+                | FUNCTION_MODIFIER
+                | INHERITANCE_MODIFIER
+                | MEMBER_MODIFIER
+                | PARAMETER_MODIFIER
+                | PLATFORM_MODIFIER
+                | PROPERTY_MODIFIER
+                | VISIBILITY_MODIFIER
+        )
+    }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         let res = match syntax.kind() {
             ANNOTATION => AnnotationOrModifier::Annotation(Annotation { syntax }),
-            MODIFIER => AnnotationOrModifier::Modifier(Modifier { syntax }),
+            CLASS_MODIFIER => AnnotationOrModifier::ClassModifier(ClassModifier { syntax }),
+            FUNCTION_MODIFIER => {
+                AnnotationOrModifier::FunctionModifier(FunctionModifier { syntax })
+            }
+            INHERITANCE_MODIFIER => {
+                AnnotationOrModifier::InheritanceModifier(InheritanceModifier { syntax })
+            }
+            MEMBER_MODIFIER => AnnotationOrModifier::MemberModifier(MemberModifier { syntax }),
+            PARAMETER_MODIFIER => {
+                AnnotationOrModifier::ParameterModifier(ParameterModifier { syntax })
+            }
+            PLATFORM_MODIFIER => {
+                AnnotationOrModifier::PlatformModifier(PlatformModifier { syntax })
+            }
+            PROPERTY_MODIFIER => {
+                AnnotationOrModifier::PropertyModifier(PropertyModifier { syntax })
+            }
+            VISIBILITY_MODIFIER => {
+                AnnotationOrModifier::VisibilityModifier(VisibilityModifier { syntax })
+            }
             _ => return None,
         };
         Some(res)
@@ -7561,7 +7569,14 @@ impl AstNode for AnnotationOrModifier {
     fn syntax(&self) -> &SyntaxNode {
         match self {
             AnnotationOrModifier::Annotation(it) => &it.syntax,
-            AnnotationOrModifier::Modifier(it) => &it.syntax,
+            AnnotationOrModifier::ClassModifier(it) => &it.syntax,
+            AnnotationOrModifier::FunctionModifier(it) => &it.syntax,
+            AnnotationOrModifier::InheritanceModifier(it) => &it.syntax,
+            AnnotationOrModifier::MemberModifier(it) => &it.syntax,
+            AnnotationOrModifier::ParameterModifier(it) => &it.syntax,
+            AnnotationOrModifier::PlatformModifier(it) => &it.syntax,
+            AnnotationOrModifier::PropertyModifier(it) => &it.syntax,
+            AnnotationOrModifier::VisibilityModifier(it) => &it.syntax,
         }
     }
 }
@@ -7760,6 +7775,34 @@ impl AstNode for ControlStructureBody {
         }
     }
 }
+impl From<AnonymousFunction> for FunctionLiteral {
+    #[inline]
+    fn from(node: AnonymousFunction) -> FunctionLiteral { FunctionLiteral::AnonymousFunction(node) }
+}
+impl From<LambdaLiteral> for FunctionLiteral {
+    #[inline]
+    fn from(node: LambdaLiteral) -> FunctionLiteral { FunctionLiteral::LambdaLiteral(node) }
+}
+impl AstNode for FunctionLiteral {
+    #[inline]
+    fn can_cast(kind: SyntaxKind) -> bool { matches!(kind, ANONYMOUS_FUNCTION | LAMBDA_LITERAL) }
+    #[inline]
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        let res = match syntax.kind() {
+            ANONYMOUS_FUNCTION => FunctionLiteral::AnonymousFunction(AnonymousFunction { syntax }),
+            LAMBDA_LITERAL => FunctionLiteral::LambdaLiteral(LambdaLiteral { syntax }),
+            _ => return None,
+        };
+        Some(res)
+    }
+    #[inline]
+    fn syntax(&self) -> &SyntaxNode {
+        match self {
+            FunctionLiteral::AnonymousFunction(it) => &it.syntax,
+            FunctionLiteral::LambdaLiteral(it) => &it.syntax,
+        }
+    }
+}
 impl From<LineStringContent> for LineStringContentOrExpression {
     #[inline]
     fn from(node: LineStringContent) -> LineStringContentOrExpression {
@@ -7831,6 +7874,82 @@ impl AstNode for LoopStatement {
             LoopStatement::DoWhileStatement(it) => &it.syntax,
             LoopStatement::ForStatement(it) => &it.syntax,
             LoopStatement::WhileStatement(it) => &it.syntax,
+        }
+    }
+}
+impl From<ClassModifier> for Modifier {
+    #[inline]
+    fn from(node: ClassModifier) -> Modifier { Modifier::ClassModifier(node) }
+}
+impl From<FunctionModifier> for Modifier {
+    #[inline]
+    fn from(node: FunctionModifier) -> Modifier { Modifier::FunctionModifier(node) }
+}
+impl From<InheritanceModifier> for Modifier {
+    #[inline]
+    fn from(node: InheritanceModifier) -> Modifier { Modifier::InheritanceModifier(node) }
+}
+impl From<MemberModifier> for Modifier {
+    #[inline]
+    fn from(node: MemberModifier) -> Modifier { Modifier::MemberModifier(node) }
+}
+impl From<ParameterModifier> for Modifier {
+    #[inline]
+    fn from(node: ParameterModifier) -> Modifier { Modifier::ParameterModifier(node) }
+}
+impl From<PlatformModifier> for Modifier {
+    #[inline]
+    fn from(node: PlatformModifier) -> Modifier { Modifier::PlatformModifier(node) }
+}
+impl From<PropertyModifier> for Modifier {
+    #[inline]
+    fn from(node: PropertyModifier) -> Modifier { Modifier::PropertyModifier(node) }
+}
+impl From<VisibilityModifier> for Modifier {
+    #[inline]
+    fn from(node: VisibilityModifier) -> Modifier { Modifier::VisibilityModifier(node) }
+}
+impl AstNode for Modifier {
+    #[inline]
+    fn can_cast(kind: SyntaxKind) -> bool {
+        matches!(
+            kind,
+            CLASS_MODIFIER
+                | FUNCTION_MODIFIER
+                | INHERITANCE_MODIFIER
+                | MEMBER_MODIFIER
+                | PARAMETER_MODIFIER
+                | PLATFORM_MODIFIER
+                | PROPERTY_MODIFIER
+                | VISIBILITY_MODIFIER
+        )
+    }
+    #[inline]
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        let res = match syntax.kind() {
+            CLASS_MODIFIER => Modifier::ClassModifier(ClassModifier { syntax }),
+            FUNCTION_MODIFIER => Modifier::FunctionModifier(FunctionModifier { syntax }),
+            INHERITANCE_MODIFIER => Modifier::InheritanceModifier(InheritanceModifier { syntax }),
+            MEMBER_MODIFIER => Modifier::MemberModifier(MemberModifier { syntax }),
+            PARAMETER_MODIFIER => Modifier::ParameterModifier(ParameterModifier { syntax }),
+            PLATFORM_MODIFIER => Modifier::PlatformModifier(PlatformModifier { syntax }),
+            PROPERTY_MODIFIER => Modifier::PropertyModifier(PropertyModifier { syntax }),
+            VISIBILITY_MODIFIER => Modifier::VisibilityModifier(VisibilityModifier { syntax }),
+            _ => return None,
+        };
+        Some(res)
+    }
+    #[inline]
+    fn syntax(&self) -> &SyntaxNode {
+        match self {
+            Modifier::ClassModifier(it) => &it.syntax,
+            Modifier::FunctionModifier(it) => &it.syntax,
+            Modifier::InheritanceModifier(it) => &it.syntax,
+            Modifier::MemberModifier(it) => &it.syntax,
+            Modifier::ParameterModifier(it) => &it.syntax,
+            Modifier::PlatformModifier(it) => &it.syntax,
+            Modifier::PropertyModifier(it) => &it.syntax,
+            Modifier::VisibilityModifier(it) => &it.syntax,
         }
     }
 }
@@ -7965,6 +8084,12 @@ impl AstNode for PostfixUnarySuffix {
         }
     }
 }
+impl From<AnonymousFunction> for PrimaryExpression {
+    #[inline]
+    fn from(node: AnonymousFunction) -> PrimaryExpression {
+        PrimaryExpression::AnonymousFunction(node)
+    }
+}
 impl From<CallableReference> for PrimaryExpression {
     #[inline]
     fn from(node: CallableReference) -> PrimaryExpression {
@@ -7977,10 +8102,6 @@ impl From<CollectionLiteral> for PrimaryExpression {
         PrimaryExpression::CollectionLiteral(node)
     }
 }
-impl From<FunctionLiteral> for PrimaryExpression {
-    #[inline]
-    fn from(node: FunctionLiteral) -> PrimaryExpression { PrimaryExpression::FunctionLiteral(node) }
-}
 impl From<IfExpression> for PrimaryExpression {
     #[inline]
     fn from(node: IfExpression) -> PrimaryExpression { PrimaryExpression::IfExpression(node) }
@@ -7988,6 +8109,10 @@ impl From<IfExpression> for PrimaryExpression {
 impl From<JumpExpression> for PrimaryExpression {
     #[inline]
     fn from(node: JumpExpression) -> PrimaryExpression { PrimaryExpression::JumpExpression(node) }
+}
+impl From<LambdaLiteral> for PrimaryExpression {
+    #[inline]
+    fn from(node: LambdaLiteral) -> PrimaryExpression { PrimaryExpression::LambdaLiteral(node) }
 }
 impl From<LiteralConstant> for PrimaryExpression {
     #[inline]
@@ -8034,11 +8159,12 @@ impl AstNode for PrimaryExpression {
     fn can_cast(kind: SyntaxKind) -> bool {
         matches!(
             kind,
-            CALLABLE_REFERENCE
+            ANONYMOUS_FUNCTION
+                | CALLABLE_REFERENCE
                 | COLLECTION_LITERAL
-                | FUNCTION_LITERAL
                 | IF_EXPRESSION
                 | JUMP_EXPRESSION
+                | LAMBDA_LITERAL
                 | LITERAL_CONSTANT
                 | OBJECT_LITERAL
                 | PARENTHESIZED_EXPRESSION
@@ -8053,15 +8179,18 @@ impl AstNode for PrimaryExpression {
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         let res = match syntax.kind() {
+            ANONYMOUS_FUNCTION => {
+                PrimaryExpression::AnonymousFunction(AnonymousFunction { syntax })
+            }
             CALLABLE_REFERENCE => {
                 PrimaryExpression::CallableReference(CallableReference { syntax })
             }
             COLLECTION_LITERAL => {
                 PrimaryExpression::CollectionLiteral(CollectionLiteral { syntax })
             }
-            FUNCTION_LITERAL => PrimaryExpression::FunctionLiteral(FunctionLiteral { syntax }),
             IF_EXPRESSION => PrimaryExpression::IfExpression(IfExpression { syntax }),
             JUMP_EXPRESSION => PrimaryExpression::JumpExpression(JumpExpression { syntax }),
+            LAMBDA_LITERAL => PrimaryExpression::LambdaLiteral(LambdaLiteral { syntax }),
             LITERAL_CONSTANT => PrimaryExpression::LiteralConstant(LiteralConstant { syntax }),
             OBJECT_LITERAL => PrimaryExpression::ObjectLiteral(ObjectLiteral { syntax }),
             PARENTHESIZED_EXPRESSION => {
@@ -8080,11 +8209,12 @@ impl AstNode for PrimaryExpression {
     #[inline]
     fn syntax(&self) -> &SyntaxNode {
         match self {
+            PrimaryExpression::AnonymousFunction(it) => &it.syntax,
             PrimaryExpression::CallableReference(it) => &it.syntax,
             PrimaryExpression::CollectionLiteral(it) => &it.syntax,
-            PrimaryExpression::FunctionLiteral(it) => &it.syntax,
             PrimaryExpression::IfExpression(it) => &it.syntax,
             PrimaryExpression::JumpExpression(it) => &it.syntax,
+            PrimaryExpression::LambdaLiteral(it) => &it.syntax,
             PrimaryExpression::LiteralConstant(it) => &it.syntax,
             PrimaryExpression::ObjectLiteral(it) => &it.syntax,
             PrimaryExpression::ParenthesizedExpression(it) => &it.syntax,
@@ -8549,12 +8679,22 @@ impl std::fmt::Display for ControlStructureBody {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
+impl std::fmt::Display for FunctionLiteral {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
 impl std::fmt::Display for LineStringContentOrExpression {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
 impl std::fmt::Display for LoopStatement {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for Modifier {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
@@ -8859,11 +8999,6 @@ impl std::fmt::Display for FunctionDeclaration {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for FunctionLiteral {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl std::fmt::Display for FunctionModifier {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
@@ -9020,11 +9155,6 @@ impl std::fmt::Display for MemberAccessOperator {
     }
 }
 impl std::fmt::Display for MemberModifier {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
-impl std::fmt::Display for Modifier {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

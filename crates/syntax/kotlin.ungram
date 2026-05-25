@@ -435,7 +435,10 @@ PrimaryExpression =
 | LiteralConstant
 | StringLiteral
 | CallableReference
-| FunctionLiteral
+// function literal
+| LambdaLiteral 
+// function literal
+| AnonymousFunction
 | ObjectLiteral
 | CollectionLiteral
 | ThisExpression
@@ -502,7 +505,7 @@ AnonymousFunction =
   'suspend'? 'fun' (Type '.')? ParametersWithOptionalType (':' Type)? TypeConstraints? FunctionBody?
 
 FunctionLiteral =
-  (LambdaLiteral | AnonymousFunction)
+  LambdaLiteral | AnonymousFunction
 
 ObjectLiteral =
   'data'? 'object' (':' DelegationSpecifiers)? ClassBody?
@@ -599,7 +602,16 @@ Modifiers =
   AnnotationOrModifier*
 
 AnnotationOrModifier =
-  Annotation | Modifier
+  Annotation
+  // inlined Modifier here
+| ClassModifier
+| MemberModifier
+| VisibilityModifier
+| FunctionModifier
+| PropertyModifier
+| InheritanceModifier
+| ParameterModifier
+| PlatformModifier
 
 ParameterModifiers =
   AnnotationOrParameterModifier*
@@ -609,14 +621,14 @@ AnnotationOrParameterModifier =
 
 
 Modifier =
-  (ClassModifier
+  ClassModifier
 | MemberModifier
 | VisibilityModifier
 | FunctionModifier
 | PropertyModifier
 | InheritanceModifier
 | ParameterModifier
-| PlatformModifier)
+| PlatformModifier
 
 TypeModifiers =
   TypeModifier*
