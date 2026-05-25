@@ -552,12 +552,6 @@ dependencies = [
 
 [[package]]
 name = "lazy_static"
-version = "0.2.11"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "76f033c7ad61445c5b347c7382dd1237847eb1bce590fe50365dcb33d546be73"
-
-[[package]]
-name = "lazy_static"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
@@ -622,15 +616,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "42f5e15c9953c5e4ccceeb2e7382a716482c34515315f7b03532b8b4e8393d2d"
 
 [[package]]
-name = "panic-context"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2cd16df334aa7a44216298d7af74ea4b0a204a5cd4264eefeaa6871e8c871567"
-dependencies = [
- "lazy_static 0.2.11",
-]
-
-[[package]]
 name = "parser"
 version = "0.0.1"
 dependencies = [
@@ -640,10 +625,9 @@ dependencies = [
  "insta",
  "itertools",
  "lexer",
- "panic-context",
  "pretty_assertions",
- "rowan",
  "rstest",
+ "stdx",
  "syntax",
  "tracing",
 ]
@@ -993,7 +977,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0c6b5c64445ba8094a6ab0c3cd2ad323e07171012d9c98b0b15651daf1787a10"
 dependencies = [
  "clap",
- "lazy_static 1.4.0",
+ "lazy_static",
  "structopt-derive",
 ]
 

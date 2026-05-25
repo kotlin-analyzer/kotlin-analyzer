@@ -13,10 +13,8 @@ use std::{
 
 use expect_test::expect_file;
 
-use crate::{
-    grammar::annotations::annotation, grammar::types::ty, lexed_str::LexedStr, parser,
-    shortcuts::StrStep, version::KtVersion,
-};
+use crate::TopEntryPoint;
+use crate::{lexed_str::LexedStr, shortcuts::StrStep, version::KtVersion};
 
 // use expect_test::expect_file;
 
@@ -26,14 +24,14 @@ use crate::{
 #[path = "../test_data/generated/runner.rs"]
 mod runner;
 
-// fn infer_edition(file_path: &Path) -> Edition {
-//     let file_content = std::fs::read_to_string(file_path).unwrap();
-//     if let Some(edition) = file_content.strip_prefix("//@ edition: ") {
-//         edition[..4].parse().expect("invalid edition directive")
-//     } else {
-//         Edition::CURRENT
-//     }
-// }
+fn infer_version(file_path: &Path) -> KtVersion {
+    let file_content = std::fs::read_to_string(file_path).unwrap();
+    if let Some(version) = file_content.strip_prefix("//@ version: ") {
+        version[..4].parse().expect("invalid version directive")
+    } else {
+        KtVersion::CURRENT
+    }
+}
 
 // #[test]
 // fn lex_ok() {
@@ -71,8 +69,8 @@ mod runner;
 #[test]
 fn parse_ok() {
     for case in TestCase::list("parser/ok") {
-        let _guard = panic_context!("{:?}", case.kt);
-        let (actual, errors) = parse(ty, &case.text, KtVersion::V2_3);
+        let _guard = stdx::panic_context::enter(format!("{:?}", case.kt));
+        let (actual, errors) = parse(TopEntryPoint::KotlinFile, &case.text, KtVersion::CURRENT);
         assert!(!errors, "errors in an OK file {}:\n{actual}", case.kt.display());
         expect_file![case.kast].assert_eq(&actual);
     }
@@ -81,21 +79,17 @@ fn parse_ok() {
 #[test]
 fn parse_err() {
     for case in TestCase::list("parser/err") {
-        let _guard = panic_context!("{:?}", case.kt);
-        let (actual, errors) = parse(ty, &case.text, KtVersion::V2_3);
+        let _guard = stdx::panic_context::enter(format!("{:?}", case.kt));
+        let (actual, errors) = parse(TopEntryPoint::KotlinFile, &case.text, KtVersion::CURRENT);
         assert!(errors, "no errors in an ERR file {}:\n{actual}", case.kt.display());
         expect_file![case.kast].assert_eq(&actual)
     }
 }
 
-pub fn parse<T>(
-    entry_point: fn(&'_ mut parser::Parser<'_>) -> T,
-    text: &str,
-    version: KtVersion,
-) -> (String, bool) {
+pub fn parse(entry: TopEntryPoint, text: &str, version: KtVersion) -> (String, bool) {
     let lexed = LexedStr::new(version, text);
     let input = lexed.to_input(version);
-    let output = crate::parse(entry_point, &input);
+    let output = entry.parse(&input);
 
     let mut buf = String::new();
     let mut errors = Vec::new();
@@ -180,19 +174,19 @@ impl TestCase {
 
 #[track_caller]
 fn run_and_expect_no_errors(path: &str) {
-    run_and_expect_no_errors_with_version(path, KtVersion::V2_3)
+    run_and_expect_no_errors_with_version(path, KtVersion::CURRENT)
 }
 
 #[track_caller]
 fn run_and_expect_errors(path: &str) {
-    run_and_expect_errors_with_version(path, KtVersion::V2_3)
+    run_and_expect_errors_with_version(path, KtVersion::CURRENT)
 }
 
 #[track_caller]
 fn run_and_expect_no_errors_with_version(path: &str, version: KtVersion) {
     let path = PathBuf::from(path);
     let text = std::fs::read_to_string(&path).unwrap();
-    let (actual, errors) = parse(annotation, &text, version);
+    let (actual, errors) = parse(TopEntryPoint::KotlinFile, &text, version);
     assert!(!errors, "errors in an OK file {}:\n{actual}", path.display());
     let mut p = PathBuf::from("..");
     p.push(path);
@@ -204,7 +198,7 @@ fn run_and_expect_no_errors_with_version(path: &str, version: KtVersion) {
 fn run_and_expect_errors_with_version(path: &str, version: KtVersion) {
     let path = PathBuf::from(path);
     let text = std::fs::read_to_string(&path).unwrap();
-    let (actual, errors) = parse(annotation, &text, version);
+    let (actual, errors) = parse(TopEntryPoint::KotlinFile, &text, version);
     assert!(errors, "no errors in an ERR file {}:\n{actual}", path.display());
     let mut p = PathBuf::from("..");
     p.push(path);

@@ -21,6 +21,7 @@ pub(crate) struct Parser<'t> {
     inp: &'t Input,
     pos: usize,
     events: Vec<Event>,
+    errors: Vec<String>,
     steps: Cell<u32>,
 }
 
@@ -28,11 +29,17 @@ const PARSER_STEP_LIMIT: usize = if cfg!(debug_assertions) { 150_000 } else { 15
 
 impl<'t> Parser<'t> {
     pub(super) fn new(inp: &'t Input) -> Parser<'t> {
-        Parser { inp, pos: 0, events: Vec::with_capacity(2 * inp.len()), steps: Cell::new(0) }
+        Parser {
+            inp,
+            pos: 0,
+            events: Vec::with_capacity(2 * inp.len()),
+            errors: Vec::new(),
+            steps: Cell::new(0),
+        }
     }
 
-    pub(crate) fn finish(self) -> Vec<Event> {
-        self.events
+    pub(crate) fn finish(self) -> (Vec<Event>, Vec<String>) {
+        (self.events, self.errors)
     }
 
     /// Returns the kind of the current token.
@@ -128,8 +135,9 @@ impl<'t> Parser<'t> {
     /// structured errors with spans and notes, like rustc
     /// does.
     pub(crate) fn error<T: Into<String>>(&mut self, message: T) {
-        let msg = message.into();
-        self.push_event(Event::Error { msg });
+        let err = self.errors.len() as u32;
+        self.errors.push(message.into());
+        self.push_event(Event::Error { err });
     }
 
     /// Consume the next token if it is `kind` or emit an error

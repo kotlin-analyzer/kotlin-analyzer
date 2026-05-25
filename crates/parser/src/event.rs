@@ -50,10 +50,7 @@ pub(crate) enum Event {
     /// ```
     ///
     /// See also `CompletedMarker::precede`.
-    Start {
-        kind: SyntaxKind,
-        forward_parent: Option<u32>,
-    },
+    Start { kind: SyntaxKind, forward_parent: Option<u32> },
 
     /// Complete the previous `Start` event
     Finish,
@@ -62,13 +59,9 @@ pub(crate) enum Event {
     /// `n_raw_tokens` is used to glue complex contextual tokens.
     /// For example, lexer tokenizes `>>` as `>`, `>`, and
     /// `n_raw_tokens = 2` is used to produced a single `>>`.
-    Token {
-        kind: SyntaxKind,
-        n_raw_tokens: u8,
-    },
-    Error {
-        msg: String,
-    },
+    Token { kind: SyntaxKind, n_raw_tokens: u8 },
+    /// Index into the parser's side `errors` vec.
+    Error { err: u32 },
 }
 
 impl Event {
@@ -78,7 +71,7 @@ impl Event {
 }
 
 /// Generate the syntax tree with the control of events.
-pub(super) fn process(mut events: Vec<Event>) -> Output {
+pub(super) fn process(mut events: Vec<Event>, mut errors: Vec<String>) -> Output {
     let mut res = Output::default();
     let mut forward_parents = Vec::new();
 
@@ -116,7 +109,13 @@ pub(super) fn process(mut events: Vec<Event>) -> Output {
             Event::Token { kind, n_raw_tokens } => {
                 res.token(kind, n_raw_tokens);
             }
-            Event::Error { msg } => res.error(msg),
+            Event::Error { err } => {
+                // Move the string out of the side table; each index is visited
+                // exactly once, so swapping with an empty String is cheap and
+                // avoids any clone.
+                let msg = mem::take(&mut errors[err as usize]);
+                res.error(msg);
+            }
         }
     }
 

@@ -164,9 +164,9 @@ fn type_alias(
     type_parameters(parser);
     if !parser.eat(T![=]) {
         parser.error("expected '='");
-        if ty(parser).is_none() {
-            parser.error("expected type");
-        }
+    }
+    if ty(parser).is_none() {
+        parser.error("expected type");
     }
     Some(m.complete(parser, TYPE_ALIAS))
 }
