@@ -11,10 +11,8 @@ license = "MIT OR Apache-2.0"
 
 [workspace.dependencies]
 # local dependencies
-ast = { path = "./crates/ast" }
 classpath_resolver = { path = "./libs/classpath_resolver" }
 lexer = { path = "./crates/lexer" }
-macros = { path = "./libs/macros" }
 parser = { path = "./crates/parser" }
 stdx = { path = "./crates/stdx" }
 syntax = { path = "./crates/syntax" }

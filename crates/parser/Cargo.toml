@@ -7,7 +7,6 @@ description = "TBD"
 license.workspace = true
 
 [dependencies]
-ast.workspace = true
 casey.workspace = true
 drop_bomb.workspace = true
 # todo: remove dependency on lexer: move to dev dependencies
@@ -16,7 +15,6 @@ syntax.workspace = true
 tracing.workspace = true
 
 [dev-dependencies]
-ast.workspace = true
 expect-test.workspace = true
 insta.workspace = true
 itertools.workspace = true

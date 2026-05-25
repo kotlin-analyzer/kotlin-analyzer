@@ -1163,11 +1163,15 @@ macro_rules ! T_ {
 impl ::core::marker::Copy for SyntaxKind {}
 impl ::core::clone::Clone for SyntaxKind {
     #[inline]
-    fn clone(&self) -> Self { *self }
+    fn clone(&self) -> Self {
+        *self
+    }
 }
 impl ::core::cmp::PartialEq for SyntaxKind {
     #[inline]
-    fn eq(&self, other: &Self) -> bool { (*self as u16) == (*other as u16) }
+    fn eq(&self, other: &Self) -> bool {
+        (*self as u16) == (*other as u16)
+    }
 }
 impl ::core::cmp::Eq for SyntaxKind {}
 impl ::core::cmp::PartialOrd for SyntaxKind {
@@ -1178,7 +1182,9 @@ impl ::core::cmp::PartialOrd for SyntaxKind {
 }
 impl ::core::cmp::Ord for SyntaxKind {
     #[inline]
-    fn cmp(&self, other: &Self) -> core::cmp::Ordering { (*self as u16).cmp(&(*other as u16)) }
+    fn cmp(&self, other: &Self) -> core::cmp::Ordering {
+        (*self as u16).cmp(&(*other as u16))
+    }
 }
 impl ::core::hash::Hash for SyntaxKind {
     fn hash<H: ::core::hash::Hasher>(&self, state: &mut H) {
