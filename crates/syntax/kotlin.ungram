@@ -38,7 +38,7 @@ Script =
   Statement*
 
 ShebangLine =
-  '#shebangLine'
+  '#shebang'
 
 FileAnnotation =
   '@' 'file' ':' ('[' UnescapedAnnotation* ']' | UnescapedAnnotation)
@@ -702,7 +702,7 @@ UnescapedAnnotation =
 //*************************//
 
 SimpleIdentifier =
-  '#identifier'
+  '#ident'
 | 'abstract' | 'annotation' | 'by' | 'catch' | 'companion' | 'constructor' | 'crossinline'
 | 'data' | 'dynamic' | 'enum' | 'external' | 'final' | 'finally' | 'get' | 'import' | 'infix'
 | 'init' | 'inline' | 'inner' | 'internal' | 'lateinit' | 'noinline' | 'open' | 'operator' | 'out'

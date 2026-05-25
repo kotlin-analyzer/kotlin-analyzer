@@ -139,7 +139,7 @@ impl AsOperator {
     #[inline]
     pub fn as_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![as]) }
     #[inline]
-    pub fn as_safe_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![as_safe]) }
+    pub fn as_safe_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![as ?]) }
 }
 pub struct AsType {
     pub(crate) syntax: SyntaxNode,
@@ -169,22 +169,22 @@ impl Assignment {
     #[inline]
     pub fn expression(&self) -> Option<Expression> { support::child(&self.syntax) }
     #[inline]
-    pub fn assign_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
+    pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
 }
 pub struct AssignmentAndOperator {
     pub(crate) syntax: SyntaxNode,
 }
 impl AssignmentAndOperator {
     #[inline]
-    pub fn mod_assign_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![%=]) }
+    pub fn mod_eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![%=]) }
     #[inline]
-    pub fn mul_assign_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![*=]) }
+    pub fn mul_eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![*=]) }
     #[inline]
-    pub fn add_assign_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![+=]) }
+    pub fn add_eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![+=]) }
     #[inline]
-    pub fn sub_assign_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![-=]) }
+    pub fn sub_eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![-=]) }
     #[inline]
-    pub fn div_assign_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![/=]) }
+    pub fn div_eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![/=]) }
 }
 pub struct Block {
     pub(crate) syntax: SyntaxNode,
@@ -332,7 +332,7 @@ impl ClassParameter {
     #[inline]
     pub fn colon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![:]) }
     #[inline]
-    pub fn assign_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
+    pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
     #[inline]
     pub fn val_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![val]) }
     #[inline]
@@ -692,7 +692,7 @@ impl FunctionBody {
     #[inline]
     pub fn expression(&self) -> Option<Expression> { support::child(&self.syntax) }
     #[inline]
-    pub fn assign_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
+    pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
 }
 pub struct FunctionDeclaration {
     pub(crate) syntax: SyntaxNode,
@@ -784,7 +784,7 @@ impl FunctionValueParameter {
     #[inline]
     pub fn parameter_modifiers(&self) -> Option<ParameterModifiers> { support::child(&self.syntax) }
     #[inline]
-    pub fn assign_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
+    pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
 }
 pub struct FunctionValueParameterWithOptionalType {
     pub(crate) syntax: SyntaxNode,
@@ -799,7 +799,7 @@ impl FunctionValueParameterWithOptionalType {
         support::child(&self.syntax)
     }
     #[inline]
-    pub fn assign_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
+    pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
 }
 pub struct FunctionValueParameters {
     pub(crate) syntax: SyntaxNode,
@@ -902,7 +902,7 @@ pub struct InOperator {
 }
 impl InOperator {
     #[inline]
-    pub fn not_in_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![not_in]) }
+    pub fn not_in_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![! in]) }
     #[inline]
     pub fn in_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![in]) }
 }
@@ -955,7 +955,7 @@ pub struct IsOperator {
 }
 impl IsOperator {
     #[inline]
-    pub fn not_is_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![not_is]) }
+    pub fn not_is_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![!is]) }
     #[inline]
     pub fn is_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![is]) }
 }
@@ -982,7 +982,7 @@ impl JumpExpression {
     pub fn break_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![break]) }
     #[inline]
     pub fn break_at_token(&self) -> Option<SyntaxToken> {
-        support::token(&self.syntax, T![break_at])
+        support::token(&self.syntax, T![break @])
     }
     #[inline]
     pub fn continue_token(&self) -> Option<SyntaxToken> {
@@ -990,13 +990,13 @@ impl JumpExpression {
     }
     #[inline]
     pub fn continue_at_token(&self) -> Option<SyntaxToken> {
-        support::token(&self.syntax, T![continue_at])
+        support::token(&self.syntax, T![continue @])
     }
     #[inline]
     pub fn return_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![return]) }
     #[inline]
     pub fn return_at_token(&self) -> Option<SyntaxToken> {
-        support::token(&self.syntax, T![return_at])
+        support::token(&self.syntax, T![return @])
     }
     #[inline]
     pub fn throw_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![throw]) }
@@ -1555,7 +1555,7 @@ impl PropertyDeclaration {
     #[inline]
     pub fn dot_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![.]) }
     #[inline]
-    pub fn assign_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
+    pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
     #[inline]
     pub fn val_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![val]) }
     #[inline]
@@ -1688,9 +1688,7 @@ pub struct ShebangLine {
 }
 impl ShebangLine {
     #[inline]
-    pub fn shebangLine_token(&self) -> Option<SyntaxToken> {
-        support::token(&self.syntax, T![shebangLine])
-    }
+    pub fn shebang_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![shebang]) }
 }
 pub struct SimpleIdentifier {
     pub(crate) syntax: SyntaxNode,
@@ -1745,9 +1743,7 @@ impl SimpleIdentifier {
     #[inline]
     pub fn get_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![get]) }
     #[inline]
-    pub fn identifier_token(&self) -> Option<SyntaxToken> {
-        support::token(&self.syntax, T![identifier])
-    }
+    pub fn ident_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![ident]) }
     #[inline]
     pub fn import_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![import]) }
     #[inline]
@@ -1901,7 +1897,7 @@ impl SuperExpression {
     pub fn super_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![super]) }
     #[inline]
     pub fn super_at_token(&self) -> Option<SyntaxToken> {
-        support::token(&self.syntax, T![super_at])
+        support::token(&self.syntax, T![super @])
     }
 }
 pub struct ThisExpression {
@@ -1961,7 +1957,7 @@ impl TypeAlias {
     #[inline]
     pub fn type_parameters(&self) -> Option<TypeParameters> { support::child(&self.syntax) }
     #[inline]
-    pub fn assign_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
+    pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
     #[inline]
     pub fn typealias_token(&self) -> Option<SyntaxToken> {
         support::token(&self.syntax, T![typealias])
@@ -2115,7 +2111,7 @@ impl ValueArgument {
     #[inline]
     pub fn mult_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![*]) }
     #[inline]
-    pub fn assign_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
+    pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
 }
 pub struct ValueArguments {
     pub(crate) syntax: SyntaxNode,
@@ -2214,7 +2210,7 @@ impl WhenSubject {
     #[inline]
     pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
     #[inline]
-    pub fn assign_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
+    pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
     #[inline]
     pub fn val_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![val]) }
 }

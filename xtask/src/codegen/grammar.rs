@@ -473,8 +473,8 @@ fn generate_syntax_kinds(grammar: KindsSrc) -> String {
         if "{}[]()".contains(token) {
             let c = token.chars().next().unwrap();
             quote! { #c }
-        } else if *&token.starts_with("\"") {
-            quote! { '"' }
+        } else if *token == "\"" {
+            quote! { quote }
         } else if *token == "\"\"\"" {
             quote! { triple_quote }
         } else {
@@ -497,10 +497,18 @@ fn generate_syntax_kinds(grammar: KindsSrc) -> String {
         .chain(strict_compound_keywords.iter().map(|(_token, variant)| variant))
         .map(fmt_kw_as_variant)
         .collect::<Vec<_>>();
+
+    let strict_keywords_texts = strict_keywords
+        .iter()
+        .chain(strict_compound_keywords.iter().map(|(token, _)| token))
+        .collect::<Vec<_>>();
+
     let strict_keywords_tokens = strict_keywords
         .iter()
         .chain(strict_compound_keywords.iter().map(|(token, _variant)| token))
         .map(|token| {
+            let token: proc_macro2::TokenStream =
+                token.parse().expect(&format!("token `{token}` is not a valid Rust token"));
             quote! { #token }
         });
 
@@ -565,9 +573,9 @@ fn generate_syntax_kinds(grammar: KindsSrc) -> String {
 
     let ast = quote! {
         #![allow(bad_style, missing_docs, unreachable_pub)]
-        use crate::Edition;
+        use crate::KtVersion;
 
-        /// The kind of syntax node, e.g. `IDENT`, `USE_KW`, or `STRUCT`.
+        /// The kind of syntax node, e.g. `IDENT`, `FUN_KW`, or `CLASS_KW`.
         #[derive(Debug)]
         #[repr(u16)]
         pub enum SyntaxKind {
@@ -599,7 +607,7 @@ fn generate_syntax_kinds(grammar: KindsSrc) -> String {
                     #( | #nodes )*
                     #( | #tokens )* => panic!("no text for these `SyntaxKind`s"),
                     #( #punctuation => #punctuation_texts ,)*
-                    #( #strict_keywords_variants => #strict_keywords ,)*
+                    #( #strict_keywords_variants => #strict_keywords_texts ,)*
                     #( #soft_keywords_variants => #soft_keywords ,)*
                     #( #version_dependent_keywords_variants => #version_dependent_keywords ,)*
                 }
@@ -607,7 +615,7 @@ fn generate_syntax_kinds(grammar: KindsSrc) -> String {
 
             /// Checks whether this syntax kind is a strict keyword for the given version.
             /// Strict keywords are identifiers that are always considered keywords.
-            pub fn is_strict_keyword(self, version: Version) -> bool {
+            pub fn is_strict_keyword(self, version: KtVersion) -> bool {
                 matches!(self, #(#strict_keywords_variants)|*)
                 || match self {
                     #(#version_dependent_keywords_variants_match_arm => true,)*
@@ -617,7 +625,7 @@ fn generate_syntax_kinds(grammar: KindsSrc) -> String {
 
             /// Checks whether this syntax kind is a soft keyword for the given version.
             /// Soft keywords are identifiers that are considered keywords only in certain contexts.
-            pub fn is_soft_keyword(self, version: Version) -> bool {
+            pub fn is_soft_keyword(self, version: KtVersion) -> bool {
                 match self {
                     #(#soft_keywords_variants_match_arm => true,)*
                     _ => false,
@@ -625,7 +633,7 @@ fn generate_syntax_kinds(grammar: KindsSrc) -> String {
             }
 
             /// Checks whether this syntax kind is a strict or soft keyword for the given version.
-            pub fn is_keyword(self, version: Version) -> bool {
+            pub fn is_keyword(self, version: KtVersion) -> bool {
                 matches!(self, #(#strict_keywords_variants)|*)
                 || match self {
                     #(#version_dependent_keywords_variants_match_arm => true,)*
@@ -642,16 +650,16 @@ fn generate_syntax_kinds(grammar: KindsSrc) -> String {
                 matches!(self, #(#literals)|*)
             }
 
-            pub fn from_keyword(ident: &str, version: Version) -> Option<SyntaxKind> {
+            pub fn from_keyword(ident: &str, version: KtVersion) -> Option<SyntaxKind> {
                 let kw = match ident {
-                    #(#strict_keywords => #strict_keywords_variants,)*
+                    #(#strict_keywords_texts => #strict_keywords_variants,)*
                     #(#version_dependent_keywords_str_match_arm => #version_dependent_keywords_variants,)*
                     _ => return None,
                 };
                 Some(kw)
             }
 
-            pub fn from_contextual_keyword(ident: &str, version: Version) -> Option<SyntaxKind> {
+            pub fn from_contextual_keyword(ident: &str, version: KtVersion) -> Option<SyntaxKind> {
                 let kw = match ident {
                     #(#soft_keywords_str_match_arm => #soft_keywords_variants,)*
                     _ => return None,
@@ -802,15 +810,6 @@ impl Field {
         match self {
             Field::Token { token, .. } => {
                 let name = match token.as_str() {
-                    "'" => "single_quote",
-                    "!in" => "not_in",
-                    "!is" => "not_is",
-                    "as?" => "as_safe",
-                    "return@" => "return_at",
-                    "continue@" => "continue_at",
-                    "break@" => "break_at",
-                    "this@" => "this_at",
-                    "super@" => "super_at",
                     "\"\"\"" => "triple_quote",
                     "\"" => "quote",
                     _ => token,
@@ -850,12 +849,12 @@ impl Field {
                     "&&" => "conj",
                     "||" => "disj",
                     "&" => "amp",
-                    "=" => "assign",
-                    "+=" => "add_assign",
-                    "-=" => "sub_assign",
-                    "*=" => "mul_assign",
-                    "/=" => "div_assign",
-                    "%=" => "mod_assign",
+                    "=" => "eq",
+                    "+=" => "add_eq",
+                    "-=" => "sub_eq",
+                    "*=" => "mul_eq",
+                    "/=" => "div_eq",
+                    "%=" => "mod_eq",
                     "." => "dot",
                     ".." => "range",
                     "..<" => "range_until",

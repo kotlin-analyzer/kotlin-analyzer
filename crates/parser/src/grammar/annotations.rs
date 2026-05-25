@@ -2,7 +2,7 @@ use syntax::{SyntaxKind::*, T};
 
 use super::classes::constructor_invocation;
 use super::types::user_type;
-use crate::ra::{CompletedMarker, Parser, TokenSet};
+use crate::{CompletedMarker, Parser, TokenSet};
 
 const ANNO_RECOVERY: TokenSet = TokenSet::new(&[R_SQUARE, SEMICOLON, NL, R_CURL, EOF]);
 

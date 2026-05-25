@@ -14,7 +14,7 @@ use super::classes::{class_body, delegation_specifiers, type_constraints};
 use super::identifiers::{is_simple_identifier, simple_identifier};
 use super::statements::{block, control_structure_body, label, semi, statements};
 use super::types::{RecvType, receiver_type, ty, type_projection};
-use crate::ra::{CompletedMarker, Parser};
+use crate::{CompletedMarker, Parser};
 
 macro_rules! define_operator {
     ($name:ident, $mat:pat) => {
@@ -31,7 +31,9 @@ macro_rules! define_operator {
                 }
             }
 
-            pub(crate) fn is(parser: &mut Parser<'_>) -> bool { matches!(parser.current(), $mat) }
+            pub(crate) fn is(parser: &mut Parser<'_>) -> bool {
+                matches!(parser.current(), $mat)
+            }
         }
     };
 }
@@ -199,7 +201,9 @@ fn elvis_expression(parser: &mut Parser<'_>) -> Option<Expression> {
     }
 }
 
-fn is_elvis(parser: &mut Parser<'_>) -> bool { parser.at(T![?]) && !parser.nth_at(1, T![:]) }
+fn is_elvis(parser: &mut Parser<'_>) -> bool {
+    parser.at(T![?]) && !parser.nth_at(1, T![:])
+}
 
 fn elvis(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     if is_elvis(parser) {
@@ -1149,7 +1153,9 @@ pub(crate) mod range_operator {
             false
         }
     }
-    pub(crate) fn is(parser: &mut Parser<'_>) -> bool { parser.at(T![..]) || parser.at(T![..<]) }
+    pub(crate) fn is(parser: &mut Parser<'_>) -> bool {
+        parser.at(T![..]) || parser.at(T![..<])
+    }
 }
 
 fn excl(parser: &mut Parser<'_>) -> Option<CompletedMarker> {

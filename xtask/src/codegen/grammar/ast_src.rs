@@ -14,28 +14,28 @@ pub(crate) struct KindsSrc {
     pub(crate) tokens: &'static [&'static str],
     pub(crate) nodes: &'static [&'static str],
     pub(crate) _enums: &'static [&'static str],
-    pub(crate) version_dependent_keywords: &'static [(&'static str, Version)],
+    pub(crate) version_dependent_keywords: &'static [(&'static str, KtVersion)],
 }
 
 #[allow(dead_code)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub(super) enum Version {
+pub(super) enum KtVersion {
     V1_3,
     V1_5,
     V1_7,
 }
 
-impl ToTokens for Version {
+impl ToTokens for KtVersion {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
         match self {
-            Version::V1_3 => {
-                tokens.extend(quote::quote! { Version::V1_3 });
+            KtVersion::V1_3 => {
+                tokens.extend(quote::quote! { KtVersion::V1_3 });
             }
-            Version::V1_5 => {
-                tokens.extend(quote::quote! { Version::V1_5 });
+            KtVersion::V1_5 => {
+                tokens.extend(quote::quote! { KtVersion::V1_5 });
             }
-            Version::V1_7 => {
-                tokens.extend(quote::quote! { Version::V1_7 });
+            KtVersion::V1_7 => {
+                tokens.extend(quote::quote! { KtVersion::V1_7 });
             }
         }
     }
@@ -57,7 +57,7 @@ const PUNCT: &[(&str, &str)] = &[
     ("/", "DIV"),
     ("+", "ADD"),
     ("-", "SUB"),
-    ("-=", "SUB_ASSIGNMENT"),
+    ("-=", "SUB_EQ"),
     ("++", "INCR"),
     ("--", "DECR"),
     ("&&", "CONJ"),
@@ -65,11 +65,11 @@ const PUNCT: &[(&str, &str)] = &[
     ("!", "EXCL"),
     (":", "COLON"),
     (";", "SEMICOLON"),
-    ("=", "ASSIGNMENT_TOKEN"),
-    ("+=", "ADD_ASSIGNMENT"),
-    ("*=", "MULT_ASSIGNMENT"),
-    ("/=", "DIV_ASSIGNMENT"),
-    ("%=", "MOD_ASSIGNMENT"),
+    ("=", "EQ"),
+    ("+=", "ADD_EQ"),
+    ("*=", "MULT_EQ"),
+    ("/=", "DIV_EQ"),
+    ("%=", "MOD_EQ"),
     ("->", "ARROW"),
     ("..", "RANGE"),
     ("..<", "RANGE_UNTIL"),
@@ -88,16 +88,7 @@ const PUNCT: &[(&str, &str)] = &[
     ("\"", "QUOTE"),
     (r#"""""#, "TRIPLE_QUOTE"),
 ];
-const TOKENS: &[&str] = &[
-    "ERROR",
-    "WHITESPACE",
-    "NEWLINE",
-    "SHEBANG_LINE",
-    "IDENTIFIER",
-    "LINE_COMMENT",
-    "DELIMITED_COMMENT",
-];
-// &["ERROR", "IDENT", "WHITESPACE", "LIFETIME_IDENT", "COMMENT", "SHEBANG"],;
+const TOKENS: &[&str] = &["ERROR", "WHITESPACE", "NEWLINE", "LINE_COMMENT", "DELIMITED_COMMENT"];
 
 const EOF: &str = "EOF";
 const COMPOUND_RESERVED: &[(&str, &str)] = &[
@@ -154,6 +145,8 @@ const SOFT_KEYWORDS: &[&str] = &[
     "companion",
     "const",
     "constructor",
+    "contract",
+    "context",
     "crossinline",
     "data",
     "delegate",
@@ -191,17 +184,16 @@ const SOFT_KEYWORDS: &[&str] = &[
     "suspend",
     "tailrec",
     "value",
-    "context",
     "vararg",
     "where",
 ];
 
 // keywords that are keywords depending on the edition
-const VERSION_DEPENDENT_KEYWORDS: &[(&str, Version)] = &[
-    ("contract", Version::V1_3),
+const VERSION_DEPENDENT_KEYWORDS: &[(&str, KtVersion)] = &[
+    ("contract", KtVersion::V1_3),
     // fun interface => Version::V1_4
-    ("value", Version::V1_5),
-    ("context", Version::V1_7),
+    ("value", KtVersion::V1_5),
+    ("context", KtVersion::V1_7),
 ];
 
 pub(crate) fn generate_kind_src(

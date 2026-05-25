@@ -5,7 +5,7 @@ use super::general::declaration;
 use super::identifiers::is_simple_identifier;
 use super::statements::{block, semi, semis};
 use super::types::{RecvType, receiver_type, user_type};
-use crate::ra::{CompletedMarker, Parser, TokenSet};
+use crate::{CompletedMarker, Parser, TokenSet};
 
 use super::annotations::annotation;
 use super::classes::type_parameters;

@@ -7,7 +7,7 @@ use super::expressions::{expression, value_arguments};
 use super::identifiers::simple_identifier;
 use super::modifiers::{modifiers, type_parameter_modifiers};
 use super::types::ty;
-use crate::ra::{CompletedMarker, Marker, Parser};
+use crate::{CompletedMarker, Marker, Parser};
 
 pub(crate) fn starts_class_declaration(parser: &mut Parser<'_>) -> bool {
     parser.at(T![class])

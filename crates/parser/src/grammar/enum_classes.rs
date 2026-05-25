@@ -5,7 +5,7 @@ use super::classes::class_body;
 use super::expressions::value_arguments;
 use super::identifiers::simple_identifier;
 use super::modifiers::modifiers;
-use crate::ra::{CompletedMarker, Marker, Parser};
+use crate::{CompletedMarker, Marker, Parser};
 
 pub(crate) enum BodyResult {
     None(Marker),

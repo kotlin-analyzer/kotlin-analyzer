@@ -6,7 +6,7 @@ use super::expressions::expression;
 use super::general::declaration;
 use super::identifiers::{is_simple_identifier, simple_identifier};
 use super::modifiers::modifiers;
-use crate::ra::{CompletedMarker, Parser};
+use crate::{CompletedMarker, Parser};
 
 pub(crate) fn semi(parser: &mut Parser<'_>) -> bool {
     if parser.at(T![;]) {

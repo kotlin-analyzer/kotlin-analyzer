@@ -2,7 +2,7 @@ use syntax::SyntaxKind::*;
 
 use super::annotations::annotation;
 use super::class_members::context_parameter_list;
-use crate::ra::{CompletedMarker, Parser};
+use crate::{CompletedMarker, Parser};
 
 pub(crate) fn modifiers(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     if let Some(cm) = annotation(parser).or_else(|| modifier(parser)) {

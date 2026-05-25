@@ -3,7 +3,7 @@ use syntax::{SyntaxKind::*, T};
 use super::annotations::annotation;
 use super::identifiers::is_simple_ident_at;
 use super::identifiers::{is_simple_identifier, simple_identifier};
-use crate::ra::{CompletedMarker, Parser};
+use crate::{CompletedMarker, Parser};
 
 pub(crate) fn ty(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     let m = parser.start();

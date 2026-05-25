@@ -1,6 +1,6 @@
 use syntax::{SyntaxKind::*, T};
 
-use crate::ra::{CompletedMarker, Parser};
+use crate::{CompletedMarker, Parser};
 
 pub(crate) fn simple_identifier(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     if is_simple_identifier(parser) {

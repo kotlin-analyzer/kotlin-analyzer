@@ -12,7 +12,7 @@ use super::identifiers::{identifier, simple_identifier};
 use super::modifiers::modifiers;
 use super::statements::{semi, semis, statement};
 use super::types::ty;
-use crate::ra::{CompletedMarker, Parser};
+use crate::{CompletedMarker, Parser};
 
 const TOP_LEVEL_RECOVERY: &[Token] = &[Token::SEMICOLON, Token::NL, Token::R_CURL, Token::EOF];
 const BRACKET_RECOVERY: &[Token] = &[Token::R_SQUARE, Token::SEMICOLON, Token::NL, Token::EOF];
