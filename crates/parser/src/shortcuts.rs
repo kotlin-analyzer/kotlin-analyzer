@@ -12,7 +12,7 @@
 use std::mem;
 
 use crate::version::KtVersion;
-use syntax::{SyntaxKind, SyntaxKind::*};
+use crate::{SyntaxKind, SyntaxKind::*};
 
 use super::{
     input::Input,
@@ -41,7 +41,7 @@ impl LexedStr<'_> {
                     res.set_ws_before();
                 }
                 seen_ws = false;
-            } else if matches!(kind, WS | NL) {
+            } else if matches!(kind, WHITESPACE | NEWLINE) {
                 seen_ws = true;
             }
         }
@@ -165,7 +165,20 @@ fn n_attached_trivias<'a>(
     trivias_and_nls: impl Iterator<Item = (SyntaxKind, &'a str)>,
 ) -> usize {
     match kind {
-        DECLARATION | CLASS_MEMBER_DECLARATION => {
+        KOTLIN_FILE
+        | SCRIPT
+        | CLASS_DECLARATION
+        | OBJECT_DECLARATION
+        | FUNCTION_DECLARATION
+        | PROPERTY_DECLARATION
+        | PARAMETER
+        | FUNCTION_VALUE_PARAMETER
+        | GETTER
+        | SETTER
+        | SECONDARY_CONSTRUCTOR
+        | PACKAGE_HEADER
+        | IMPORT_HEADER
+        | TYPE_ALIAS => {
             let mut res = 0;
             let trivias = trivias_and_nls.enumerate().peekable();
 

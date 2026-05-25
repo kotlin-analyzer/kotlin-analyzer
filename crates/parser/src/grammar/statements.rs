@@ -1,4 +1,5 @@
-use syntax::{SyntaxKind::*, T};
+use crate::SyntaxKind::*;
+use crate::T;
 
 use super::annotations::annotation;
 use super::class_members::{multi_variable_declaration, variable_declaration};
@@ -10,9 +11,7 @@ use crate::{CompletedMarker, Parser};
 
 pub(crate) fn semi(parser: &mut Parser<'_>) -> bool {
     if parser.at(T![;]) {
-        let m = parser.start();
         parser.eat(T![;]);
-        m.complete(parser, SEMI);
         true
     } else {
         parser.has_ws_before() // TODO: check for newlines but not for other whitespace
@@ -20,16 +19,13 @@ pub(crate) fn semi(parser: &mut Parser<'_>) -> bool {
 }
 
 pub(crate) fn semis(parser: &mut Parser<'_>) -> bool {
-    let m = parser.start();
     let mut found = false;
     while parser.eat(T![;]) {
         found = true;
     }
     if found {
-        m.complete(parser, SEMIS);
         true
     } else {
-        m.abandon(parser);
         parser.has_ws_before() // TODO: check for newlines but not for other whitespace
     }
 }
@@ -72,10 +68,7 @@ pub(crate) fn statement(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
 }
 
 fn loop_statement(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    for_statement(parser)
-        .or_else(|| while_statement(parser))
-        .or_else(|| do_while_statement(parser))
-        .map(|cm| cm.precede(parser).complete(parser, LOOP_STATEMENT))
+    for_statement(parser).or_else(|| while_statement(parser)).or_else(|| do_while_statement(parser))
 }
 
 fn for_statement(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
@@ -177,10 +170,10 @@ fn do_while_statement(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
 }
 
 pub(crate) fn label(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    if is_simple_identifier(parser) && (parser.nth_at(1, T![@]) || parser.nth_at(1, AT_POST_WS)) {
+    if is_simple_identifier(parser) && parser.nth_at(1, T![@]) {
         let m = parser.start();
         simple_identifier(parser);
-        parser.bump_any(); // either T![@] or AT_POST_WS
+        parser.bump_any();
         Some(m.complete(parser, LABEL))
     } else {
         None
@@ -188,9 +181,7 @@ pub(crate) fn label(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
 }
 
 pub(crate) fn control_structure_body(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    block(parser)
-        .or_else(|| statements(parser))
-        .map(|cm| cm.precede(parser).complete(parser, CONTROL_STRUCTURE_BODY))
+    block(parser).or_else(|| statements(parser))
 }
 
 pub(crate) fn block(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
@@ -273,10 +264,10 @@ mod assignment {
 
         match expr {
             // The interesting thing is that postfix expr can also be prefic expr
-            Expression::Affixed(AffixedExpression::Prefix(_) | AffixedExpression::Postfix(_))
+            Expression::Affixed(AffixedExpression::Prefix(cm) | AffixedExpression::Postfix(cm))
                 if assignment_and_operator::is(p) =>
             {
-                Some(AssignmentFragment::AssignableExpression(m.complete(p, ASSIGNABLE_EXPRESSION)))
+                Some(AssignmentFragment::AssignableExpression(cm))
             }
             Expression::Affixed(AffixedExpression::Postfix(_))
                 if assignable_suffix(p).is_some() || p.at(T![=]) =>

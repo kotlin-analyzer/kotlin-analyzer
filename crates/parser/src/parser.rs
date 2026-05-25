@@ -1,10 +1,10 @@
 //! See [`Parser`].
 
+use crate::SyntaxKind::{self, EOF, ERROR, TOMBSTONE};
+use crate::T;
 use crate::version::KtVersion;
 use drop_bomb::DropBomb;
 use std::cell::Cell;
-use syntax::SyntaxKind::{self, EOF, ERROR, TOMBSTONE};
-use syntax::T;
 
 use super::{event::Event, input::Input, token_set::TokenSet};
 
@@ -31,12 +31,16 @@ impl<'t> Parser<'t> {
         Parser { inp, pos: 0, events: Vec::with_capacity(2 * inp.len()), steps: Cell::new(0) }
     }
 
-    pub(crate) fn finish(self) -> Vec<Event> { self.events }
+    pub(crate) fn finish(self) -> Vec<Event> {
+        self.events
+    }
 
     /// Returns the kind of the current token.
     /// If parser has already reached the end of input,
     /// the special `EOF` kind is returned.
-    pub(crate) fn current(&self) -> SyntaxKind { self.nth(0) }
+    pub(crate) fn current(&self) -> SyntaxKind {
+        self.nth(0)
+    }
 
     /// Lookahead operation: returns the kind of the next nth
     /// token.
@@ -51,7 +55,9 @@ impl<'t> Parser<'t> {
     }
 
     /// Checks if the current token is `kind`.
-    pub(crate) fn at(&self, kind: SyntaxKind) -> bool { self.nth_at(0, kind) }
+    pub(crate) fn at(&self, kind: SyntaxKind) -> bool {
+        self.nth_at(0, kind)
+    }
 
     pub(crate) fn nth_at(&self, n: usize, kind: SyntaxKind) -> bool {
         self.inp.kind(self.pos + n) == kind
@@ -67,13 +73,19 @@ impl<'t> Parser<'t> {
     }
 
     /// Checks if the current token is in `kinds`.
-    pub(crate) fn at_ts(&self, kinds: TokenSet) -> bool { kinds.contains(self.current()) }
+    pub(crate) fn at_ts(&self, kinds: TokenSet) -> bool {
+        kinds.contains(self.current())
+    }
 
     /// Checks if the current token is a `(` preceded by whitespace.
-    pub(crate) fn at_lparen_after_ws(&self) -> bool { self.at(T!['(']) && self.has_ws_before() }
+    pub(crate) fn at_lparen_after_ws(&self) -> bool {
+        self.at(T!['(']) && self.has_ws_before()
+    }
 
     /// Checks if the current token has a whitespace before it.
-    pub(crate) fn has_ws_before(&self) -> bool { self.inp.has_ws_before(self.pos) }
+    pub(crate) fn has_ws_before(&self) -> bool {
+        self.inp.has_ws_before(self.pos)
+    }
     /// Starts a new node in the syntax tree. All nodes and tokens
     /// consumed between the `start` and the corresponding `Marker::complete`
     /// belong to the same node.
@@ -165,9 +177,13 @@ impl<'t> Parser<'t> {
         self.push_event(Event::Token { kind, n_raw_tokens });
     }
 
-    fn push_event(&mut self, event: Event) { self.events.push(event); }
+    fn push_event(&mut self, event: Event) {
+        self.events.push(event);
+    }
 
-    pub(crate) fn current_version(&self) -> KtVersion { self.inp.version(self.pos) }
+    pub(crate) fn current_version(&self) -> KtVersion {
+        self.inp.version(self.pos)
+    }
 }
 
 /// See [`Parser::start`].
@@ -263,7 +279,9 @@ impl CompletedMarker {
         self
     }
 
-    pub(crate) fn kind(&self) -> SyntaxKind { self.kind }
+    pub(crate) fn kind(&self) -> SyntaxKind {
+        self.kind
+    }
 
     pub(crate) fn last_token(&self, parser: &Parser<'_>) -> Option<SyntaxKind> {
         let end_pos = self.end_pos as usize;

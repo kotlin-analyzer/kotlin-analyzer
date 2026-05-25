@@ -1,4 +1,5 @@
-use syntax::SyntaxKind::*;
+use crate::SyntaxKind::*;
+use crate::T;
 
 use super::annotations::annotation;
 use super::class_members::context_parameter_list;
@@ -49,7 +50,6 @@ pub(crate) fn modifier(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
         .or_else(|| inheritance_modifier(parser))
         .or_else(|| parameter_modifier(parser))
         .or_else(|| platform_modifier(parser))
-        .map(|cm| cm.precede(parser).complete(parser, MODIFIER))
 }
 
 fn type_parameter_modifier(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
@@ -61,7 +61,7 @@ fn type_parameter_modifier(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
 
 fn class_modifier(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     match parser.current() {
-        ENUM | SEALED | ANNOTATION | DATA | INNER | VALUE => {
+        T![enum] | SEALED_KW | ANNOTATION_KW | DATA_KW | INNER_KW | VALUE_KW => {
             let m = parser.start();
             parser.bump_any();
             Some(m.complete(parser, CLASS_MODIFIER))
@@ -72,7 +72,7 @@ fn class_modifier(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
 
 fn member_modifier(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     match parser.current() {
-        OVERRIDE | LATEINIT => {
+        OVERRIDE_KW | LATEINIT_KW => {
             let m = parser.start();
             parser.bump_any();
             Some(m.complete(parser, MEMBER_MODIFIER))
@@ -83,7 +83,7 @@ fn member_modifier(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
 
 fn visibility_modifier(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     match parser.current() {
-        PUBLIC | PRIVATE | INTERNAL | PROTECTED => {
+        T![public] | T![private] | T![internal] | T![protected] => {
             let m = parser.start();
             parser.bump_any();
             Some(m.complete(parser, VISIBILITY_MODIFIER))
@@ -94,7 +94,7 @@ fn visibility_modifier(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
 
 fn function_modifier(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     match parser.current() {
-        TAILREC | OPERATOR | INFIX | INLINE | EXTERNAL | SUSPEND => {
+        T![tailrec] | T![operator] | T![infix] | T![inline] | T![external] | T![suspend] => {
             let m = parser.start();
             parser.bump_any();
             Some(m.complete(parser, FUNCTION_MODIFIER))
@@ -104,9 +104,9 @@ fn function_modifier(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
 }
 
 fn property_modifier(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    if parser.at(CONST) {
+    if parser.at(T![const]) {
         let m = parser.start();
-        parser.bump(CONST);
+        parser.bump(T![const]);
         Some(m.complete(parser, PROPERTY_MODIFIER))
     } else {
         None
@@ -115,7 +115,7 @@ fn property_modifier(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
 
 fn inheritance_modifier(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     match parser.current() {
-        ABSTRACT | FINAL | OPEN => {
+        T![abstract] | T![final] | T![open] => {
             let m = parser.start();
             parser.bump_any();
             Some(m.complete(parser, INHERITANCE_MODIFIER))
@@ -126,7 +126,7 @@ fn inheritance_modifier(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
 
 fn parameter_modifier(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     match parser.current() {
-        VAR_ARG | NO_INLINE | CROSS_INLINE => {
+        T![vararg] | T![noinline] | T![crossinline] => {
             let m = parser.start();
             parser.bump_any();
             Some(m.complete(parser, PARAMETER_MODIFIER))
@@ -136,9 +136,9 @@ fn parameter_modifier(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
 }
 
 fn reification_modifier(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    if parser.at(REIFIED) {
+    if parser.at(T![reified]) {
         let m = parser.start();
-        parser.bump(REIFIED);
+        parser.bump(T![reified]);
         Some(m.complete(parser, REIFICATION_MODIFIER))
     } else {
         None
@@ -147,7 +147,7 @@ fn reification_modifier(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
 
 fn variance_modifier(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     match parser.current() {
-        IN | OUT => {
+        T![in] | T![out] => {
             let m = parser.start();
             parser.bump_any();
             Some(m.complete(parser, VARIANCE_MODIFIER))
@@ -157,7 +157,7 @@ fn variance_modifier(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
 }
 
 fn platform_modifier(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    if matches!(parser.current(), EXPECT | ACTUAL) {
+    if matches!(parser.current(), T![expect] | T![actual]) {
         let m = parser.start();
         parser.bump_any();
         Some(m.complete(parser, PLATFORM_MODIFIER))

@@ -3,8 +3,8 @@
 //! parser, so as to allow to evolve the tree representation
 //! and the parser algorithm independently.
 use super::output::Output;
+use crate::SyntaxKind::{self, *};
 use std::mem;
-use syntax::SyntaxKind::{self, *};
 
 /// `Parser` produces a flat list of `Event`s.
 /// They are converted to a tree-structure in
@@ -72,7 +72,9 @@ pub(crate) enum Event {
 }
 
 impl Event {
-    pub(crate) fn tombstone() -> Self { Event::Start { kind: TOMBSTONE, forward_parent: None } }
+    pub(crate) fn tombstone() -> Self {
+        Event::Start { kind: TOMBSTONE, forward_parent: None }
+    }
 }
 
 /// Generate the syntax tree with the control of events.

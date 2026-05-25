@@ -1,6 +1,6 @@
 //! A bit-set of `SyntaxKind`s.
 
-use syntax::SyntaxKind;
+use crate::SyntaxKind;
 
 /// A bit-set of `SyntaxKind`s
 #[derive(Clone, Copy)]
@@ -8,7 +8,7 @@ pub(crate) struct TokenSet([u64; 3]);
 
 /// `TokenSet`s should only include token `SyntaxKind`s, so the discriminant of any passed/included
 /// `SyntaxKind` must *not* be greater than that of the last token `SyntaxKind`.
-const LAST_TOKEN_KIND_DISCRIMINANT: usize = SyntaxKind::ERR as usize;
+const LAST_TOKEN_KIND_DISCRIMINANT: usize = SyntaxKind::TEXT as usize;
 
 impl TokenSet {
     pub(crate) const EMPTY: TokenSet = TokenSet([0; 3]);
@@ -47,10 +47,10 @@ impl TokenSet {
 
 #[test]
 fn token_set_works_for_tokens() {
-    use syntax::SyntaxKind::*;
-    let ts = TokenSet::new(&[EOF, SHEBANG_LINE_TOKEN]);
+    use crate::SyntaxKind::*;
+    let ts = TokenSet::new(&[EOF, SHEBANG_LINE]);
     assert!(ts.contains(EOF));
-    assert!(ts.contains(SHEBANG_LINE_TOKEN));
+    assert!(ts.contains(SHEBANG_LINE));
     assert!(!ts.contains(ADD));
     assert!(!ts.contains(DELIMITED_COMMENT));
 }

@@ -19,6 +19,7 @@ mod token_set;
 #[cfg(test)]
 mod tests;
 
+pub use T_ as T;
 pub(crate) use parser::*;
 pub(crate) use token_set::*;
 

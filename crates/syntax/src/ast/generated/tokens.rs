@@ -6,94 +6,64 @@ use crate::{
     ast::AstToken,
 };
 use std::{fmt, hash};
-pub struct Byte {
+pub struct Bin {
     pub(crate) syntax: SyntaxToken,
 }
-impl std::fmt::Display for Byte {
+impl std::fmt::Display for Bin {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(&self.syntax, f)
     }
 }
-impl AstToken for Byte {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == BYTE }
+impl AstToken for Bin {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == BIN }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
-impl fmt::Debug for Byte {
+impl fmt::Debug for Bin {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Byte").field("syntax", &self.syntax).finish()
+        f.debug_struct("Bin").field("syntax", &self.syntax).finish()
     }
 }
-impl Clone for Byte {
+impl Clone for Bin {
     fn clone(&self) -> Self { Self { syntax: self.syntax.clone() } }
 }
-impl hash::Hash for Byte {
+impl hash::Hash for Bin {
     fn hash<H: hash::Hasher>(&self, state: &mut H) { self.syntax.hash(state); }
 }
-impl Eq for Byte {}
-impl PartialEq for Byte {
+impl Eq for Bin {}
+impl PartialEq for Bin {
     fn eq(&self, other: &Self) -> bool { self.syntax == other.syntax }
 }
-pub struct ByteString {
+pub struct Bool {
     pub(crate) syntax: SyntaxToken,
 }
-impl std::fmt::Display for ByteString {
+impl std::fmt::Display for Bool {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(&self.syntax, f)
     }
 }
-impl AstToken for ByteString {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == BYTE_STRING }
+impl AstToken for Bool {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == BOOL }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
-impl fmt::Debug for ByteString {
+impl fmt::Debug for Bool {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("ByteString").field("syntax", &self.syntax).finish()
+        f.debug_struct("Bool").field("syntax", &self.syntax).finish()
     }
 }
-impl Clone for ByteString {
+impl Clone for Bool {
     fn clone(&self) -> Self { Self { syntax: self.syntax.clone() } }
 }
-impl hash::Hash for ByteString {
+impl hash::Hash for Bool {
     fn hash<H: hash::Hasher>(&self, state: &mut H) { self.syntax.hash(state); }
 }
-impl Eq for ByteString {}
-impl PartialEq for ByteString {
-    fn eq(&self, other: &Self) -> bool { self.syntax == other.syntax }
-}
-pub struct CString {
-    pub(crate) syntax: SyntaxToken,
-}
-impl std::fmt::Display for CString {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(&self.syntax, f)
-    }
-}
-impl AstToken for CString {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == C_STRING }
-    fn cast(syntax: SyntaxToken) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
-    }
-    fn syntax(&self) -> &SyntaxToken { &self.syntax }
-}
-impl fmt::Debug for CString {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("CString").field("syntax", &self.syntax).finish()
-    }
-}
-impl Clone for CString {
-    fn clone(&self) -> Self { Self { syntax: self.syntax.clone() } }
-}
-impl hash::Hash for CString {
-    fn hash<H: hash::Hasher>(&self, state: &mut H) { self.syntax.hash(state); }
-}
-impl Eq for CString {}
-impl PartialEq for CString {
+impl Eq for Bool {}
+impl PartialEq for Bool {
     fn eq(&self, other: &Self) -> bool { self.syntax == other.syntax }
 }
 pub struct Char {
@@ -126,64 +96,64 @@ impl Eq for Char {}
 impl PartialEq for Char {
     fn eq(&self, other: &Self) -> bool { self.syntax == other.syntax }
 }
-pub struct Comment {
+pub struct EscapedChar {
     pub(crate) syntax: SyntaxToken,
 }
-impl std::fmt::Display for Comment {
+impl std::fmt::Display for EscapedChar {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(&self.syntax, f)
     }
 }
-impl AstToken for Comment {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == COMMENT }
+impl AstToken for EscapedChar {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == ESCAPED_CHAR }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
-impl fmt::Debug for Comment {
+impl fmt::Debug for EscapedChar {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Comment").field("syntax", &self.syntax).finish()
+        f.debug_struct("EscapedChar").field("syntax", &self.syntax).finish()
     }
 }
-impl Clone for Comment {
+impl Clone for EscapedChar {
     fn clone(&self) -> Self { Self { syntax: self.syntax.clone() } }
 }
-impl hash::Hash for Comment {
+impl hash::Hash for EscapedChar {
     fn hash<H: hash::Hasher>(&self, state: &mut H) { self.syntax.hash(state); }
 }
-impl Eq for Comment {}
-impl PartialEq for Comment {
+impl Eq for EscapedChar {}
+impl PartialEq for EscapedChar {
     fn eq(&self, other: &Self) -> bool { self.syntax == other.syntax }
 }
-pub struct FloatNumber {
+pub struct Hex {
     pub(crate) syntax: SyntaxToken,
 }
-impl std::fmt::Display for FloatNumber {
+impl std::fmt::Display for Hex {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(&self.syntax, f)
     }
 }
-impl AstToken for FloatNumber {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == FLOAT_NUMBER }
+impl AstToken for Hex {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == HEX }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
-impl fmt::Debug for FloatNumber {
+impl fmt::Debug for Hex {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("FloatNumber").field("syntax", &self.syntax).finish()
+        f.debug_struct("Hex").field("syntax", &self.syntax).finish()
     }
 }
-impl Clone for FloatNumber {
+impl Clone for Hex {
     fn clone(&self) -> Self { Self { syntax: self.syntax.clone() } }
 }
-impl hash::Hash for FloatNumber {
+impl hash::Hash for Hex {
     fn hash<H: hash::Hasher>(&self, state: &mut H) { self.syntax.hash(state); }
 }
-impl Eq for FloatNumber {}
-impl PartialEq for FloatNumber {
+impl Eq for Hex {}
+impl PartialEq for Hex {
     fn eq(&self, other: &Self) -> bool { self.syntax == other.syntax }
 }
 pub struct Ident {
@@ -216,64 +186,244 @@ impl Eq for Ident {}
 impl PartialEq for Ident {
     fn eq(&self, other: &Self) -> bool { self.syntax == other.syntax }
 }
-pub struct IntNumber {
+pub struct Int {
     pub(crate) syntax: SyntaxToken,
 }
-impl std::fmt::Display for IntNumber {
+impl std::fmt::Display for Int {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(&self.syntax, f)
     }
 }
-impl AstToken for IntNumber {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == INT_NUMBER }
+impl AstToken for Int {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == INT }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
-impl fmt::Debug for IntNumber {
+impl fmt::Debug for Int {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("IntNumber").field("syntax", &self.syntax).finish()
+        f.debug_struct("Int").field("syntax", &self.syntax).finish()
     }
 }
-impl Clone for IntNumber {
+impl Clone for Int {
     fn clone(&self) -> Self { Self { syntax: self.syntax.clone() } }
 }
-impl hash::Hash for IntNumber {
+impl hash::Hash for Int {
     fn hash<H: hash::Hasher>(&self, state: &mut H) { self.syntax.hash(state); }
 }
-impl Eq for IntNumber {}
-impl PartialEq for IntNumber {
+impl Eq for Int {}
+impl PartialEq for Int {
     fn eq(&self, other: &Self) -> bool { self.syntax == other.syntax }
 }
-pub struct String {
+pub struct Long {
     pub(crate) syntax: SyntaxToken,
 }
-impl std::fmt::Display for String {
+impl std::fmt::Display for Long {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(&self.syntax, f)
     }
 }
-impl AstToken for String {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == STRING }
+impl AstToken for Long {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == LONG }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
     }
     fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
-impl fmt::Debug for String {
+impl fmt::Debug for Long {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("String").field("syntax", &self.syntax).finish()
+        f.debug_struct("Long").field("syntax", &self.syntax).finish()
     }
 }
-impl Clone for String {
+impl Clone for Long {
     fn clone(&self) -> Self { Self { syntax: self.syntax.clone() } }
 }
-impl hash::Hash for String {
+impl hash::Hash for Long {
     fn hash<H: hash::Hasher>(&self, state: &mut H) { self.syntax.hash(state); }
 }
-impl Eq for String {}
-impl PartialEq for String {
+impl Eq for Long {}
+impl PartialEq for Long {
+    fn eq(&self, other: &Self) -> bool { self.syntax == other.syntax }
+}
+pub struct MultiLineStringQuote {
+    pub(crate) syntax: SyntaxToken,
+}
+impl std::fmt::Display for MultiLineStringQuote {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(&self.syntax, f)
+    }
+}
+impl AstToken for MultiLineStringQuote {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == MULTI_LINE_STRING_QUOTE }
+    fn cast(syntax: SyntaxToken) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
+    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
+}
+impl fmt::Debug for MultiLineStringQuote {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("MultiLineStringQuote").field("syntax", &self.syntax).finish()
+    }
+}
+impl Clone for MultiLineStringQuote {
+    fn clone(&self) -> Self { Self { syntax: self.syntax.clone() } }
+}
+impl hash::Hash for MultiLineStringQuote {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) { self.syntax.hash(state); }
+}
+impl Eq for MultiLineStringQuote {}
+impl PartialEq for MultiLineStringQuote {
+    fn eq(&self, other: &Self) -> bool { self.syntax == other.syntax }
+}
+pub struct Null {
+    pub(crate) syntax: SyntaxToken,
+}
+impl std::fmt::Display for Null {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(&self.syntax, f)
+    }
+}
+impl AstToken for Null {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == NULL }
+    fn cast(syntax: SyntaxToken) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
+    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
+}
+impl fmt::Debug for Null {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Null").field("syntax", &self.syntax).finish()
+    }
+}
+impl Clone for Null {
+    fn clone(&self) -> Self { Self { syntax: self.syntax.clone() } }
+}
+impl hash::Hash for Null {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) { self.syntax.hash(state); }
+}
+impl Eq for Null {}
+impl PartialEq for Null {
+    fn eq(&self, other: &Self) -> bool { self.syntax == other.syntax }
+}
+pub struct Real {
+    pub(crate) syntax: SyntaxToken,
+}
+impl std::fmt::Display for Real {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(&self.syntax, f)
+    }
+}
+impl AstToken for Real {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == REAL }
+    fn cast(syntax: SyntaxToken) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
+    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
+}
+impl fmt::Debug for Real {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Real").field("syntax", &self.syntax).finish()
+    }
+}
+impl Clone for Real {
+    fn clone(&self) -> Self { Self { syntax: self.syntax.clone() } }
+}
+impl hash::Hash for Real {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) { self.syntax.hash(state); }
+}
+impl Eq for Real {}
+impl PartialEq for Real {
+    fn eq(&self, other: &Self) -> bool { self.syntax == other.syntax }
+}
+pub struct StrExprStart {
+    pub(crate) syntax: SyntaxToken,
+}
+impl std::fmt::Display for StrExprStart {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(&self.syntax, f)
+    }
+}
+impl AstToken for StrExprStart {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == STR_EXPR_START }
+    fn cast(syntax: SyntaxToken) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
+    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
+}
+impl fmt::Debug for StrExprStart {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("StrExprStart").field("syntax", &self.syntax).finish()
+    }
+}
+impl Clone for StrExprStart {
+    fn clone(&self) -> Self { Self { syntax: self.syntax.clone() } }
+}
+impl hash::Hash for StrExprStart {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) { self.syntax.hash(state); }
+}
+impl Eq for StrExprStart {}
+impl PartialEq for StrExprStart {
+    fn eq(&self, other: &Self) -> bool { self.syntax == other.syntax }
+}
+pub struct Text {
+    pub(crate) syntax: SyntaxToken,
+}
+impl std::fmt::Display for Text {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(&self.syntax, f)
+    }
+}
+impl AstToken for Text {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == TEXT }
+    fn cast(syntax: SyntaxToken) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
+    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
+}
+impl fmt::Debug for Text {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Text").field("syntax", &self.syntax).finish()
+    }
+}
+impl Clone for Text {
+    fn clone(&self) -> Self { Self { syntax: self.syntax.clone() } }
+}
+impl hash::Hash for Text {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) { self.syntax.hash(state); }
+}
+impl Eq for Text {}
+impl PartialEq for Text {
+    fn eq(&self, other: &Self) -> bool { self.syntax == other.syntax }
+}
+pub struct Unsigned {
+    pub(crate) syntax: SyntaxToken,
+}
+impl std::fmt::Display for Unsigned {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(&self.syntax, f)
+    }
+}
+impl AstToken for Unsigned {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == UNSIGNED }
+    fn cast(syntax: SyntaxToken) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
+    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
+}
+impl fmt::Debug for Unsigned {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Unsigned").field("syntax", &self.syntax).finish()
+    }
+}
+impl Clone for Unsigned {
+    fn clone(&self) -> Self { Self { syntax: self.syntax.clone() } }
+}
+impl hash::Hash for Unsigned {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) { self.syntax.hash(state); }
+}
+impl Eq for Unsigned {}
+impl PartialEq for Unsigned {
     fn eq(&self, other: &Self) -> bool { self.syntax == other.syntax }
 }
 pub struct Whitespace {

@@ -27,14 +27,14 @@ KotlinFile =
   ShebangLine?
   FileAnnotation*
   PackageHeader?
-  ImportHeader*
+  ImportList
   TopLevelObject*
 
 Script =
   ShebangLine?
   FileAnnotation*
   PackageHeader?
-  ImportHeader*
+  ImportList
   Statement*
 
 ShebangLine =
@@ -45,6 +45,9 @@ FileAnnotation =
 
 PackageHeader =
   'package' Identifier
+
+ImportList =
+    ImportHeader*
 
 ImportHeader =
   'import' Identifier ('.' '*' | ImportAlias)?
@@ -151,6 +154,9 @@ FunctionValueParameters =
 FunctionValueParameter =
   ParameterModifiers? Parameter ('=' Expression)?
 
+ContextParameterList =
+   'context' '(' (FunctionValueParameter (',' FunctionValueParameter)* ','?) ')'
+
 FunctionDeclaration =
   Modifiers?
   'fun' TypeParameters? (ReceiverType '.')? SimpleIdentifier
@@ -255,7 +261,10 @@ TypeProjectionModifiers =
   TypeProjectionModifier*
 
 TypeProjectionModifier =
-  VarianceModifier | Annotation
+  VarianceModifier 
+  // inlined ANNOTATION
+  | SingleAnnotation 
+  | MultiAnnotation
 
 FunctionType =
   (ReceiverType '.')? FunctionTypeParameters '->' Type
@@ -374,7 +383,9 @@ PrefixUnaryExpression =
   UnaryPrefix* PostfixUnaryExpression
 
 UnaryPrefix =
-  Annotation
+// inlined ANNOTATION
+SingleAnnotation 
+| MultiAnnotation
 | Label
 | PrefixUnaryOperator
 
@@ -433,7 +444,10 @@ PrimaryExpression =
   ParenthesizedExpression
 | SimpleIdentifier
 | LiteralConstant
-| StringLiteral
+// string literal
+| LineStringLiteral
+// string literal
+| MultiLineStringLiteral
 | CallableReference
 // function literal
 | LambdaLiteral 
@@ -455,11 +469,11 @@ CollectionLiteral =
   '[' (Expression (',' Expression)* ','?)? ']'
 
 LiteralConstant =
-  '@bool' | '@int' | '@hex' | '@bin' | '@char' | '@float' | 'null' | '@long' | '@unsigned'
+  '@bool' | '@int' | '@hex' | '@bin' | '@char' | '@real' | 'null' | '@long' | '@unsigned'
 
 StringLiteral =
-  str:(LineStringLiteral
-| MultiLineStringLiteral)
+  LineStringLiteral
+| MultiLineStringLiteral
 
 LineStringLiteral =
   '"' LineStringContentOrExpression* '"'
@@ -471,25 +485,22 @@ MultiLineStringLiteral =
   '"""' MultiLineStringContentOrExpression* '"""'
 
 MultiLineStringContentOrExpression =
-  MultiLineStringContent | MultiLineStringExpression
+  MultiLineStringContent | MultiLineStringExpression | '#multi_line_string_quote'
 
 LineStringContent =
-  '@text' | '@escaped' | LineStrRef
+  '#text' | '#escaped_char' | StrRef
 
-LineStrRef =
+StrRef =
   '$' SimpleIdentifier
 
-StrExprStart =
-  '$' '{'
-
 LineStringExpression =
-  StrExprStart Expression '}'
+  '#str_expr_start' Expression '}'
 
 MultiLineStringContent =
-  '@text' | LineStrRef
+  '#text' | StrRef
 
 MultiLineStringExpression =
-  StrExprStart Expression '}'
+  '#str_expr_start' Expression '}'
 
 LambdaLiteral =
   '{' (LambdaParameters? '->')? Statements? '}'
@@ -502,7 +513,7 @@ LambdaParameter =
 | MultiVariableDeclaration (':' Type)?
 
 AnonymousFunction =
-  'suspend'? 'fun' (Type '.')? ParametersWithOptionalType (':' Type)? TypeConstraints? FunctionBody?
+  ((ContextParameterList 'suspend'?) | ('suspend' ContextParameterList?))? 'fun' (Type '.')? ParametersWithOptionalType (':' Type)? TypeConstraints? FunctionBody?
 
 FunctionLiteral =
   LambdaLiteral | AnonymousFunction
@@ -591,7 +602,10 @@ PostfixUnaryOperator =
   '++' | '--' | '!'
 
 MemberAccessOperator =
-  '.' | ('?' '.') | '::'
+  '.' | SafeNav | '::'
+
+SafeNav =
+  '?' '.'
 
 
 //*************************//
@@ -602,7 +616,9 @@ Modifiers =
   AnnotationOrModifier*
 
 AnnotationOrModifier =
-  Annotation
+// inlined ANNOTATION
+SingleAnnotation 
+| MultiAnnotation
   // inlined Modifier here
 | ClassModifier
 | MemberModifier
@@ -612,12 +628,16 @@ AnnotationOrModifier =
 | InheritanceModifier
 | ParameterModifier
 | PlatformModifier
+| ContextParameterList ContextParameterList*
 
 ParameterModifiers =
   AnnotationOrParameterModifier*
 
 AnnotationOrParameterModifier =
-  Annotation | ParameterModifier
+// inlined ANNOTATION
+SingleAnnotation 
+| MultiAnnotation
+| ParameterModifier
 
 
 Modifier =
@@ -634,7 +654,9 @@ TypeModifiers =
   TypeModifier*
 
 TypeModifier =
-  Annotation
+  // inlined ANNOTATION
+SingleAnnotation 
+| MultiAnnotation
 | 'suspend'
 
 ClassModifier =
@@ -655,7 +677,9 @@ TypeParameterModifiers =
 TypeParameterModifier =
   ReificationModifier
 | VarianceModifier
-| Annotation
+// inlined ANNOTATION
+SingleAnnotation 
+| MultiAnnotation
 
 FunctionModifier =
   'tailrec' | 'operator' | 'infix' | 'inline' | 'external' | 'suspend'
@@ -681,7 +705,7 @@ PlatformModifier =
 //*************************//
 
 Annotation =
-  anno:(SingleAnnotation | MultiAnnotation)
+  SingleAnnotation | MultiAnnotation
 
 SingleAnnotation =
   (AnnotationUseSiteTarget | '@') UnescapedAnnotation

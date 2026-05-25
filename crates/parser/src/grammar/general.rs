@@ -1,5 +1,5 @@
-use syntax::Token;
-use syntax::{SyntaxKind::*, T};
+// use syntax::Token;
+use crate::{SyntaxKind::*, T};
 
 use super::annotations::unescaped_annotation;
 use super::class_members::PROPERTY_DECLARATION_START;
@@ -13,9 +13,6 @@ use super::modifiers::modifiers;
 use super::statements::{semi, semis, statement};
 use super::types::ty;
 use crate::{CompletedMarker, Parser};
-
-const TOP_LEVEL_RECOVERY: &[Token] = &[Token::SEMICOLON, Token::NL, Token::R_CURL, Token::EOF];
-const BRACKET_RECOVERY: &[Token] = &[Token::R_SQUARE, Token::SEMICOLON, Token::NL, Token::EOF];
 
 pub(crate) fn kotlin_file(parser: &mut Parser<'_>) {
     let m = parser.start();
@@ -44,9 +41,9 @@ pub(crate) fn script(parser: &mut Parser<'_>) {
 }
 
 fn shebang_line(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    if parser.at(SHEBANG_LINE_TOKEN) {
+    if parser.at(SHEBANG) {
         let m = parser.start();
-        parser.eat(SHEBANG_LINE_TOKEN);
+        parser.eat(SHEBANG);
         Some(m.complete(parser, SHEBANG_LINE))
     } else {
         None
@@ -55,10 +52,10 @@ fn shebang_line(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
 
 fn file_annotation(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     match (parser.current(), parser.nth(1)) {
-        (T![@] | AT_PRE_WS, FILE) => {
+        (T![@], T![file]) => {
             let m = parser.start();
             parser.bump_any();
-            parser.bump(FILE);
+            parser.bump(T![file]);
 
             if !parser.eat(T![:]) {
                 parser.error("expected `:`");

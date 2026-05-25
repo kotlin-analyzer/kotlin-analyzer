@@ -1,4 +1,4 @@
-use syntax::{SyntaxKind::*, T};
+use crate::{SyntaxKind::*, T};
 
 use super::annotations::annotation;
 use super::identifiers::is_simple_ident_at;
@@ -38,7 +38,7 @@ fn type_suffix(parser: &mut Parser<'_>, lhs: TypeResult) -> Option<TypeResult> {
     };
 
     match parser.current() {
-        QUEST_NO_WS | QUEST_WS => {
+        T![?] => {
             // nullable type
             // TODO: check variants of lhs
             let m = lhs.marker().precede(parser);
@@ -100,9 +100,9 @@ fn type_suffix(parser: &mut Parser<'_>, lhs: TypeResult) -> Option<TypeResult> {
 }
 
 fn simple(parser: &mut Parser<'_>) -> Option<TypeResult> {
-    if parser.at(DYNAMIC) {
+    if parser.at(T![dynamic]) {
         let m = parser.start();
-        parser.bump(DYNAMIC);
+        parser.bump(T![dynamic]);
         Some(TypeResult::TyRef(m.complete(parser, TYPE_REFERENCE)))
     } else {
         simple_user_type(parser).map(TypeResult::Simple)
@@ -190,9 +190,9 @@ impl TypeResult {
 
 pub(crate) fn type_reference(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     match parser.current() {
-        DYNAMIC => {
+        T![dynamic] => {
             let m = parser.start();
-            parser.bump(DYNAMIC);
+            parser.bump(T![dynamic]);
             Some(m.complete(parser, TYPE_REFERENCE))
         }
         _ if is_simple_identifier(parser) => {
@@ -278,8 +278,8 @@ pub(crate) fn type_arguments(parser: &mut Parser<'_>) -> Option<CompletedMarker>
 }
 
 fn quests(parser: &mut Parser<'_>) {
-    assert!(matches!(parser.current(), QUEST_NO_WS | QUEST_WS));
-    while matches!(parser.current(), QUEST_NO_WS | QUEST_WS) {
+    assert!(matches!(parser.current(), T![?]));
+    while matches!(parser.current(), T![?]) {
         let m = parser.start();
         parser.bump_any();
         m.complete(parser, QUEST);
@@ -291,7 +291,7 @@ fn nullable_type(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
 
     if let Some(cm) = parenthesized_type(parser).or_else(|| type_reference(parser)) {
         let mut seen = 0;
-        while matches!(parser.current(), QUEST_NO_WS | QUEST_WS) {
+        while matches!(parser.current(), T![?]) {
             seen += 1;
             let m = parser.start();
             parser.bump_any();
@@ -453,9 +453,9 @@ fn type_modifiers(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
 }
 
 fn type_modifier(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    if parser.at(SUSPEND) {
+    if parser.at(T![suspend]) {
         let m = parser.start();
-        parser.bump(SUSPEND);
+        parser.bump(T![suspend]);
         Some(m.complete(parser, TYPE_MODIFIER))
     } else {
         annotation(parser).map(|cm| cm.precede(parser).complete(parser, TYPE_MODIFIER))
@@ -473,20 +473,12 @@ fn type_projection_modifiers(parser: &mut Parser<'_>) -> Option<CompletedMarker>
 }
 
 fn type_projection_modifier(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    let mut is_variance = false;
-    if let Some(cm) =
-        variance_modifier(parser).inspect(|_| is_variance = true).or_else(|| annotation(parser))
-    {
-        let m = cm.precede(parser);
-        Some(m.complete(parser, TYPE_PROJECTION_MODIFIER))
-    } else {
-        None
-    }
+    variance_modifier(parser).or_else(|| annotation(parser))
 }
 
 fn variance_modifier(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     match parser.current() {
-        IN | OUT => {
+        T![in] | T![out] => {
             let m = parser.start();
             parser.bump_any();
             Some(m.complete(parser, VARIANCE_MODIFIER))

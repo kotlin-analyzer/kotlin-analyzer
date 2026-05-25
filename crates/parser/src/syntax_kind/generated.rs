@@ -142,25 +142,27 @@ pub enum SyntaxKind {
     BIN,
     BOOL,
     CHAR,
-    ESCAPED,
-    FLOAT,
     HEX,
     INT,
     LONG,
-    TEXT,
+    REAL,
     UNSIGNED,
     DELIMITED_COMMENT,
     ERROR,
+    ESCAPED_CHAR,
     IDENT,
     LINE_COMMENT,
+    MULTI_LINE_STRING_QUOTE,
     NEWLINE,
     SHEBANG,
+    STR_EXPR_START,
+    TEXT,
     WHITESPACE,
     ADDITIVE_EXPRESSION,
     ADDITIVE_OPERATOR,
     ANNOTATED_DELEGATION_SPECIFIER,
     ANNOTATED_LAMBDA,
-    ANNOTATION,
+    ANNOTATION_OR_MODIFIER,
     ANNOTATION_USE_SITE_TARGET,
     ANONYMOUS_FUNCTION,
     ANONYMOUS_INITIALIZER,
@@ -186,6 +188,7 @@ pub enum SyntaxKind {
     CONJUNCTION,
     CONSTRUCTOR_DELEGATION_CALL,
     CONSTRUCTOR_INVOCATION,
+    CONTEXT_PARAMETER_LIST,
     DECLARATION,
     DEFINITELY_NON_NULLABLE_TYPE,
     DELEGATION_SPECIFIER,
@@ -219,6 +222,7 @@ pub enum SyntaxKind {
     IF_EXPRESSION,
     IMPORT_ALIAS,
     IMPORT_HEADER,
+    IMPORT_LIST,
     INDEXING_SUFFIX,
     INFIX_FUNCTION_CALL,
     INFIX_OPERATION,
@@ -235,7 +239,6 @@ pub enum SyntaxKind {
     LINE_STRING_CONTENT,
     LINE_STRING_EXPRESSION,
     LINE_STRING_LITERAL,
-    LINE_STR_REF,
     LITERAL_CONSTANT,
     MEMBER_ACCESS_OPERATOR,
     MEMBER_MODIFIER,
@@ -244,6 +247,7 @@ pub enum SyntaxKind {
     MULTIPLICATIVE_OPERATOR,
     MULTI_ANNOTATION,
     MULTI_LINE_STRING_CONTENT,
+    MULTI_LINE_STRING_CONTENT_OR_EXPRESSION,
     MULTI_LINE_STRING_EXPRESSION,
     MULTI_LINE_STRING_LITERAL,
     MULTI_VARIABLE_DECLARATION,
@@ -275,6 +279,7 @@ pub enum SyntaxKind {
     RANGE_TEST,
     RECEIVER_TYPE,
     REIFICATION_MODIFIER,
+    SAFE_NAV,
     SCRIPT,
     SECONDARY_CONSTRUCTOR,
     SETTER,
@@ -284,8 +289,7 @@ pub enum SyntaxKind {
     SINGLE_ANNOTATION,
     STATEMENT,
     STATEMENTS,
-    STRING_LITERAL,
-    STR_EXPR_START,
+    STR_REF,
     SUPER_EXPRESSION,
     THIS_EXPRESSION,
     TOP_LEVEL_OBJECT,
@@ -299,6 +303,7 @@ pub enum SyntaxKind {
     TYPE_MODIFIERS,
     TYPE_PARAMETER,
     TYPE_PARAMETERS,
+    TYPE_PARAMETER_MODIFIER,
     TYPE_PARAMETER_MODIFIERS,
     TYPE_PROJECTION,
     TYPE_PROJECTION_MODIFIERS,
@@ -328,18 +333,16 @@ impl SyntaxKind {
             | BIN
             | BOOL
             | CHAR
-            | ESCAPED
-            | FLOAT
             | HEX
             | INT
             | LONG
-            | TEXT
+            | REAL
             | UNSIGNED
             | ADDITIVE_EXPRESSION
             | ADDITIVE_OPERATOR
             | ANNOTATED_DELEGATION_SPECIFIER
             | ANNOTATED_LAMBDA
-            | ANNOTATION
+            | ANNOTATION_OR_MODIFIER
             | ANNOTATION_USE_SITE_TARGET
             | ANONYMOUS_FUNCTION
             | ANONYMOUS_INITIALIZER
@@ -365,6 +368,7 @@ impl SyntaxKind {
             | CONJUNCTION
             | CONSTRUCTOR_DELEGATION_CALL
             | CONSTRUCTOR_INVOCATION
+            | CONTEXT_PARAMETER_LIST
             | DECLARATION
             | DEFINITELY_NON_NULLABLE_TYPE
             | DELEGATION_SPECIFIER
@@ -398,6 +402,7 @@ impl SyntaxKind {
             | IF_EXPRESSION
             | IMPORT_ALIAS
             | IMPORT_HEADER
+            | IMPORT_LIST
             | INDEXING_SUFFIX
             | INFIX_FUNCTION_CALL
             | INFIX_OPERATION
@@ -414,7 +419,6 @@ impl SyntaxKind {
             | LINE_STRING_CONTENT
             | LINE_STRING_EXPRESSION
             | LINE_STRING_LITERAL
-            | LINE_STR_REF
             | LITERAL_CONSTANT
             | MEMBER_ACCESS_OPERATOR
             | MEMBER_MODIFIER
@@ -423,6 +427,7 @@ impl SyntaxKind {
             | MULTIPLICATIVE_OPERATOR
             | MULTI_ANNOTATION
             | MULTI_LINE_STRING_CONTENT
+            | MULTI_LINE_STRING_CONTENT_OR_EXPRESSION
             | MULTI_LINE_STRING_EXPRESSION
             | MULTI_LINE_STRING_LITERAL
             | MULTI_VARIABLE_DECLARATION
@@ -454,6 +459,7 @@ impl SyntaxKind {
             | RANGE_TEST
             | RECEIVER_TYPE
             | REIFICATION_MODIFIER
+            | SAFE_NAV
             | SCRIPT
             | SECONDARY_CONSTRUCTOR
             | SETTER
@@ -463,8 +469,7 @@ impl SyntaxKind {
             | SINGLE_ANNOTATION
             | STATEMENT
             | STATEMENTS
-            | STRING_LITERAL
-            | STR_EXPR_START
+            | STR_REF
             | SUPER_EXPRESSION
             | THIS_EXPRESSION
             | TOP_LEVEL_OBJECT
@@ -478,6 +483,7 @@ impl SyntaxKind {
             | TYPE_MODIFIERS
             | TYPE_PARAMETER
             | TYPE_PARAMETERS
+            | TYPE_PARAMETER_MODIFIER
             | TYPE_PARAMETER_MODIFIERS
             | TYPE_PROJECTION
             | TYPE_PROJECTION_MODIFIERS
@@ -495,10 +501,14 @@ impl SyntaxKind {
             | WHILE_STATEMENT
             | DELIMITED_COMMENT
             | ERROR
+            | ESCAPED_CHAR
             | IDENT
             | LINE_COMMENT
+            | MULTI_LINE_STRING_QUOTE
             | NEWLINE
             | SHEBANG
+            | STR_EXPR_START
+            | TEXT
             | WHITESPACE => panic!("no text for these `SyntaxKind`s"),
             DOLLAR => "$",
             DOT => ".",
@@ -884,7 +894,7 @@ impl SyntaxKind {
         )
     }
     pub fn is_literal(self) -> bool {
-        matches!(self, BIN | BOOL | CHAR | ESCAPED | FLOAT | HEX | INT | LONG | TEXT | UNSIGNED)
+        matches!(self, BIN | BOOL | CHAR | HEX | INT | LONG | REAL | UNSIGNED)
     }
     pub fn from_keyword(ident: &str, version: KtVersion) -> Option<SyntaxKind> {
         let kw = match ident {
@@ -1163,15 +1173,11 @@ macro_rules ! T_ {
 impl ::core::marker::Copy for SyntaxKind {}
 impl ::core::clone::Clone for SyntaxKind {
     #[inline]
-    fn clone(&self) -> Self {
-        *self
-    }
+    fn clone(&self) -> Self { *self }
 }
 impl ::core::cmp::PartialEq for SyntaxKind {
     #[inline]
-    fn eq(&self, other: &Self) -> bool {
-        (*self as u16) == (*other as u16)
-    }
+    fn eq(&self, other: &Self) -> bool { (*self as u16) == (*other as u16) }
 }
 impl ::core::cmp::Eq for SyntaxKind {}
 impl ::core::cmp::PartialOrd for SyntaxKind {
@@ -1182,9 +1188,7 @@ impl ::core::cmp::PartialOrd for SyntaxKind {
 }
 impl ::core::cmp::Ord for SyntaxKind {
     #[inline]
-    fn cmp(&self, other: &Self) -> core::cmp::Ordering {
-        (*self as u16).cmp(&(*other as u16))
-    }
+    fn cmp(&self, other: &Self) -> core::cmp::Ordering { (*self as u16).cmp(&(*other as u16)) }
 }
 impl ::core::hash::Hash for SyntaxKind {
     fn hash<H: ::core::hash::Hasher>(&self, state: &mut H) {

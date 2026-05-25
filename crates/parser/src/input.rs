@@ -1,7 +1,7 @@
 //! See [`Input`].
 
+use crate::SyntaxKind;
 use crate::version::KtVersion;
-use syntax::SyntaxKind;
 
 #[allow(non_camel_case_types)]
 type bits = u64;
@@ -63,7 +63,9 @@ impl Input {
     pub(crate) fn contextual_kind(&self, idx: usize) -> SyntaxKind {
         self.contextual_kind.get(idx).copied().unwrap_or(SyntaxKind::EOF)
     }
-    pub(crate) fn version(&self, idx: usize) -> KtVersion { self.version[idx] }
+    pub(crate) fn version(&self, idx: usize) -> KtVersion {
+        self.version[idx]
+    }
     pub(crate) fn has_ws_before(&self, n: usize) -> bool {
         let (idx, b_idx) = self.bit_index(n);
         self.ws_before[idx] & (1 << b_idx) != 0
@@ -76,5 +78,7 @@ impl Input {
         let b_idx = n % (bits::BITS as usize);
         (idx, b_idx)
     }
-    pub fn len(&self) -> usize { self.kind.len() }
+    pub fn len(&self) -> usize {
+        self.kind.len()
+    }
 }

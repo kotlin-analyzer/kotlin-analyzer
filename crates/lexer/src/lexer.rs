@@ -8,7 +8,7 @@ use std::{
     ops::{Range, RangeInclusive},
 };
 
-use syntax::Token::{self, *};
+use crate::Token::{self, *};
 use unicode_categories::UnicodeCategories;
 
 trait ParseFn<'a>: Fn(Step<'a>) -> Option<Step<'a>> {
@@ -18,10 +18,14 @@ trait ParseFn<'a>: Fn(Step<'a>) -> Option<Step<'a>> {
     }
 
     #[inline]
-    fn and(&self, p: impl ParseFn<'a>) -> impl ParseFn<'a> { and(self, p) }
+    fn and(&self, p: impl ParseFn<'a>) -> impl ParseFn<'a> {
+        and(self, p)
+    }
 
     #[inline]
-    fn or(&self, p: impl ParseFn<'a>) -> impl ParseFn<'a> { or(self, p) }
+    fn or(&self, p: impl ParseFn<'a>) -> impl ParseFn<'a> {
+        or(self, p)
+    }
 }
 
 trait CharExt {
@@ -37,7 +41,9 @@ impl CharExt for char {
             || self.is_letter_modifier()
     }
 
-    fn can_be_in_ident(&self) -> bool { self.is_kotlin_letter() || self.is_number_decimal_digit() }
+    fn can_be_in_ident(&self) -> bool {
+        self.is_kotlin_letter() || self.is_number_decimal_digit()
+    }
 }
 
 impl<'a, F> ParseFn<'a> for F where F: Fn(Step<'a>) -> Option<Step<'a>> {}
@@ -53,9 +59,15 @@ pub struct TokenInfo {
 }
 
 impl TokenInfo {
-    pub fn new(token: Token, span: Span) -> Self { Self { token, span } }
-    pub fn token(&self) -> &Token { &self.token }
-    pub fn span(&self) -> &Span { &self.span }
+    pub fn new(token: Token, span: Span) -> Self {
+        Self { token, span }
+    }
+    pub fn token(&self) -> &Token {
+        &self.token
+    }
+    pub fn span(&self) -> &Span {
+        &self.span
+    }
 }
 
 impl Display for TokenInfo {
@@ -86,11 +98,17 @@ pub struct Lexer<'a> {
 struct Mode(VecDeque<LexGrammarMode>);
 
 impl Mode {
-    fn peek(&self) -> &LexGrammarMode { self.0.back().unwrap_or(&LexGrammarMode::Normal) }
+    fn peek(&self) -> &LexGrammarMode {
+        self.0.back().unwrap_or(&LexGrammarMode::Normal)
+    }
 
-    fn pop(&mut self) { self.0.pop_back(); }
+    fn pop(&mut self) {
+        self.0.pop_back();
+    }
 
-    fn set(&mut self, mode: LexGrammarMode) { self.0.push_back(mode) }
+    fn set(&mut self, mode: LexGrammarMode) {
+        self.0.push_back(mode)
+    }
 }
 
 /// This is a single step in the lexer that contains the current position,
@@ -168,17 +186,29 @@ pub struct SpannedWithSource<'a> {
 }
 
 impl SpannedWithSource<'_> {
-    pub fn token(&self) -> &Token { &self.token }
+    pub fn token(&self) -> &Token {
+        &self.token
+    }
 
-    pub fn span(&self) -> &Span { &self.span }
+    pub fn span(&self) -> &Span {
+        &self.span
+    }
 
-    pub fn substring(&self) -> &str { self.substring }
+    pub fn substring(&self) -> &str {
+        self.substring
+    }
 
-    pub fn is_keyword(&self) -> bool { Token::from_keyword(self.substring()).is_some() }
+    pub fn is_keyword(&self) -> bool {
+        Token::from_keyword(self.substring()).is_some()
+    }
 
-    pub fn is_soft_keyword(&self) -> bool { Token::from_soft_keyword(self.substring()).is_some() }
+    pub fn is_soft_keyword(&self) -> bool {
+        Token::from_soft_keyword(self.substring()).is_some()
+    }
 
-    pub fn is_operator(&self) -> bool { Token::from_operator(self.substring()).is_some() }
+    pub fn is_operator(&self) -> bool {
+        Token::from_operator(self.substring()).is_some()
+    }
 }
 
 impl Display for SpannedWithSource<'_> {
@@ -188,7 +218,9 @@ impl Display for SpannedWithSource<'_> {
 }
 
 impl Debug for SpannedWithSource<'_> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "{}", self) }
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self)
+    }
 }
 
 impl<'a> Lexer<'a> {
@@ -204,7 +236,9 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn apply_step(&mut self, step: Step<'a>) { self.step = step; }
+    fn apply_step(&mut self, step: Step<'a>) {
+        self.step = step;
+    }
 
     /// This method returns an iterator over the tokens in the input string.
     /// alongside their spans
@@ -381,7 +415,7 @@ fn handle_operator<'a>(mut step: Step<'a>, token: &Token) -> Option<Step<'a>> {
         EXCL_NO_WS => opt(hidden.with(EXCL_WS))(step),
         AT_NO_WS => opt(hidden.or(nl).with(AT_POST_WS))(step),
         QUEST_NO_WS => opt(hidden.or(nl).with(QUEST_WS))(step),
-        NL | WS => {
+        NEWLINE | WHITESPACE => {
             // TODO: handle multiple hidden | nl before
             opt(tag("@").with(AT_PRE_WS).and(opt(hidden.with(AT_BOTH_WS))))(step)
         }
@@ -435,11 +469,11 @@ fn handle_keyword<'a>(step: Step<'a>, token: &Token) -> Option<Step<'a>> {
 }
 
 fn ws(step: Step<'_>) -> Option<Step<'_>> {
-    tag("\u{0020}").or(tag("\u{0009}")).or(tag("\u{000C}")).with(WS)(step)
+    tag("\u{0020}").or(tag("\u{0009}")).or(tag("\u{000C}")).with(WHITESPACE)(step)
 }
 
 fn nl(step: Step<'_>) -> Option<Step<'_>> {
-    tag("\u{000A}").or(tag("\u{000D}").and(opt(tag("\u{000A}")))).with(WS)(step)
+    tag("\u{000A}").or(tag("\u{000D}").and(opt(tag("\u{000A}")))).with(WHITESPACE)(step)
 }
 
 fn hidden(step: Step<'_>) -> Option<Step<'_>> {
@@ -447,7 +481,7 @@ fn hidden(step: Step<'_>) -> Option<Step<'_>> {
 }
 
 fn shebang(step: Step<'_>) -> Option<Step<'_>> {
-    tag("#!").and(many0(not(tag("\u{000A}").or(tag("\u{000D}"))))).with(SHEBANG_LINE_TOKEN)(step)
+    tag("#!").and(many0(not(tag("\u{000A}").or(tag("\u{000D}"))))).with(SHEBANG_LINE)(step)
 }
 
 fn line_comment(step: Step<'_>) -> Option<Step<'_>> {
@@ -601,7 +635,9 @@ fn many<'a>(p: impl ParseFn<'a>) -> impl ParseFn<'a> {
 /// This matches multiple entities of the same type zero or more times.
 /// For one or more times, use `many`
 #[inline]
-fn many0<'a>(p: impl ParseFn<'a>) -> impl ParseFn<'a> { opt(many(p)) }
+fn many0<'a>(p: impl ParseFn<'a>) -> impl ParseFn<'a> {
+    opt(many(p))
+}
 
 fn char_range<'a>(range: RangeInclusive<char>) -> impl ParseFn<'a> {
     move |step| {
@@ -786,11 +822,11 @@ mod test {
 
     #[test]
     fn shebang_test() {
-        assert_success!(shebang, "#!", 2, SHEBANG_LINE_TOKEN);
-        assert_success!(shebang, "#!\n", 2, SHEBANG_LINE_TOKEN);
-        assert_success!(shebang, "#! sh echo", 10, SHEBANG_LINE_TOKEN);
-        assert_success!(shebang, "#! comment // nested", 20, SHEBANG_LINE_TOKEN);
-        assert_success!(shebang, "#! comment // nested #! deep /* more */", 39, SHEBANG_LINE_TOKEN);
+        assert_success!(shebang, "#!", 2, SHEBANG_LINE);
+        assert_success!(shebang, "#!\n", 2, SHEBANG_LINE);
+        assert_success!(shebang, "#! sh echo", 10, SHEBANG_LINE);
+        assert_success!(shebang, "#! comment // nested", 20, SHEBANG_LINE);
+        assert_success!(shebang, "#! comment // nested #! deep /* more */", 39, SHEBANG_LINE);
 
         assert_failure!(shebang, "// comment");
         assert_failure!(shebang, "/* comment */");

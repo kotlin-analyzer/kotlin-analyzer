@@ -909,11 +909,10 @@ fn clean_token_name(name: &str) -> String {
 
 fn lower(grammar: &Grammar) -> AstSrc {
     let mut res = AstSrc {
-        tokens:
-            "Whitespace Comment String ByteString CString IntNumber FloatNumber Char Byte Ident"
-                .split_ascii_whitespace()
-                .map(|it| it.to_owned())
-                .collect::<Vec<_>>(),
+        tokens: "Whitespace EscapedChar StrExprStart Text MultiLineStringQuote Char Ident Bool Int Real Hex Bin Null Long Unsigned"
+            .split_ascii_whitespace()
+            .map(|it| it.to_owned())
+            .collect::<Vec<_>>(),
         ..Default::default()
     };
 
@@ -1129,6 +1128,7 @@ fn extract_enums(ast: &mut AstSrc) {
 
 const TRAITS: &[(&str, &[&str])] = &[
     ("HasAnnotations", &["modifiers", "annotation"]),
+    ("HasModifiers", &["modifiers"]),
     ("HasName", &["SimpleIdentifier", "Identifier"]),
     ("HasVisibility", &["modifiers"]),
     ("HasGenericParams", &["generic_param_list", "where_clause"]),

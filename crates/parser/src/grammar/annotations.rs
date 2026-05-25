@@ -1,21 +1,16 @@
-use syntax::{SyntaxKind::*, T};
+use crate::{SyntaxKind::*, T};
 
 use super::classes::constructor_invocation;
 use super::types::user_type;
 use crate::{CompletedMarker, Parser, TokenSet};
 
-const ANNO_RECOVERY: TokenSet = TokenSet::new(&[R_SQUARE, SEMICOLON, NL, R_CURL, EOF]);
+const ANNO_RECOVERY: TokenSet = TokenSet::new(&[R_SQUARE, SEMICOLON, R_CURL, EOF]);
 
 pub(crate) fn annotation(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     if !starts_annotation(parser) {
         return None;
     }
-    let m = parser.start();
-    if single_or_multi_annotation(parser).is_none() {
-        m.abandon(parser);
-        return None;
-    }
-    Some(m.complete(parser, ANNOTATION))
+    single_or_multi_annotation(parser)
 }
 
 fn single_or_multi_annotation(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
@@ -68,7 +63,7 @@ enum AnnStep {
 }
 
 pub(crate) fn starts_annotation(parser: &mut Parser<'_>) -> bool {
-    matches!(parser.current(), AT_NO_WS | AT_PRE_WS)
+    matches!(parser.current(), AT)
 }
 
 fn annotation_use_site_target_or_at(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
@@ -77,7 +72,14 @@ fn annotation_use_site_target_or_at(parser: &mut Parser<'_>) -> Option<Completed
 
     if matches!(
         parser.current(),
-        FIELD | PROPERTY | GET | SET | RECEIVER | PARAM | SET_PARAM | DELEGATE
+        FIELD_KW
+            | PROPERTY_KW
+            | GET_KW
+            | SET_KW
+            | RECEIVER_KW
+            | PARAM_KW
+            | SETPARAM_KW
+            | DELEGATE_KW
     ) {
         parser.bump_any();
     } else {
@@ -91,12 +93,9 @@ fn annotation_use_site_target_or_at(parser: &mut Parser<'_>) -> Option<Completed
 }
 
 pub(crate) fn unescaped_annotation(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    let m = parser.start();
     if let Some(user_type_marker) = user_type(parser) {
-        constructor_invocation(parser, user_type_marker, true);
-        Some(m.complete(parser, UNESCAPED_ANNOTATION))
+        constructor_invocation(parser, user_type_marker, true)
     } else {
-        m.abandon(parser);
         None
     }
 }

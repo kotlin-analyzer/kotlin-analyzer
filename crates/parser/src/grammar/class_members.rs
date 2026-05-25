@@ -1,4 +1,4 @@
-use syntax::{SyntaxKind::*, T};
+use crate::{SyntaxKind::*, T};
 
 use super::classes::{class_body, delegation_specifiers, type_constraints};
 use super::general::declaration;
@@ -33,21 +33,17 @@ fn class_member_declaration(
     modifiers_marker: Option<CompletedMarker>,
 ) -> Option<CompletedMarker> {
     if let Some(cm) = anonymous_initializer(parser) {
-        return Some(cm.precede(parser).complete(parser, CLASS_MEMBER_DECLARATION));
+        return Some(cm);
     }
-    let m = parser.start();
     let modifiers_marker = modifiers_marker.or_else(|| modifiers(parser));
 
     if parser.at(T![companion]) {
-        companion_object(parser, modifiers_marker);
+        companion_object(parser, modifiers_marker)
     } else if parser.at(T![constructor]) {
-        secondary_constructor(parser, modifiers_marker);
-    } else if declaration(parser, modifiers_marker).is_some() {
+        secondary_constructor(parser, modifiers_marker)
     } else {
-        m.abandon(parser);
-        return None;
+        declaration(parser, modifiers_marker)
     }
-    Some(m.complete(parser, CLASS_MEMBER_DECLARATION))
 }
 
 fn anonymous_initializer(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
@@ -185,7 +181,7 @@ fn property_delegate(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     }
 }
 
-pub(crate) const PROPERTY_DECLARATION_START: TokenSet = TokenSet::new(&[VAL, VAR]);
+pub(crate) const PROPERTY_DECLARATION_START: TokenSet = TokenSet::new(&[VAL_KW, VAR_KW]);
 
 pub(crate) fn multi_variable_declaration(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     if parser.at(T!['(']) {
@@ -239,18 +235,18 @@ pub(crate) fn property_declaration(
     parser.eat(T![;]);
 
     let mod_cm = modifiers(parser);
-    if parser.at(GET) {
+    if parser.at(GET_KW) {
         getter(parser, mod_cm);
         semi(parser);
         let mod_cm = modifiers(parser);
-        if parser.at(SET) {
+        if parser.at(SET_KW) {
             setter(parser, mod_cm);
         }
-    } else if parser.at(SET) {
+    } else if parser.at(SET_KW) {
         setter(parser, mod_cm);
         semi(parser);
         let mod_cm = modifiers(parser);
-        if parser.at(GET) {
+        if parser.at(GET_KW) {
             getter(parser, mod_cm);
         }
     }
@@ -261,7 +257,7 @@ fn getter(
     parser: &mut Parser<'_>,
     modifiers_marker: Option<CompletedMarker>,
 ) -> Option<CompletedMarker> {
-    if !parser.at(GET) {
+    if !parser.at(GET_KW) {
         return None;
     }
     let m = modifiers_marker.map(|cm| cm.precede(parser)).unwrap_or_else(|| parser.start());
@@ -284,7 +280,7 @@ fn setter(
     parser: &mut Parser<'_>,
     modifiers_marker: Option<CompletedMarker>,
 ) -> Option<CompletedMarker> {
-    if !parser.at(SET) {
+    if !parser.at(SET_KW) {
         return None;
     }
     let m = modifiers_marker.map(|cm| cm.precede(parser)).unwrap_or_else(|| parser.start());

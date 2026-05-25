@@ -2,8 +2,8 @@
 //! Expressions are similar to assigments, this makes parsing them a bit tricky, because of the ambiguity.
 //! The code here tries to factor that into their logic.
 
+use crate::{SyntaxKind::*, T};
 use casey::shouty;
-use syntax::{SyntaxKind::*, T};
 
 use super::annotations::{annotation, starts_annotation};
 use super::class_members::{
@@ -360,7 +360,6 @@ fn parenthesized_assignable_expression(parser: &mut Parser<'_>) -> Option<Comple
 fn assignable_expression(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     parenthesized_assignable_expression(parser)
         .or_else(|| prefix_unary_expression(parser).map(|pue| pue.marker()))
-        .map(|cm| cm.precede(parser).complete(parser, ASSIGNABLE_EXPRESSION))
 }
 
 #[derive(Clone)]
@@ -414,10 +413,7 @@ pub(crate) fn prefix_unary_expression(parser: &mut Parser<'_>) -> Option<Affixed
 }
 
 fn unary_prefix(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    annotation(parser)
-        .or_else(|| prefix_unary_operator::parse(parser))
-        .or_else(|| label(parser))
-        .map(|cm| cm.precede(parser).complete(parser, UNARY_PREFIX))
+    annotation(parser).or_else(|| prefix_unary_operator::parse(parser)).or_else(|| label(parser))
 }
 
 fn postfix_unary_expression(parser: &mut Parser<'_>) -> Option<AffixedExpression> {
@@ -433,14 +429,10 @@ fn postfix_unary_suffix(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
         .or_else(|| postfix_unary_operator::parse(parser))
         .or_else(|| indexing_suffix(parser))
         .or_else(|| navigation_suffix(parser))
-        .map(|cm| cm.precede(parser).complete(parser, POSTFIX_UNARY_SUFFIX))
 }
 
 pub(crate) fn assignable_suffix(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    indexing_suffix(parser)
-        .or_else(|| navigation_suffix(parser))
-        .or_else(|| type_arguments(parser))
-        .map(|cm| cm.precede(parser).complete(parser, ASSIGNABLE_SUFFIX))
+    indexing_suffix(parser).or_else(|| navigation_suffix(parser)).or_else(|| type_arguments(parser))
 }
 
 fn indexing_suffix(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
@@ -486,7 +478,7 @@ fn starts_call_suffix(parser: &mut Parser<'_>) -> bool {
     parser.at(T!['('])
         || parser.at(T![<])
         || parser.at(T!['{'])
-        || parser.at(T![label])
+        || (is_simple_identifier(parser) && !parser.nth_at(1, T![@])) // label
         || starts_annotation(parser)
 }
 
@@ -565,7 +557,6 @@ fn value_argument(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
 }
 
 fn primary_expression(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    let mut is_ident = false;
     parenthesized_expression(parser)
         .or_else(|| collection_literal(parser))
         .or_else(|| literal_constant(parser))
@@ -580,15 +571,12 @@ fn primary_expression(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
         .or_else(|| jump_expression(parser))
         .or_else(|| {
             if is_simple_identifier(parser) && !parser.nth_at(1, T![::]) {
-                simple_identifier(parser).inspect(|_| {
-                    is_ident = true;
-                })
+                simple_identifier(parser)
             } else {
                 None
             }
         })
         .or_else(|| callable_reference(parser))
-        .map(|cm| cm.precede(parser).complete(parser, PRIMARY_EXPRESSION))
 }
 
 fn parenthesized_expression(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
@@ -623,8 +611,7 @@ fn collection_literal(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
 
 fn literal_constant(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     match parser.current() {
-        BOOLEAN_LITERAL | INTEGER_LITERAL | HEX_LITERAL | BIN_LITERAL | CHARACTER_LITERAL
-        | REAL_LITERAL | NULL_LITERAL | LONG_LITERAL | UNSIGNED_LITERAL => {
+        BOOL | INT | HEX | BIN | CHAR | REAL | NULL_KW | LONG | UNSIGNED => {
             let m = parser.start();
             parser.bump_any();
             Some(m.complete(parser, LITERAL_CONSTANT))
@@ -634,35 +621,33 @@ fn literal_constant(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
 }
 
 fn string_literal(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    line_string_literal(parser)
-        .or_else(|| multi_line_string_literal(parser))
-        .map(|cm| cm.precede(parser).complete(parser, STRING_LITERAL))
+    line_string_literal(parser).or_else(|| multi_line_string_literal(parser))
 }
 
 fn line_string_literal(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    if !parser.at(QUOTE_OPEN) {
+    if !parser.at(QUOTE) {
         return None;
     }
     let m = parser.start();
-    parser.bump(QUOTE_OPEN);
+    parser.bump(QUOTE);
     while line_string_content(parser).is_some() || line_string_expr(parser).is_some() {}
-    if !parser.eat(QUOTE_CLOSE) {
+    if !parser.eat(QUOTE) {
         parser.error(r#"expected `"`"#);
     }
     Some(m.complete(parser, LINE_STRING_LITERAL))
 }
 
 fn multi_line_string_literal(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    if !parser.at(TRIPLE_QUOTE_OPEN) {
+    if !parser.at(TRIPLE_QUOTE) {
         return None;
     }
     let m = parser.start();
-    parser.bump(TRIPLE_QUOTE_OPEN);
+    parser.bump(TRIPLE_QUOTE);
     while multi_line_string_content(parser).is_some()
         || multi_line_string_expr(parser).is_some()
         || parser.eat(MULTI_LINE_STRING_QUOTE)
     {}
-    if !parser.eat(TRIPLE_QUOTE_CLOSE) {
+    if !parser.eat(TRIPLE_QUOTE) {
         parser.error(r#"expected `"""`"#);
     }
     Some(m.complete(parser, MULTI_LINE_STRING_LITERAL))
@@ -670,7 +655,7 @@ fn multi_line_string_literal(parser: &mut Parser<'_>) -> Option<CompletedMarker>
 
 fn line_string_content(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     match parser.current() {
-        LINE_STR_TEXT | LINE_STR_ESCAPED_CHAR | LINE_STR_REF => {
+        TEXT | ESCAPED_CHAR | STR_REF => {
             let m = parser.start();
             parser.bump_any();
             Some(m.complete(parser, LINE_STRING_CONTENT))
@@ -680,9 +665,9 @@ fn line_string_content(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
 }
 
 fn line_string_expr(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    if parser.at(LINE_STR_EXPR_START) {
+    if parser.at(STR_EXPR_START) {
         let m = parser.start();
-        parser.bump(LINE_STR_EXPR_START);
+        parser.bump(STR_EXPR_START);
         if expression(parser).is_none() {
             parser.error("expected an expression");
         }
@@ -697,7 +682,7 @@ fn line_string_expr(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
 
 fn multi_line_string_content(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     match parser.current() {
-        MULTI_LINE_STR_TEXT | MULTI_LINE_STRING_QUOTE | MULTI_LINE_STR_REF => {
+        TEXT | MULTI_LINE_STRING_QUOTE | STR_REF => {
             let m = parser.start();
             parser.bump_any();
             Some(m.complete(parser, MULTI_LINE_STRING_CONTENT))
@@ -707,9 +692,9 @@ fn multi_line_string_content(parser: &mut Parser<'_>) -> Option<CompletedMarker>
 }
 
 fn multi_line_string_expr(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    if parser.at(MULTI_STR_EXPR_START) {
+    if parser.at(STR_EXPR_START) {
         let m = parser.start();
-        parser.bump(MULTI_STR_EXPR_START);
+        parser.bump(STR_EXPR_START);
         if expression(parser).is_none() {
             parser.error("expected an expression");
         }
@@ -723,9 +708,7 @@ fn multi_line_string_expr(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
 }
 
 fn function_literal(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    lambda_literal(parser)
-        .or_else(|| anonymous_function(parser))
-        .map(|cm| cm.precede(parser).complete(parser, FUNCTION_LITERAL))
+    lambda_literal(parser).or_else(|| anonymous_function(parser))
 }
 
 fn lambda_literal(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
@@ -962,7 +945,6 @@ fn when_condition(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     range_test(parser)
         .or_else(|| type_test(parser))
         .or_else(|| expression(parser).map(|e| e.marker()))
-        .map(|cm| cm.precede(parser).complete(parser, WHEN_CONDITION))
 }
 
 fn range_test(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
@@ -1120,7 +1102,7 @@ mod prefix_unary_operator {
         }
     }
     pub(crate) fn is(parser: &mut Parser<'_>) -> bool {
-        matches!(parser.current(), T![++] | T![--] | T![+] | T![-] | T![!] | EXCL_WS)
+        matches!(parser.current(), T![++] | T![--] | T![+] | T![-] | T![!])
     }
 }
 mod postfix_unary_operator {
@@ -1139,7 +1121,7 @@ mod postfix_unary_operator {
         }
     }
     pub(crate) fn is(parser: &mut Parser<'_>) -> bool {
-        matches!((parser.current(), parser.nth(1)), (T![++] | T![--], _) | (T![!], T![!] | EXCL_WS))
+        matches!((parser.current(), parser.nth(1)), (T![++] | T![--], _) | (T![!], T![!]))
     }
 }
 
@@ -1159,7 +1141,7 @@ pub(crate) mod range_operator {
 }
 
 fn excl(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    if parser.at(T![!]) || parser.at(EXCL_WS) {
+    if parser.at(T![!]) {
         let m = parser.start();
         parser.bump(T![!]);
         Some(m.complete(parser, EXCL))

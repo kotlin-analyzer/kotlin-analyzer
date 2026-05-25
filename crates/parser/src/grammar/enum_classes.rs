@@ -1,4 +1,4 @@
-use syntax::{SyntaxKind::*, T};
+use crate::{SyntaxKind::*, T};
 
 use super::class_members::class_member_declarations;
 use super::classes::class_body;
