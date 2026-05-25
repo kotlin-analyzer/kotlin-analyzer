@@ -1,6 +1,7 @@
 // use syntax::Token;
 use crate::{SyntaxKind::*, T};
 
+use super::CMWithDanglingModifier;
 use super::annotations::unescaped_annotation;
 use super::class_members::PROPERTY_DECLARATION_START;
 use super::class_members::{
@@ -30,12 +31,18 @@ pub(crate) fn script(parser: &mut Parser<'_>) {
     while file_annotation(parser).is_some() {}
     package_header(parser);
     import_list(parser);
-    while statement(parser)
-        .inspect(|_| {
-            semi(parser);
-        })
-        .is_some()
-    {}
+    let mut dangling_modifier = None;
+    loop {
+        if let Some(CMWithDanglingModifier { dangling, .. }) = statement(parser, dangling_modifier)
+        {
+            dangling_modifier = dangling;
+        } else {
+            break;
+        }
+        if !semi(parser) {
+            break;
+        }
+    }
 
     m.complete(parser, SCRIPT);
 }
@@ -171,25 +178,20 @@ fn type_alias(
     Some(m.complete(parser, TYPE_ALIAS))
 }
 
-pub(crate) fn declaration(
+pub(super) fn declaration(
     parser: &mut Parser<'_>,
     modifiers_marker: Option<CompletedMarker>,
-) -> Option<CompletedMarker> {
+) -> Option<CMWithDanglingModifier> {
     if starts_class_declaration(parser) {
-        class_declaration(parser, modifiers_marker)
-            .map(|cm| cm.precede(parser).complete(parser, DECLARATION))
+        class_declaration(parser, modifiers_marker).map(Into::into)
     } else if starts_fn_declaration(parser) {
-        function_declaration(parser, modifiers_marker)
-            .map(|cm| cm.precede(parser).complete(parser, DECLARATION))
+        function_declaration(parser, modifiers_marker).map(Into::into)
     } else if parser.at(T![object]) {
-        object_declaration(parser, modifiers_marker)
-            .map(|cm| cm.precede(parser).complete(parser, DECLARATION))
+        object_declaration(parser, modifiers_marker).map(Into::into)
     } else if parser.at_ts(PROPERTY_DECLARATION_START) {
         property_declaration(parser, modifiers_marker)
-            .map(|cm| cm.precede(parser).complete(parser, DECLARATION))
     } else if parser.at(T![typealias]) {
-        type_alias(parser, modifiers_marker)
-            .map(|cm| cm.precede(parser).complete(parser, DECLARATION))
+        type_alias(parser, modifiers_marker).map(Into::into)
     } else {
         None
     }

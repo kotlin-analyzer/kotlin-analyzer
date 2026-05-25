@@ -63,7 +63,7 @@ enum AnnStep {
 }
 
 pub(crate) fn starts_annotation(parser: &mut Parser<'_>) -> bool {
-    matches!(parser.current(), AT)
+    parser.at(T![@])
 }
 
 fn annotation_use_site_target_or_at(parser: &mut Parser<'_>) -> Option<CompletedMarker> {

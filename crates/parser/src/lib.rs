@@ -1,4 +1,6 @@
 //! This module contains code adapted from rust-analyzer's `parser` crate.
+//! HKGIC: Means "Heuristic, Kotlin Grammar Is Crazy", i.e. the code is not a direct translation of the grammar rules,
+//! but rather a best effort to parse as much as possible of the input, even if it doesn't conform to the grammar.
 
 #![allow(dead_code)]
 mod grammar;

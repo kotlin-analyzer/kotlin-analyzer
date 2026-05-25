@@ -1,5 +1,6 @@
-use crate::{SyntaxKind::*, T};
+use crate::{SyntaxKind::*, T, UnCompletedMarker};
 
+use super::CMWithDanglingModifier;
 use super::classes::{class_body, delegation_specifiers, type_constraints};
 use super::general::declaration;
 use super::identifiers::is_simple_identifier;
@@ -11,7 +12,7 @@ use super::annotations::annotation;
 use super::classes::type_parameters;
 use super::expressions::{expression, value_arguments};
 use super::identifiers::simple_identifier;
-use super::modifiers::{modifiers, parameter_modifiers};
+use super::modifiers::{modifiers, parameter_modifiers, uncompleted_modifiers};
 use super::types::ty;
 
 pub(crate) fn class_member_declarations(
@@ -31,16 +32,16 @@ pub(crate) fn class_member_declarations(
 fn class_member_declaration(
     parser: &mut Parser<'_>,
     modifiers_marker: Option<CompletedMarker>,
-) -> Option<CompletedMarker> {
+) -> Option<CMWithDanglingModifier> {
     if let Some(cm) = anonymous_initializer(parser) {
-        return Some(cm);
+        return Some(CMWithDanglingModifier::new(cm, None));
     }
     let modifiers_marker = modifiers_marker.or_else(|| modifiers(parser));
 
     if parser.at(T![companion]) {
-        companion_object(parser, modifiers_marker)
+        companion_object(parser, modifiers_marker).map(Into::into)
     } else if parser.at(T![constructor]) {
-        secondary_constructor(parser, modifiers_marker)
+        secondary_constructor(parser, modifiers_marker).map(Into::into)
     } else {
         declaration(parser, modifiers_marker)
     }
@@ -99,10 +100,15 @@ pub(crate) fn function_declaration(
 
     parser.bump(T![fun]);
     type_parameters(parser);
-    receiver_type(parser, RecvType::Dotted);
+    // HKGIC: In the grammar, function name is before receiver type, but we want to parse it before, as function name is a valid receiver type
+    if is_simple_identifier(parser) && parser.nth_at(1, T!['(']) {
+        simple_identifier(parser);
+    } else {
+        receiver_type(parser, RecvType::Dotted);
 
-    if simple_identifier(parser).is_none() {
-        parser.error("expected an identifier");
+        if simple_identifier(parser).is_none() {
+            parser.error("expected an identifier");
+        }
     }
     if function_value_parameters(parser).is_none() {
         parser.error("expected (");
@@ -212,11 +218,14 @@ pub(crate) fn variable_declaration(parser: &mut Parser<'_>) -> Option<CompletedM
     }
 }
 
+const AFTER_PROP_NAME: TokenSet =
+    TokenSet::new(&[T![=], T![:], T![where], T![by], T![get], T![set]]);
+
 /// Starts with either 'val' or 'var' keyword
-pub(crate) fn property_declaration(
+pub(super) fn property_declaration(
     parser: &mut Parser<'_>,
     modifiers_marker: Option<CompletedMarker>,
-) -> Option<CompletedMarker> {
+) -> Option<CMWithDanglingModifier> {
     if !parser.at_ts(PROPERTY_DECLARATION_START) {
         return None;
     }
@@ -224,43 +233,71 @@ pub(crate) fn property_declaration(
 
     parser.bump_any();
     type_parameters(parser);
-    receiver_type(parser, RecvType::Dotted);
-    multi_variable_declaration(parser).or_else(|| variable_declaration(parser));
+    // HKGIC: In the grammar, property name is before receiver type, but we want to parse it before, as property name is a valid receiver type
+    if is_simple_identifier(parser) && parser.nth_ats(1, AFTER_PROP_NAME) {
+        multi_variable_declaration(parser).or_else(|| variable_declaration(parser));
+    } else {
+        receiver_type(parser, RecvType::Dotted);
+        multi_variable_declaration(parser).or_else(|| variable_declaration(parser));
+    }
+
     type_constraints(parser);
-    if parser.eat(T![=])
-        && property_delegate(parser).or_else(|| expression(parser).map(|e| e.marker())).is_none()
-    {
-        parser.error("expected an expression");
+    if parser.eat(T![=]) {
+        if expression(parser).is_none() {
+            parser.error("expected an expression");
+        }
+    } else {
+        property_delegate(parser);
     }
     parser.eat(T![;]);
 
-    let mod_cm = modifiers(parser);
+    let mod_cm = uncompleted_modifiers(parser);
     if parser.at(GET_KW) {
         getter(parser, mod_cm);
         semi(parser);
-        let mod_cm = modifiers(parser);
+        let mod_cm = uncompleted_modifiers(parser);
         if parser.at(SET_KW) {
             setter(parser, mod_cm);
+        } else if let Some(mod_cm) = mod_cm {
+            let (completed, dangling) = m.complete_before(parser, PROPERTY_DECLARATION, mod_cm);
+            return Some(CMWithDanglingModifier {
+                completed,
+                dangling: Some(dangling.complete(parser)),
+            });
         }
     } else if parser.at(SET_KW) {
         setter(parser, mod_cm);
         semi(parser);
-        let mod_cm = modifiers(parser);
+        let mod_cm = uncompleted_modifiers(parser);
         if parser.at(GET_KW) {
             getter(parser, mod_cm);
+        } else if let Some(mod_cm) = mod_cm {
+            let (completed, dangling) = m.complete_before(parser, PROPERTY_DECLARATION, mod_cm);
+            return Some(CMWithDanglingModifier {
+                completed,
+                dangling: Some(dangling.complete(parser)),
+            });
         }
+    } else if let Some(mod_cm) = mod_cm {
+        let (completed, dangling) = m.complete_before(parser, PROPERTY_DECLARATION, mod_cm);
+        return Some(CMWithDanglingModifier {
+            completed,
+            dangling: Some(dangling.complete(parser)),
+        });
     }
-    Some(m.complete(parser, PROPERTY_DECLARATION))
+    Some(m.complete(parser, PROPERTY_DECLARATION).into())
 }
 
 fn getter(
     parser: &mut Parser<'_>,
-    modifiers_marker: Option<CompletedMarker>,
+    modifiers_marker: Option<UnCompletedMarker>,
 ) -> Option<CompletedMarker> {
     if !parser.at(GET_KW) {
         return None;
     }
-    let m = modifiers_marker.map(|cm| cm.precede(parser)).unwrap_or_else(|| parser.start());
+    let m = modifiers_marker
+        .map(|um| um.complete(parser).precede(parser))
+        .unwrap_or_else(|| parser.start());
 
     if parser.eat(T!['(']) {
         if !parser.eat(T![')']) {
@@ -278,12 +315,15 @@ fn getter(
 
 fn setter(
     parser: &mut Parser<'_>,
-    modifiers_marker: Option<CompletedMarker>,
+    modifiers_marker: Option<UnCompletedMarker>,
 ) -> Option<CompletedMarker> {
     if !parser.at(SET_KW) {
         return None;
     }
-    let m = modifiers_marker.map(|cm| cm.precede(parser)).unwrap_or_else(|| parser.start());
+    let m = modifiers_marker
+        .map(|um| um.complete(parser).precede(parser))
+        .unwrap_or_else(|| parser.start());
+
     if parser.eat(T!['(']) {
         if function_value_parameter_with_optional_type(parser).is_some() {
             parser.eat(T![,]);
@@ -328,7 +368,7 @@ fn function_value_parameters(parser: &mut Parser<'_>) -> Option<CompletedMarker>
         parser.eat(T!['(']);
 
         if function_value_parameter(parser).is_some() {
-            while !parser.eat(T![,]) && function_value_parameter(parser).is_some() {}
+            while parser.eat(T![,]) && function_value_parameter(parser).is_some() {}
         }
 
         if !parser.eat(T![')']) {
@@ -341,8 +381,13 @@ fn function_value_parameters(parser: &mut Parser<'_>) -> Option<CompletedMarker>
 }
 fn function_value_parameter(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     let m = parser.start();
-    parameter_modifiers(parser);
-    if parameter(parser).is_none() {
+    let modifier = parameter_modifiers(parser);
+    let param = parameter(parser);
+    if modifier.is_none() && param.is_none() {
+        m.abandon(parser);
+        return None;
+    }
+    if param.is_none() {
         parser.error("expected a parameter");
     }
 
@@ -402,9 +447,9 @@ pub(crate) fn parameters_with_opt_type(parser: &mut Parser<'_>) -> Option<Comple
         parser.eat(T!['(']);
 
         if function_value_parameter_with_optional_type(parser).is_some() {
-            while !parser.eat(T![,])
-                && function_value_parameter_with_optional_type(parser).is_some()
-            {}
+            while parser.eat(T![,]) && function_value_parameter_with_optional_type(parser).is_some()
+            {
+            }
         }
 
         if !parser.eat(T![')']) {

@@ -19,7 +19,7 @@ pub(crate) fn is_simple_identifier(parser: &mut Parser<'_>) -> bool {
 
 pub(crate) fn is_simple_ident_at(parser: &mut Parser<'_>, n: usize) -> bool {
     let current = parser.nth(n);
-    // FIXME: this function should receive version as an argument
+    // FIXME: this function should receive version as argument
     matches!((current.is_soft_keyword(crate::KtVersion::LATEST), current), (true, _) | (_, IDENT))
 }
 

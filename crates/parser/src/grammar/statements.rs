@@ -1,6 +1,7 @@
 use crate::SyntaxKind::*;
 use crate::T;
 
+use super::CMWithDanglingModifier;
 use super::annotations::annotation;
 use super::class_members::{multi_variable_declaration, variable_declaration};
 use super::expressions::expression;
@@ -31,40 +32,52 @@ pub(crate) fn semis(parser: &mut Parser<'_>) -> bool {
 }
 
 pub(crate) fn statements(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    if let Some(first) = statement(parser) {
-        let m = first.precede(parser);
+    let m = parser.start();
+    if let Some(CMWithDanglingModifier { dangling, .. }) = statement(parser, None) {
+        let mut dangling = dangling;
         loop {
             if !semis(parser) {
                 break;
             }
-            if statement(parser).is_none() {
+            if let Some(CMWithDanglingModifier { dangling: new_dangling, .. }) =
+                statement(parser, dangling)
+            {
+                dangling = new_dangling;
+            } else {
                 break;
-            }
+            };
         }
         semis(parser);
         Some(m.complete(parser, STATEMENTS))
     } else {
+        m.abandon(parser);
         None
     }
 }
 
-pub(crate) fn statement(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+pub(super) fn statement(
+    parser: &mut Parser<'_>,
+    dangling_modifier: Option<CompletedMarker>,
+) -> Option<CMWithDanglingModifier> {
     let m = parser.start();
     while label(parser).or_else(|| annotation(parser)).is_some() {}
 
-    if loop_statement(parser)
-        .or_else(|| {
-            let modifiers = modifiers(parser);
-            declaration(parser, modifiers)
-        })
-        .or_else(|| assignment::assignment_or_expression(parser))
-        .is_none()
-    {
+    let entry: Option<CMWithDanglingModifier> = {
+        loop_statement(parser)
+            .map(Into::into)
+            .or_else(|| {
+                let modifiers = dangling_modifier.or_else(|| modifiers(parser));
+                declaration(parser, modifiers)
+            })
+            .or_else(|| assignment::assignment_or_expression(parser).map(Into::into))
+    };
+
+    let Some(entry) = entry else {
         m.abandon(parser);
-        None
-    } else {
-        Some(m.complete(parser, STATEMENT))
-    }
+        return None;
+    };
+
+    Some(CMWithDanglingModifier::new(m.complete(parser, STATEMENT), entry.dangling))
 }
 
 fn loop_statement(parser: &mut Parser<'_>) -> Option<CompletedMarker> {

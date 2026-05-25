@@ -5,8 +5,17 @@ use crate::T;
 use crate::version::KtVersion;
 use drop_bomb::DropBomb;
 use std::cell::Cell;
+use std::num::NonZeroU32;
 
 use super::{event::Event, input::Input, token_set::TokenSet};
+
+/// Build a forward-parent offset. The offset is always ≥ 1 because the
+/// forward-parent event is created *after* the event it forwards to, so
+/// `NonZeroU32` is always valid here. Panics only on a parser bug.
+#[inline]
+fn fwd_parent(offset: u32) -> NonZeroU32 {
+    NonZeroU32::new(offset).expect("forward-parent offset must be non-zero")
+}
 
 /// `Parser` struct provides the low-level API for
 /// navigating through the stream of tokens and
@@ -55,7 +64,11 @@ impl<'t> Parser<'t> {
         assert!(n <= 3);
 
         let steps = self.steps.get();
-        assert!((steps as usize) < PARSER_STEP_LIMIT, "the parser seems stuck");
+        assert!(
+            (steps as usize) < PARSER_STEP_LIMIT,
+            "the parser seems stuck at {:?}",
+            self.inp.kind(self.pos + n)
+        );
         self.steps.set(steps + 1);
 
         self.inp.kind(self.pos + n)
@@ -68,6 +81,10 @@ impl<'t> Parser<'t> {
 
     pub(crate) fn nth_at(&self, n: usize, kind: SyntaxKind) -> bool {
         self.inp.kind(self.pos + n) == kind
+    }
+
+    pub(crate) fn nth_ats(&self, n: usize, kinds: TokenSet) -> bool {
+        kinds.contains(self.inp.kind(self.pos + n))
     }
 
     /// Consume the next token if `kind` matches.
@@ -223,6 +240,26 @@ impl Marker {
         CompletedMarker::new(self.pos, end_pos, kind)
     }
 
+    /// Finishes the syntax tree node before the current marker and assigns `kind` to it.
+    pub(crate) fn complete_before(
+        mut self,
+        p: &mut Parser<'_>,
+        kind: SyntaxKind,
+        mut m: UnCompletedMarker,
+    ) -> (CompletedMarker, UnCompletedMarker) {
+        self.bomb.defuse();
+        let idx = self.pos as usize;
+        match &mut p.events[idx] {
+            Event::Start { kind: slot, .. } => {
+                *slot = kind;
+            }
+            _ => unreachable!(),
+        }
+        p.events.insert(m.marker.pos as usize, Event::Finish);
+        m.marker.pos += 1;
+        (CompletedMarker::new(self.pos, m.marker.pos, kind), m)
+    }
+
     /// Abandons the syntax tree node. All its children
     /// are attached to its parent instead.
     pub(crate) fn abandon(mut self, parser: &mut Parser<'_>) {
@@ -234,6 +271,25 @@ impl Marker {
                 Some(Event::Start { kind: TOMBSTONE, forward_parent: None })
             ));
         }
+    }
+
+    pub(crate) fn complete_later(self, kind: SyntaxKind) -> UnCompletedMarker {
+        UnCompletedMarker::new(self, kind)
+    }
+}
+
+pub(crate) struct UnCompletedMarker {
+    marker: Marker,
+    kind: SyntaxKind,
+}
+
+impl UnCompletedMarker {
+    fn new(marker: Marker, kind: SyntaxKind) -> Self {
+        Self { marker, kind }
+    }
+
+    pub(crate) fn complete(self, parser: &mut Parser<'_>) -> CompletedMarker {
+        self.marker.complete(parser, self.kind)
     }
 }
 
@@ -267,7 +323,7 @@ impl CompletedMarker {
         let idx = self.start_pos as usize;
         match &mut parser.events[idx] {
             Event::Start { forward_parent, .. } => {
-                *forward_parent = Some(new_pos.pos - self.start_pos);
+                *forward_parent = Some(fwd_parent(new_pos.pos - self.start_pos));
             }
             _ => unreachable!(),
         }
@@ -280,7 +336,7 @@ impl CompletedMarker {
         let idx = m.pos as usize;
         match &mut parser.events[idx] {
             Event::Start { forward_parent, .. } => {
-                *forward_parent = Some(self.start_pos - m.pos);
+                *forward_parent = Some(fwd_parent(self.start_pos - m.pos));
             }
             _ => unreachable!(),
         }

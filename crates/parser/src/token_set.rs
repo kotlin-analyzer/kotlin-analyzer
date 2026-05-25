@@ -48,9 +48,9 @@ impl TokenSet {
 #[test]
 fn token_set_works_for_tokens() {
     use crate::SyntaxKind::*;
-    let ts = TokenSet::new(&[EOF, SHEBANG_LINE]);
+    let ts = TokenSet::new(&[EOF, SHEBANG]);
     assert!(ts.contains(EOF));
-    assert!(ts.contains(SHEBANG_LINE));
+    assert!(ts.contains(SHEBANG));
     assert!(!ts.contains(ADD));
     assert!(!ts.contains(DELIMITED_COMMENT));
 }

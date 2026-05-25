@@ -1,20 +1,24 @@
-use crate::SyntaxKind::*;
 use crate::T;
+use crate::{SyntaxKind::*, UnCompletedMarker};
 
 use super::annotations::annotation;
 use super::class_members::context_parameter_list;
 use crate::{CompletedMarker, Parser};
 
 pub(crate) fn modifiers(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    uncompleted_modifiers(parser).map(|cm| cm.complete(parser))
+}
+
+pub(crate) fn uncompleted_modifiers(parser: &mut Parser<'_>) -> Option<UnCompletedMarker> {
     if let Some(cm) = annotation(parser).or_else(|| modifier(parser)) {
         let m = cm.precede(parser);
         while annotation(parser).or_else(|| modifier(parser)).is_some() {}
-        Some(m.complete(parser, MODIFIERS))
+        Some(m.complete_later(MODIFIERS))
     } else {
         if let Some(cm) = context_parameter_list(parser) {
             let m = cm.precede(parser);
             while context_parameter_list(parser).is_some() {}
-            Some(m.complete(parser, MODIFIERS))
+            Some(m.complete_later(MODIFIERS))
         } else {
             None
         }
@@ -125,13 +129,12 @@ fn inheritance_modifier(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
 }
 
 fn parameter_modifier(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    match parser.current() {
-        T![vararg] | T![noinline] | T![crossinline] => {
-            let m = parser.start();
-            parser.bump_any();
-            Some(m.complete(parser, PARAMETER_MODIFIER))
-        }
-        _ => None,
+    if parser.at(T![vararg]) || parser.at(T![noinline]) || parser.at(T![crossinline]) {
+        let m = parser.start();
+        parser.bump_any();
+        Some(m.complete(parser, PARAMETER_MODIFIER))
+    } else {
+        None
     }
 }
 

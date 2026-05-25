@@ -5,6 +5,7 @@
 use super::output::Output;
 use crate::SyntaxKind::{self, *};
 use std::mem;
+use std::num::NonZeroU32;
 
 /// `Parser` produces a flat list of `Event`s.
 /// They are converted to a tree-structure in
@@ -50,7 +51,7 @@ pub(crate) enum Event {
     /// ```
     ///
     /// See also `CompletedMarker::precede`.
-    Start { kind: SyntaxKind, forward_parent: Option<u32> },
+    Start { kind: SyntaxKind, forward_parent: Option<NonZeroU32> },
 
     /// Complete the previous `Start` event
     Finish,
@@ -87,7 +88,7 @@ pub(super) fn process(mut events: Vec<Event>, mut errors: Vec<String>) -> Output
                 let mut idx = i;
                 let mut fp = forward_parent;
                 while let Some(fwd) = fp {
-                    idx += fwd as usize;
+                    idx += fwd.get() as usize;
                     // append `A`'s forward_parent `B`
                     fp = match mem::replace(&mut events[idx], Event::tombstone()) {
                         Event::Start { kind, forward_parent } => {
