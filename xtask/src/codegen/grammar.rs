@@ -507,8 +507,9 @@ fn generate_syntax_kinds(grammar: KindsSrc) -> String {
         .iter()
         .chain(strict_compound_keywords.iter().map(|(token, _variant)| token))
         .map(|token| {
-            let token: proc_macro2::TokenStream =
-                token.parse().expect(&format!("token `{token}` is not a valid Rust token"));
+            let token: proc_macro2::TokenStream = token
+                .parse()
+                .unwrap_or_else(|_| panic!("token `{token}` is not a valid Rust token"));
             quote! { #token }
         });
 
@@ -800,7 +801,7 @@ impl Field {
             t @ Field::Token { .. } => {
                 let id = t.t_id().unwrap();
                 let token: proc_macro2::TokenStream =
-                    id.parse().expect(&format!("token `{id}` is not a valid Rust token"));
+                    id.parse().unwrap_or_else(|_| panic!("token `{id}` is not a valid Rust token"));
                 Some(quote! { T![#token] })
             }
             _ => None,
@@ -1194,7 +1195,7 @@ fn extract_enum_traits(ast: &mut AstSrc) {
                 nodes
                     .iter()
                     .find(|it| &it.name == var)
-                    .expect(&format!("var is {var}, enum is {:?}", enm))
+                    .unwrap_or_else(|| panic!("var is {var}, enum is {:?}", enm))
             })
             .map(|node| node.traits.iter().cloned().collect::<BTreeSet<_>>());
 

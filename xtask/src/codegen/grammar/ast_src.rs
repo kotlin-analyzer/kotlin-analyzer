@@ -201,7 +201,7 @@ pub(crate) fn generate_kind_src(
     enums: &[AstEnumSrc],
     grammar: &ungrammar::Grammar,
 ) -> KindsSrc {
-    let mut soft_keywords: Vec<&_> = SOFT_KEYWORDS.iter().copied().collect();
+    let mut soft_keywords: Vec<&_> = SOFT_KEYWORDS.to_vec();
 
     let mut keywords: Vec<&_> = Vec::new();
     let mut tokens: Vec<&_> = TOKENS.to_vec();

@@ -1,5 +1,3 @@
-use crate::CompletedMarker;
-
 pub(crate) mod annotations;
 pub(crate) mod class_members;
 pub(crate) mod expressions;
@@ -55,35 +53,5 @@ pub(crate) mod entry {
             }
             m.complete(p, ERROR);
         }
-    }
-}
-
-struct CMWithDanglingModifier {
-    completed: CompletedMarker,
-    dangling: Option<CompletedMarker>,
-}
-
-impl CMWithDanglingModifier {
-    fn new(completed: CompletedMarker, dangling: Option<CompletedMarker>) -> Self {
-        Self { completed, dangling }
-    }
-    fn marker(self) -> CompletedMarker {
-        self.completed
-    }
-}
-
-impl From<CompletedMarker> for CMWithDanglingModifier {
-    fn from(completed: CompletedMarker) -> Self {
-        CMWithDanglingModifier::new(completed, None)
-    }
-}
-
-trait Dangling {
-    fn as_dangling_modifier(self, main: CompletedMarker) -> Option<CMWithDanglingModifier>;
-}
-
-impl Dangling for Option<CompletedMarker> {
-    fn as_dangling_modifier(self, main: CompletedMarker) -> Option<CMWithDanglingModifier> {
-        Some(CMWithDanglingModifier::new(main, self))
     }
 }

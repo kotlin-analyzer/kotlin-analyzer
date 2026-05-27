@@ -1,7 +1,6 @@
 // use syntax::Token;
 use crate::{SyntaxKind::*, T};
 
-use super::CMWithDanglingModifier;
 use super::annotations::unescaped_annotation;
 use super::class_members::PROPERTY_DECLARATION_START;
 use super::class_members::{
@@ -31,18 +30,7 @@ pub(crate) fn script(parser: &mut Parser<'_>) {
     while file_annotation(parser).is_some() {}
     package_header(parser);
     import_list(parser);
-    let mut dangling_modifier = None;
-    loop {
-        if let Some(CMWithDanglingModifier { dangling, .. }) = statement(parser, dangling_modifier)
-        {
-            dangling_modifier = dangling;
-        } else {
-            break;
-        }
-        if !semi(parser) {
-            break;
-        }
-    }
+    while statement(parser).is_some() && semi(parser) {}
 
     m.complete(parser, SCRIPT);
 }
@@ -181,17 +169,17 @@ fn type_alias(
 pub(super) fn declaration(
     parser: &mut Parser<'_>,
     modifiers_marker: Option<CompletedMarker>,
-) -> Option<CMWithDanglingModifier> {
+) -> Option<CompletedMarker> {
     if starts_class_declaration(parser) {
-        class_declaration(parser, modifiers_marker).map(Into::into)
+        class_declaration(parser, modifiers_marker)
     } else if starts_fn_declaration(parser) {
-        function_declaration(parser, modifiers_marker).map(Into::into)
+        function_declaration(parser, modifiers_marker)
     } else if parser.at(T![object]) {
-        object_declaration(parser, modifiers_marker).map(Into::into)
+        object_declaration(parser, modifiers_marker)
     } else if parser.at_ts(PROPERTY_DECLARATION_START) {
         property_declaration(parser, modifiers_marker)
     } else if parser.at(T![typealias]) {
-        type_alias(parser, modifiers_marker).map(Into::into)
+        type_alias(parser, modifiers_marker)
     } else {
         None
     }

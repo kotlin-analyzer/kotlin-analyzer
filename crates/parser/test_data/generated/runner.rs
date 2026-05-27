@@ -9,6 +9,3 @@ mod ok {
         run_and_expect_no_errors("test_data/parser/inline/ok/single_annotation.kt");
     }
 }
-mod err {
-    use crate::tests::*;
-}

@@ -569,7 +569,9 @@ fn parse_method_descriptor(descriptor: &str) -> Result<MethodDescriptor, Decompi
     unreachable!()
 }
 
-fn matches_mask(flags: u16, mask: u16) -> bool { (flags & mask) != 0x0 }
+fn matches_mask(flags: u16, mask: u16) -> bool {
+    (flags & mask) != 0x0
+}
 
 #[cfg(test)]
 mod tests {

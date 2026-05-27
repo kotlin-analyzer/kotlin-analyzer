@@ -16,63 +16,61 @@ KOTLIN_FILE
           WHITESPACE " "
           WHITESPACE " "
           STATEMENTS
-            STATEMENT
+            SINGLE_ANNOTATION
+              ANNOTATION_USE_SITE_TARGET
+                AT " @"
+                GET_KW "get"
+                COLON ":"
+              USER_TYPE
+                SIMPLE_USER_TYPE
+                  SIMPLE_IDENTIFIER
+                    IDENT "Anno1"
+            NEWLINE "\n"
+            WHITESPACE " "
+            WHITESPACE " "
+            WHITESPACE " "
+            PROPERTY_DECLARATION
+              VAL_KW "val"
+              WHITESPACE " "
+              VARIABLE_DECLARATION
+                SIMPLE_IDENTIFIER
+                  IDENT "x"
+                COLON ":"
+                WHITESPACE " "
+                TYPE
+                  TYPE_REFERENCE
+                    USER_TYPE
+                      SIMPLE_USER_TYPE
+                        SIMPLE_IDENTIFIER
+                          IDENT "Int"
+            NEWLINE "\n"
+            WHITESPACE " "
+            WHITESPACE " "
+            MODIFIERS
               SINGLE_ANNOTATION
-                ANNOTATION_USE_SITE_TARGET
-                  AT " @"
-                  GET_KW "get"
-                  COLON ":"
+                AT " @"
                 USER_TYPE
                   SIMPLE_USER_TYPE
                     SIMPLE_IDENTIFIER
-                      IDENT "Anno1"
-              NEWLINE "\n"
+                      IDENT "CustomAnno"
+            NEWLINE "\n"
+            WHITESPACE " "
+            WHITESPACE " "
+            WHITESPACE " "
+            PROPERTY_DECLARATION
+              VAR_KW "var"
               WHITESPACE " "
-              WHITESPACE " "
-              WHITESPACE " "
-              PROPERTY_DECLARATION
-                VAL_KW "val"
+              VARIABLE_DECLARATION
+                SIMPLE_IDENTIFIER
+                  IDENT "y"
+                COLON ":"
                 WHITESPACE " "
-                VARIABLE_DECLARATION
-                  SIMPLE_IDENTIFIER
-                    IDENT "x"
-                  COLON ":"
-                  WHITESPACE " "
-                  TYPE
-                    TYPE_REFERENCE
-                      USER_TYPE
-                        SIMPLE_USER_TYPE
-                          SIMPLE_IDENTIFIER
-                            IDENT "Int"
-                NEWLINE "\n"
-                WHITESPACE " "
-                WHITESPACE " "
-                PROPERTY_DECLARATION
-                  MODIFIERS
-                    SINGLE_ANNOTATION
-                      AT " @"
-                      USER_TYPE
-                        SIMPLE_USER_TYPE
-                          SIMPLE_IDENTIFIER
-                            IDENT "CustomAnno"
-              NEWLINE "\n"
-              WHITESPACE " "
-              WHITESPACE " "
-              WHITESPACE " "
-              STATEMENT
-                VAR_KW "var"
-                WHITESPACE " "
-                VARIABLE_DECLARATION
-                  SIMPLE_IDENTIFIER
-                    IDENT "y"
-                  COLON ":"
-                  WHITESPACE " "
-                  TYPE
-                    TYPE_REFERENCE
-                      USER_TYPE
-                        SIMPLE_USER_TYPE
-                          SIMPLE_IDENTIFIER
-                            IDENT "Int"
+                TYPE
+                  TYPE_REFERENCE
+                    USER_TYPE
+                      SIMPLE_USER_TYPE
+                        SIMPLE_IDENTIFIER
+                          IDENT "Int"
           NEWLINE "\n"
           R_CURL "}"
   NEWLINE "\n"

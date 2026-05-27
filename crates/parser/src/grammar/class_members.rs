@@ -1,6 +1,5 @@
-use crate::{SyntaxKind::*, T, UnCompletedMarker};
+use crate::{SyntaxKind::*, T};
 
-use super::CMWithDanglingModifier;
 use super::classes::{class_body, delegation_specifiers, type_constraints};
 use super::general::declaration;
 use super::identifiers::is_simple_identifier;
@@ -12,7 +11,7 @@ use super::annotations::annotation;
 use super::classes::type_parameters;
 use super::expressions::{expression, value_arguments};
 use super::identifiers::simple_identifier;
-use super::modifiers::{modifiers, parameter_modifiers, uncompleted_modifiers};
+use super::modifiers::{modifiers, parameter_modifiers};
 use super::types::ty;
 
 pub(crate) fn class_member_declarations(
@@ -32,16 +31,16 @@ pub(crate) fn class_member_declarations(
 fn class_member_declaration(
     parser: &mut Parser<'_>,
     modifiers_marker: Option<CompletedMarker>,
-) -> Option<CMWithDanglingModifier> {
+) -> Option<CompletedMarker> {
     if let Some(cm) = anonymous_initializer(parser) {
-        return Some(CMWithDanglingModifier::new(cm, None));
+        return Some(cm);
     }
     let modifiers_marker = modifiers_marker.or_else(|| modifiers(parser));
 
     if parser.at(T![companion]) {
-        companion_object(parser, modifiers_marker).map(Into::into)
+        companion_object(parser, modifiers_marker)
     } else if parser.at(T![constructor]) {
-        secondary_constructor(parser, modifiers_marker).map(Into::into)
+        secondary_constructor(parser, modifiers_marker)
     } else {
         declaration(parser, modifiers_marker)
     }
@@ -225,7 +224,7 @@ const AFTER_PROP_NAME: TokenSet =
 pub(super) fn property_declaration(
     parser: &mut Parser<'_>,
     modifiers_marker: Option<CompletedMarker>,
-) -> Option<CMWithDanglingModifier> {
+) -> Option<CompletedMarker> {
     if !parser.at_ts(PROPERTY_DECLARATION_START) {
         return None;
     }
@@ -251,54 +250,45 @@ pub(super) fn property_declaration(
     }
     parser.eat(T![;]);
 
-    let mod_cm = uncompleted_modifiers(parser);
+    let mut cm = m.complete(parser, PROPERTY_DECLARATION);
+
+    let mod_cm = modifiers(parser);
     if parser.at(GET_KW) {
         getter(parser, mod_cm);
         semi(parser);
-        let mod_cm = uncompleted_modifiers(parser);
+
+        cm = cm.extend_right(parser);
+        let mod_cm = modifiers(parser);
+
         if parser.at(SET_KW) {
             setter(parser, mod_cm);
-        } else if let Some(mod_cm) = mod_cm {
-            let (completed, dangling) = m.complete_before(parser, PROPERTY_DECLARATION, mod_cm);
-            return Some(CMWithDanglingModifier {
-                completed,
-                dangling: Some(dangling.complete(parser)),
-            });
+            return Some(cm.extend_right(parser));
         }
     } else if parser.at(SET_KW) {
         setter(parser, mod_cm);
         semi(parser);
-        let mod_cm = uncompleted_modifiers(parser);
+
+        cm = cm.extend_right(parser);
+        let mod_cm = modifiers(parser);
+
         if parser.at(GET_KW) {
             getter(parser, mod_cm);
-        } else if let Some(mod_cm) = mod_cm {
-            let (completed, dangling) = m.complete_before(parser, PROPERTY_DECLARATION, mod_cm);
-            return Some(CMWithDanglingModifier {
-                completed,
-                dangling: Some(dangling.complete(parser)),
-            });
+            return Some(cm.extend_right(parser));
         }
-    } else if let Some(mod_cm) = mod_cm {
-        let (completed, dangling) = m.complete_before(parser, PROPERTY_DECLARATION, mod_cm);
-        return Some(CMWithDanglingModifier {
-            completed,
-            dangling: Some(dangling.complete(parser)),
-        });
     }
-    Some(m.complete(parser, PROPERTY_DECLARATION).into())
+    Some(cm)
 }
 
 fn getter(
     parser: &mut Parser<'_>,
-    modifiers_marker: Option<UnCompletedMarker>,
+    modifiers_marker: Option<CompletedMarker>,
 ) -> Option<CompletedMarker> {
     if !parser.at(GET_KW) {
         return None;
     }
-    let m = modifiers_marker
-        .map(|um| um.complete(parser).precede(parser))
-        .unwrap_or_else(|| parser.start());
+    let m = modifiers_marker.map(|cm| cm.precede(parser)).unwrap_or_else(|| parser.start());
 
+    parser.bump(T![get]);
     if parser.eat(T!['(']) {
         if !parser.eat(T![')']) {
             parser.error("expected ')'");
@@ -315,15 +305,14 @@ fn getter(
 
 fn setter(
     parser: &mut Parser<'_>,
-    modifiers_marker: Option<UnCompletedMarker>,
+    modifiers_marker: Option<CompletedMarker>,
 ) -> Option<CompletedMarker> {
     if !parser.at(SET_KW) {
         return None;
     }
-    let m = modifiers_marker
-        .map(|um| um.complete(parser).precede(parser))
-        .unwrap_or_else(|| parser.start());
+    let m = modifiers_marker.map(|cm| cm.precede(parser)).unwrap_or_else(|| parser.start());
 
+    parser.bump(T![set]);
     if parser.eat(T!['(']) {
         if function_value_parameter_with_optional_type(parser).is_some() {
             parser.eat(T![,]);

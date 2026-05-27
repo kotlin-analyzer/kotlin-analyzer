@@ -3,6 +3,7 @@
 use crate::SyntaxKind::{self, EOF, ERROR, TOMBSTONE};
 use crate::T;
 use crate::version::KtVersion;
+use ::std::mem;
 use drop_bomb::DropBomb;
 use std::cell::Cell;
 use std::num::NonZeroU32;
@@ -240,26 +241,6 @@ impl Marker {
         CompletedMarker::new(self.pos, end_pos, kind)
     }
 
-    /// Finishes the syntax tree node before the current marker and assigns `kind` to it.
-    pub(crate) fn complete_before(
-        mut self,
-        p: &mut Parser<'_>,
-        kind: SyntaxKind,
-        mut m: UnCompletedMarker,
-    ) -> (CompletedMarker, UnCompletedMarker) {
-        self.bomb.defuse();
-        let idx = self.pos as usize;
-        match &mut p.events[idx] {
-            Event::Start { kind: slot, .. } => {
-                *slot = kind;
-            }
-            _ => unreachable!(),
-        }
-        p.events.insert(m.marker.pos as usize, Event::Finish);
-        m.marker.pos += 1;
-        (CompletedMarker::new(self.pos, m.marker.pos, kind), m)
-    }
-
     /// Abandons the syntax tree node. All its children
     /// are attached to its parent instead.
     pub(crate) fn abandon(mut self, parser: &mut Parser<'_>) {
@@ -271,25 +252,6 @@ impl Marker {
                 Some(Event::Start { kind: TOMBSTONE, forward_parent: None })
             ));
         }
-    }
-
-    pub(crate) fn complete_later(self, kind: SyntaxKind) -> UnCompletedMarker {
-        UnCompletedMarker::new(self, kind)
-    }
-}
-
-pub(crate) struct UnCompletedMarker {
-    marker: Marker,
-    kind: SyntaxKind,
-}
-
-impl UnCompletedMarker {
-    fn new(marker: Marker, kind: SyntaxKind) -> Self {
-        Self { marker, kind }
-    }
-
-    pub(crate) fn complete(self, parser: &mut Parser<'_>) -> CompletedMarker {
-        self.marker.complete(parser, self.kind)
     }
 }
 
@@ -341,6 +303,18 @@ impl CompletedMarker {
             _ => unreachable!(),
         }
         self
+    }
+
+    /// Extends this completed marker *to the right* up to end.
+    pub(crate) fn extend_right(self, parser: &mut Parser<'_>) -> CompletedMarker {
+        let idx = self.end_pos as usize;
+        match mem::replace(&mut parser.events[idx], Event::tombstone()) {
+            Event::Finish => {}
+            _ => unreachable!(),
+        };
+        parser.push_event(Event::Finish);
+        let end_pos = parser.events.len() as u32;
+        CompletedMarker::new(self.start_pos, end_pos, self.kind)
     }
 
     pub(crate) fn kind(&self) -> SyntaxKind {

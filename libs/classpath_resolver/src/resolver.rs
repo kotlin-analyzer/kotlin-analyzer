@@ -126,6 +126,10 @@ fn run_shell(command: &str, args: &[&str], cwd: &Path) -> Result<String> {
     String::from_utf8(output.stdout).map_err(Error::Utf8)
 }
 
-fn gradle_command() -> &'static str { if cfg!(windows) { "gradlew.bat" } else { "./gradlew" } }
+fn gradle_command() -> &'static str {
+    if cfg!(windows) { "gradlew.bat" } else { "./gradlew" }
+}
 
-fn maven_command() -> &'static str { if cfg!(windows) { "mvnw.cmd" } else { "./mvnw" } }
+fn maven_command() -> &'static str {
+    if cfg!(windows) { "mvnw.cmd" } else { "./mvnw" }
+}
