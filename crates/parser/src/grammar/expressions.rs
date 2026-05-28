@@ -12,7 +12,7 @@ use super::class_members::{
 };
 use super::classes::{class_body, delegation_specifiers, type_constraints};
 use super::identifiers::{is_simple_identifier, simple_identifier};
-use super::statements::{block, control_structure_body, label, semi, statements};
+use super::statements::{CaptureStmts, block, control_structure_body, label, semi, statements};
 use super::types::{RecvType, receiver_type, ty, type_projection};
 use crate::{CompletedMarker, Parser};
 
@@ -720,7 +720,7 @@ fn lambda_literal(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     if lambda_parameters(parser).is_some() && !parser.eat(T![->]) {
         parser.error("expected `->`");
     }
-    statements(parser);
+    statements(parser, CaptureStmts::Capture);
     if !parser.eat(T!['}']) {
         parser.error("expected `}`");
     }

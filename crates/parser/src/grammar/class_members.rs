@@ -252,13 +252,13 @@ pub(super) fn property_declaration(
 
     let mut cm = m.complete(parser, PROPERTY_DECLARATION);
 
-    let mod_cm = modifiers(parser);
+    let mut mod_cm = modifiers(parser);
     if parser.at(GET_KW) {
         getter(parser, mod_cm);
         semi(parser);
 
         cm = cm.extend_right(parser);
-        let mod_cm = modifiers(parser);
+        mod_cm = modifiers(parser);
 
         if parser.at(SET_KW) {
             setter(parser, mod_cm);
@@ -269,14 +269,14 @@ pub(super) fn property_declaration(
         semi(parser);
 
         cm = cm.extend_right(parser);
-        let mod_cm = modifiers(parser);
+        mod_cm = modifiers(parser);
 
         if parser.at(GET_KW) {
             getter(parser, mod_cm);
             return Some(cm.extend_right(parser));
         }
     }
-    Some(cm)
+    Some(cm.with_dangling(mod_cm))
 }
 
 fn getter(

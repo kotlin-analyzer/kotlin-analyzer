@@ -10,7 +10,7 @@ use super::classes::starts_class_declaration;
 use super::classes::{class_declaration, type_parameters};
 use super::identifiers::{identifier, simple_identifier};
 use super::modifiers::modifiers;
-use super::statements::{semi, semis, statement};
+use super::statements::{CaptureStmts, semi, semis, statements};
 use super::types::ty;
 use crate::{CompletedMarker, Parser};
 
@@ -30,7 +30,8 @@ pub(crate) fn script(parser: &mut Parser<'_>) {
     while file_annotation(parser).is_some() {}
     package_header(parser);
     import_list(parser);
-    while statement(parser).is_some() && semi(parser) {}
+
+    statements(parser, CaptureStmts::NoCapture);
 
     m.complete(parser, SCRIPT);
 }

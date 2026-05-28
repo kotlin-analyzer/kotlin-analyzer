@@ -260,11 +260,21 @@ pub(crate) struct CompletedMarker {
     start_pos: u32,
     end_pos: u32,
     kind: SyntaxKind,
+    dangling: Option<Box<CompletedMarker>>,
 }
 
 impl CompletedMarker {
     fn new(start_pos: u32, end_pos: u32, kind: SyntaxKind) -> Self {
-        CompletedMarker { start_pos, end_pos, kind }
+        CompletedMarker { start_pos, end_pos, kind, dangling: None }
+    }
+
+    pub(crate) fn with_dangling(mut self, dangling: Option<CompletedMarker>) -> Self {
+        self.dangling = dangling.map(Box::new);
+        self
+    }
+
+    pub(crate) fn dangling(self) -> Option<CompletedMarker> {
+        self.dangling.map(|d| *d)
     }
 
     /// This method allows to create a new node which starts

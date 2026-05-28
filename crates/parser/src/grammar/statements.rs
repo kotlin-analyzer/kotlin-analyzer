@@ -30,25 +30,45 @@ pub(crate) fn semis(parser: &mut Parser<'_>) -> bool {
     }
 }
 
-pub(crate) fn statements(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    let m = parser.start();
-    if statement(parser).is_some() {
-        while semis(parser) && statement(parser).is_some() {}
-        semis(parser);
-        Some(m.complete(parser, STATEMENTS))
+pub(super) enum CaptureStmts {
+    Capture,
+    NoCapture,
+}
+
+pub(super) fn statements(
+    parser: &mut Parser<'_>,
+    capture: CaptureStmts,
+) -> Option<CompletedMarker> {
+    let m = { if matches!(capture, CaptureStmts::Capture) { Some(parser.start()) } else { None } };
+    let mut dangling = None;
+    let mut found = false;
+
+    while let Some(cm) = statement(parser, dangling) {
+        found = true;
+        dangling = cm.dangling();
+        if !semis(parser) {
+            break;
+        }
+    }
+    if found {
+        m.map(|m| m.complete(parser, STATEMENTS))
     } else {
-        m.abandon(parser);
+        m.map(|m| m.abandon(parser));
         None
     }
 }
 
-pub(super) fn statement(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    // HKGIC: Not making statement a node makes life a lot easier
+pub(super) fn statement(
+    parser: &mut Parser<'_>,
+    dangling: Option<CompletedMarker>,
+) -> Option<CompletedMarker> {
+    // HKGIC: Not making statement a node makes life a lot easier in regards to passing dangling modifiers markers
     while label(parser).or_else(|| annotation(parser)).is_some() {}
 
     loop_statement(parser)
         .or_else(|| {
-            let modifiers = modifiers(parser);
+            // TODO: join this with annotation from above
+            let modifiers = dangling.or_else(|| modifiers(parser));
             declaration(parser, modifiers)
         })
         .or_else(|| assignment::assignment_or_expression(parser))
@@ -168,7 +188,7 @@ pub(crate) fn label(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
 }
 
 pub(crate) fn control_structure_body(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    block(parser).or_else(|| statements(parser))
+    block(parser).or_else(|| statements(parser, CaptureStmts::Capture))
 }
 
 pub(crate) fn block(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
@@ -176,7 +196,7 @@ pub(crate) fn block(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
         let m = parser.start();
         parser.eat(T!['{']);
 
-        while statements(parser).is_some() {}
+        while statements(parser, CaptureStmts::Capture).is_some() {}
 
         if !parser.eat(T!['}']) {
             parser.error("expected '}'");
