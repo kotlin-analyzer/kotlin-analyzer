@@ -404,6 +404,7 @@ pub(crate) fn prefix_unary_expression(parser: &mut Parser<'_>) -> Option<Affixed
         if has_prefix {
             Some(AffixedExpression::Prefix(m.complete(parser, PREFIX_UNARY_EXPRESSION)))
         } else {
+            m.abandon(parser);
             postfix
         }
     } else {

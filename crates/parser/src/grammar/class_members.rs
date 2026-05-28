@@ -19,11 +19,10 @@ pub(crate) fn class_member_declarations(
     modifiers_marker: Option<CompletedMarker>,
 ) -> Option<CompletedMarker> {
     let m = parser.start();
-    if class_member_declaration(parser, modifiers_marker).is_some() {
+    let mut dangling = modifiers_marker;
+    while let Some(cm) = class_member_declaration(parser, dangling) {
+        dangling = cm.dangling();
         semis(parser);
-        while class_member_declaration(parser, None).is_some() {
-            semis(parser);
-        }
     }
     Some(m.complete(parser, CLASS_MEMBER_DECLARATIONS))
 }
@@ -253,25 +252,25 @@ pub(super) fn property_declaration(
     let mut cm = m.complete(parser, PROPERTY_DECLARATION);
 
     let mut mod_cm = modifiers(parser);
-    if parser.at(GET_KW) {
+    if parser.at(T![get]) {
         getter(parser, mod_cm);
         semi(parser);
 
         cm = cm.extend_right(parser);
         mod_cm = modifiers(parser);
 
-        if parser.at(SET_KW) {
+        if parser.at(T![set]) {
             setter(parser, mod_cm);
             return Some(cm.extend_right(parser));
         }
-    } else if parser.at(SET_KW) {
+    } else if parser.at(T![set]) {
         setter(parser, mod_cm);
         semi(parser);
 
         cm = cm.extend_right(parser);
         mod_cm = modifiers(parser);
 
-        if parser.at(GET_KW) {
+        if parser.at(T![get]) {
             getter(parser, mod_cm);
             return Some(cm.extend_right(parser));
         }
@@ -283,7 +282,7 @@ fn getter(
     parser: &mut Parser<'_>,
     modifiers_marker: Option<CompletedMarker>,
 ) -> Option<CompletedMarker> {
-    if !parser.at(GET_KW) {
+    if !parser.at(T![get]) {
         return None;
     }
     let m = modifiers_marker.map(|cm| cm.precede(parser)).unwrap_or_else(|| parser.start());
@@ -307,7 +306,7 @@ fn setter(
     parser: &mut Parser<'_>,
     modifiers_marker: Option<CompletedMarker>,
 ) -> Option<CompletedMarker> {
-    if !parser.at(SET_KW) {
+    if !parser.at(T![set]) {
         return None;
     }
     let m = modifiers_marker.map(|cm| cm.precede(parser)).unwrap_or_else(|| parser.start());

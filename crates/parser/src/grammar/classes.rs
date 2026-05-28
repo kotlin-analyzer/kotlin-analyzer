@@ -1,4 +1,4 @@
-use crate::{SyntaxKind::*, T};
+use crate::{SyntaxKind::*, T, TokenSet};
 
 use super::annotations::annotation;
 use super::class_members::class_member_declarations;
@@ -15,6 +15,20 @@ pub(crate) fn starts_class_declaration(parser: &mut Parser<'_>) -> bool {
         || (parser.at(T![fun]) && parser.nth_at(1, T![interface]))
 }
 
+// test class_declaration
+// class Foo1
+// class Foo2()
+// class Foo22(name: String, age: Int)
+// class Foo23<T>(name: T, val age: Int)
+// class Foo3<T> : Bar by baz
+// class Foo4<T> where T: Any
+// class Foo5<T> where T: Any, T: Serializable
+// class Foo7<T> where T: Any, T: Serializable {}
+// class Foo8 private constructor(val name: String, var age: Int)
+// fun interface Foo9<T> where T: Any, T: Serializable
+// enum class Foo10<T> where T: Any, T: Serializable {}
+// abstract class Foo11<T>(val name: String, val age: Int) where T: Any, T: Serializable
+// data class Foo12<T>(val name: String, val age: Int)
 pub(crate) fn class_declaration(
     parser: &mut Parser<'_>,
     modifiers_marker: Option<CompletedMarker>,
@@ -62,8 +76,9 @@ pub(crate) fn class_declaration(
 fn primary_constructor(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     let m = parser.start();
 
-    modifiers(parser);
-    parser.eat(T![constructor]);
+    if modifiers(parser).is_some() && !parser.eat(T![constructor]) {
+        parser.error("expected 'constructor'");
+    }
 
     if class_parameters(parser).is_none() {
         m.abandon(parser);
@@ -108,7 +123,7 @@ fn class_parameters(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     if class_parameter(parser).is_some() {
         while parser.eat(T![,]) && class_parameter(parser).is_some() {}
     }
-
+    // TODO: we can error if no parameter is parsed, asking to remove the parentheses, but this should really be a warning, not an error, so we can just ignore this case for now.
     if !parser.eat(T![')']) {
         parser.error("expected ')'");
     }
@@ -116,28 +131,38 @@ fn class_parameters(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     Some(m.complete(parser, CLASS_PARAMETERS))
 }
 
+const CLASS_PARAMETER_RECOVERY: TokenSet = TokenSet::new(&[T![,], T![')'], T!['{']]);
+
 fn class_parameter(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     let m = parser.start();
+    let mut seen = 0;
 
-    modifiers(parser);
+    if modifiers(parser).is_some() {
+        seen += 1;
+    }
     if parser.at(T![val]) || parser.at(T![var]) {
         parser.bump_any();
+        seen += 1;
     }
 
     if simple_identifier(parser).is_none() {
-        parser.error("expected an identifier");
-    }
+        if seen == 0 {
+            m.abandon(parser);
+            return None;
+        }
+        parser.err_recover("expected an identifier", CLASS_PARAMETER_RECOVERY);
+    } else {
+        if !parser.eat(T![:]) {
+            parser.error("expected ':'");
+        }
 
-    if !parser.eat(T![:]) {
-        parser.error("expected ':'");
-    }
+        if ty(parser).is_none() {
+            parser.error("expected a type");
+        }
 
-    if ty(parser).is_none() {
-        parser.error("expected a type");
-    }
-
-    if parser.eat(T![=]) && expression(parser).is_none() {
-        parser.error("expected an expression");
+        if parser.eat(T![=]) && expression(parser).is_none() {
+            parser.error("expected an expression");
+        }
     }
 
     Some(m.complete(parser, CLASS_PARAMETER))
