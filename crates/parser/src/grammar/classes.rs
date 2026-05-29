@@ -6,7 +6,7 @@ use super::enum_classes::{BodyResult, enum_class_body};
 use super::expressions::{expression, value_arguments};
 use super::identifiers::simple_identifier;
 use super::modifiers::{modifiers, type_parameter_modifiers};
-use super::types::ty;
+use super::types::{TypeResult, ty, unclosed_ty};
 use crate::{CompletedMarker, Marker, Parser};
 
 pub(crate) fn starts_class_declaration(parser: &mut Parser<'_>) -> bool {
@@ -161,7 +161,7 @@ fn class_parameter(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
         }
 
         if parser.eat(T![=]) && expression(parser).is_none() {
-            parser.error("expected an expression");
+            parser.error("expected an expression :#7");
         }
     }
 
@@ -188,26 +188,26 @@ pub(crate) fn delegation_specifiers(parser: &mut Parser<'_>) -> Option<Completed
 fn delegation_specifier(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     let m = parser.start();
 
-    // NB: ty, in this function, matches more things than function | user types,
-    // if this happens to be the case, we should report an error later.
-    // Not in parsing phase
-    if parser.eat(T![suspend]) {
-        if ty(parser).is_none() {
-            parser.error("expected a function type");
-        }
-        return Some(m.complete(parser, DELEGATION_SPECIFIER));
-    }
+    let Some(types) = unclosed_ty(parser) else {
+        m.abandon(parser);
+        return None;
+    };
 
-    if let Some(ty_marker) = ty(parser) {
-        if parser.at(T![by]) {
-            explicit_delegation(parser, ty_marker);
-        } else {
-            constructor_invocation(parser, ty_marker, false);
+    match types {
+        TypeResult::User(cm) | TypeResult::Fn(cm) if parser.at(T![by]) => {
+            explicit_delegation(parser, cm);
         }
-        Some(m.complete(parser, DELEGATION_SPECIFIER))
-    } else {
-        None
+        TypeResult::User(cm) if parser.at(T!['(']) => {
+            constructor_invocation(parser, cm, false);
+        }
+        TypeResult::User(_) | TypeResult::Fn(_) => {}
+        ta => {
+            eprintln!("unexpected type in delegation specifier: {:?}", ta);
+            // maybe move this error linting phase
+            parser.error("expected delegation specifier");
+        }
     }
+    Some(m.complete(parser, DELEGATION_SPECIFIER))
 }
 
 fn annotated_delegation_specifier(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
@@ -231,7 +231,7 @@ fn explicit_delegation(
         parser.eat(T![by]);
 
         if expression(parser).is_none() {
-            parser.error("expected an expression");
+            parser.error("expected an expression :#6");
         }
         Some(m.complete(parser, EXPLICIT_DELEGATION))
     } else {

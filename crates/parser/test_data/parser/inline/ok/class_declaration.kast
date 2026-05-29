@@ -114,12 +114,10 @@ KOTLIN_FILE
         ANNOTATED_DELEGATION_SPECIFIER
           DELEGATION_SPECIFIER
             EXPLICIT_DELEGATION
-              TYPE
-                TYPE_REFERENCE
-                  USER_TYPE
-                    SIMPLE_USER_TYPE
-                      SIMPLE_IDENTIFIER
-                        IDENT "Bar"
+              USER_TYPE
+                SIMPLE_USER_TYPE
+                  SIMPLE_IDENTIFIER
+                    IDENT "Bar"
               WHITESPACE " "
               BY_KW "by"
               WHITESPACE " "

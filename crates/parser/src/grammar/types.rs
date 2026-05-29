@@ -1,25 +1,36 @@
-use crate::{SyntaxKind::*, T};
+use crate::{Marker, SyntaxKind::*, T, TokenSet};
 
 use super::annotations::annotation;
 use super::identifiers::is_simple_ident_at;
 use super::identifiers::{is_simple_identifier, simple_identifier};
 use crate::{CompletedMarker, Parser};
 
-pub(crate) fn ty(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+pub(super) fn unclosed_ty(parser: &mut Parser<'_>) -> Option<TypeResult> {
+    inner_ty(parser, true).map(|(ts, m)| {
+        m.abandon(parser);
+        ts
+    })
+}
+
+fn inner_ty(parser: &mut Parser<'_>, forward_user_type: bool) -> Option<(TypeResult, Marker)> {
     let m = parser.start();
     type_modifiers(parser);
 
     if let Some(lhs) = complex(parser).or_else(|| simple(parser)) {
-        type_suffix(parser, lhs);
-        Some(m.complete(parser, TYPE))
+        Some((type_suffix(parser, lhs, forward_user_type), m))
     } else {
         // TODO: handle when modifiers were parsed but no type was found.
         m.abandon(parser);
         None
     }
 }
+pub(crate) fn ty(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    if let Some((_, m)) = inner_ty(parser, false) { Some(m.complete(parser, TYPE)) } else { None }
+}
 
-fn type_suffix(parser: &mut Parser<'_>, lhs: TypeResult) -> Option<TypeResult> {
+const TYPE_CONTINUATION: TokenSet = TokenSet::new(&[T![?], T![&], T![.]]);
+
+fn type_suffix(parser: &mut Parser<'_>, lhs: TypeResult, forward_user_type: bool) -> TypeResult {
     let lhs = match lhs {
         TypeResult::Simple(lhs) => {
             let m = lhs.precede(parser);
@@ -28,11 +39,11 @@ fn type_suffix(parser: &mut Parser<'_>, lhs: TypeResult) -> Option<TypeResult> {
                 simple_user_type(parser);
             }
             let res = m.complete(parser, USER_TYPE);
-            return type_suffix(parser, TypeResult::User(res));
+            return type_suffix(parser, TypeResult::User(res), forward_user_type);
         }
-        TypeResult::User(lhs) => {
+        TypeResult::User(lhs) if !forward_user_type || parser.at_ts(TYPE_CONTINUATION) => {
             let cm = lhs.precede(parser).complete(parser, TYPE_REFERENCE);
-            return type_suffix(parser, TypeResult::TyRef(cm));
+            return type_suffix(parser, TypeResult::TyRef(cm), forward_user_type);
         }
         it => it,
     };
@@ -44,7 +55,7 @@ fn type_suffix(parser: &mut Parser<'_>, lhs: TypeResult) -> Option<TypeResult> {
             let m = lhs.marker().precede(parser);
             quests(parser);
             let res = m.complete(parser, NULLABLE_TYPE);
-            type_suffix(parser, TypeResult::Nullable(res))
+            type_suffix(parser, TypeResult::Nullable(res), forward_user_type)
         }
         T![&] => {
             // definitely non-nullable type
@@ -57,7 +68,7 @@ fn type_suffix(parser: &mut Parser<'_>, lhs: TypeResult) -> Option<TypeResult> {
                 parser.error("expected type after `&`");
             }
             let res = m.complete(parser, DEFINITELY_NON_NULLABLE_TYPE);
-            type_suffix(parser, TypeResult::DefNonNull(res))
+            type_suffix(parser, TypeResult::DefNonNull(res), forward_user_type)
         }
         T![.] => {
             // Type with receiver (e.g. `A.(B) -> C`) or member extension type (e.g. `A.B`)
@@ -71,15 +82,18 @@ fn type_suffix(parser: &mut Parser<'_>, lhs: TypeResult) -> Option<TypeResult> {
             {
                 let res = lhs.marker().precede(parser).complete(parser, RECEIVER_TYPE);
                 parser.bump(T![.]);
-                return type_suffix(parser, TypeResult::Receiver(res));
+                return type_suffix(parser, TypeResult::Receiver(res), forward_user_type);
             }
             // FIXME: recovery
             parser.error("unexpected `.`");
-            Some(lhs)
+            lhs
         }
         T!['('] => {
             // lhs is receiver type for function type (e.g. `A.` in `A.(B) -> C`)
             // while rhs is function type parameters (e.g. `(B) -> C` in `A.(B) -> C`)
+            if !matches!(lhs, TypeResult::Receiver(_)) {
+                return lhs;
+            }
             if function_type_parameters(parser).is_some() {
                 let m = lhs.marker().precede(parser);
                 if parser.eat(ARROW) {
@@ -88,14 +102,14 @@ fn type_suffix(parser: &mut Parser<'_>, lhs: TypeResult) -> Option<TypeResult> {
                     parser.error("expected `->`");
                 }
                 let res = m.complete(parser, FUNCTION_TYPE);
-                type_suffix(parser, TypeResult::Fn(res))
+                type_suffix(parser, TypeResult::Fn(res), forward_user_type)
             } else {
                 // FIXME: recovery
                 parser.error("expected function type parameters");
-                None
+                lhs
             }
         }
-        _ => None,
+        _ => lhs,
     }
 }
 
@@ -160,6 +174,7 @@ fn complex(parser: &mut Parser<'_>) -> Option<TypeResult> {
     }
 }
 
+#[derive(Debug)]
 pub(crate) enum TypeResult {
     Simple(CompletedMarker),
     User(CompletedMarker),

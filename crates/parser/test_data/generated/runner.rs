@@ -9,6 +9,10 @@ mod ok {
         run_and_expect_no_errors("test_data/parser/inline/ok/multi_annotation.kt");
     }
     #[test]
+    fn object_declaration() {
+        run_and_expect_no_errors("test_data/parser/inline/ok/object_declaration.kt");
+    }
+    #[test]
     fn single_annotation() {
         run_and_expect_no_errors("test_data/parser/inline/ok/single_annotation.kt");
     }

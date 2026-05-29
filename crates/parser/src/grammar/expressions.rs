@@ -63,7 +63,7 @@ fn disjunction(parser: &mut Parser<'_>) -> Option<Expression> {
             let m = ex.marker().precede(parser);
             while parser.eat(T![||]) {
                 if conjunction(parser).is_none() {
-                    parser.error("expected an expression");
+                    parser.error("expected an expression :#DE");
                     break;
                 }
             }
@@ -82,7 +82,7 @@ fn conjunction(parser: &mut Parser<'_>) -> Option<Expression> {
             let m = ex.marker().precede(parser);
             while parser.eat(T![&&]) {
                 if equality(parser).is_none() {
-                    parser.error("expected an expression");
+                    parser.error("expected an expression :#CE");
                     break;
                 }
             }
@@ -101,7 +101,7 @@ fn equality(parser: &mut Parser<'_>) -> Option<Expression> {
             let m = ex.marker().precede(parser);
             while equality_operator::parse(parser).is_some() {
                 if comparison(parser).is_none() {
-                    parser.error("expected an expression");
+                    parser.error("expected an expression :#EE");
                     break;
                 }
             }
@@ -120,7 +120,7 @@ fn comparison(parser: &mut Parser<'_>) -> Option<Expression> {
             let m = ex.marker().precede(parser);
             while comparison_operator::parse(parser).is_some() {
                 if generic_call_like_comparison(parser).is_none() {
-                    parser.error("expected an expression");
+                    parser.error("expected an expression :#CCE");
                     break;
                 }
             }
@@ -174,7 +174,7 @@ fn is_or_in_operator_expr(parser: &mut Parser<'_>) -> bool {
         }
     } else if in_operator::is(parser) {
         if elvis_expression(parser).is_none() {
-            parser.error("expected an expression");
+            parser.error("expected an expression :#IOE");
         } else {
             return true;
         }
@@ -188,7 +188,7 @@ fn elvis_expression(parser: &mut Parser<'_>) -> Option<Expression> {
             let m = cm.marker().precede(parser);
             while elvis(parser).is_some() {
                 if infix_function_call(parser).is_none() {
-                    parser.error("expected an expression");
+                    parser.error("expected an expression :#ElvE");
                     break;
                 }
             }
@@ -222,7 +222,7 @@ fn infix_function_call(parser: &mut Parser<'_>) -> Option<Expression> {
             let m = cm.marker().precede(parser);
             while simple_identifier(parser).is_some() {
                 if range_expression(parser).is_none() {
-                    parser.error("expected an expression");
+                    parser.error("expected an expression :#IFC");
                     break;
                 }
             }
@@ -241,7 +241,7 @@ fn range_expression(parser: &mut Parser<'_>) -> Option<Expression> {
             let m = cm.marker().precede(parser);
             while range_operator::parse(parser) {
                 if additive_expression(parser).is_none() {
-                    parser.error("expected an expression");
+                    parser.error("expected an expression :#RE");
                     break;
                 }
             }
@@ -260,7 +260,7 @@ fn additive_expression(parser: &mut Parser<'_>) -> Option<Expression> {
             let m = cm.marker().precede(parser);
             while additive_operator::parse(parser).is_some() {
                 if multiplicative_expression(parser).is_none() {
-                    parser.error("expected an expression");
+                    parser.error("expected an expression :#AE");
                     break;
                 }
             }
@@ -279,7 +279,7 @@ fn multiplicative_expression(parser: &mut Parser<'_>) -> Option<Expression> {
             let m = cm.marker().precede(parser);
             while multiplicative_operator::parse(parser).is_some() {
                 if as_expression(parser).is_none() {
-                    parser.error("expected an expression");
+                    parser.error("expected an expression :#ME");
                     break;
                 }
             }
@@ -320,7 +320,7 @@ fn parenthesized_directly_assignable_expression(
     let m = parser.start();
     parser.bump(T!['(']);
     if directly_assignable_expression(parser).is_none() {
-        parser.error("expected an expression");
+        parser.error("expected an expression :#PDAE");
     }
     if !parser.eat(T![')']) {
         parser.error("expected `)`");
@@ -349,7 +349,7 @@ fn parenthesized_assignable_expression(parser: &mut Parser<'_>) -> Option<Comple
     let m = parser.start();
     parser.bump(T!['(']);
     if assignable_expression(parser).is_none() {
-        parser.error("expected an expression");
+        parser.error("expected an expression :#PAE");
     }
     if !parser.eat(T![')']) {
         parser.error("expected `)`");
@@ -444,7 +444,7 @@ fn indexing_suffix(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     parser.bump(T!['[']);
 
     if expression(parser).is_none() {
-        parser.error("expected an expression");
+        parser.error("expected an expression :#IE");
     } else {
         while parser.eat(T![,]) && expression(parser).is_some() {}
     }
@@ -545,14 +545,24 @@ pub(crate) fn value_arguments(parser: &mut Parser<'_>) -> Option<CompletedMarker
 
 fn value_argument(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     let m = parser.start();
-    annotation(parser);
-    if simple_identifier(parser).is_some() && !parser.eat(T![=]) {
-        parser.error("expected `=`");
+    let mut seen = false;
+    if annotation(parser).is_some() {
+        seen = true;
     }
-    parser.eat(T![*]);
+    if is_simple_identifier(parser) && parser.nth_at(1, T![=]) {
+        simple_identifier(parser);
+        parser.bump(T![=]);
+        seen = true;
+    }
+    if parser.eat(T![*]) {
+        seen = true;
+    }
 
-    if expression(parser).is_none() {
-        parser.error("expected an expression");
+    if seen && expression(parser).is_none() {
+        parser.error("expected an expression :#VA");
+    } else {
+        m.abandon(parser);
+        return None;
     }
     Some(m.complete(parser, VALUE_ARGUMENT))
 }
@@ -587,7 +597,7 @@ fn parenthesized_expression(parser: &mut Parser<'_>) -> Option<CompletedMarker> 
     let m = parser.start();
     parser.bump(T!['(']);
     if expression(parser).is_none() {
-        parser.error("expected an expression");
+        parser.error("expected an expression :#PE");
     }
     if !parser.eat(T![')']) {
         parser.error("expected `)`");
@@ -670,7 +680,7 @@ fn line_string_expr(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
         let m = parser.start();
         parser.bump(STR_EXPR_START);
         if expression(parser).is_none() {
-            parser.error("expected an expression");
+            parser.error("expected an expression :#LSE");
         }
         if !parser.eat(T!['}']) {
             parser.error("expected `}`");
@@ -697,7 +707,7 @@ fn multi_line_string_expr(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
         let m = parser.start();
         parser.bump(STR_EXPR_START);
         if expression(parser).is_none() {
-            parser.error("expected an expression");
+            parser.error("expected an expression :#MLSE");
         }
         if !parser.eat(T!['}']) {
             parser.error("expected `}`");
@@ -864,7 +874,7 @@ fn if_expression(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
         parser.error("expected `(`");
     }
     if expression(parser).is_none() {
-        parser.error("expected an expression");
+        parser.error("expected an expression :#IFE");
     }
     if !parser.eat(T![')']) {
         parser.error("expected `)`");
@@ -912,7 +922,7 @@ fn when_subject(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
         }
     }
     if expression(parser).is_none() {
-        parser.error("expected an expression");
+        parser.error("expected an expression :#WSE");
     }
 
     if !parser.eat(T![')']) {
@@ -952,7 +962,7 @@ fn range_test(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     if let Some(cm) = in_operator::parse(parser) {
         let m = cm.precede(parser);
         if expression(parser).is_none() {
-            parser.error("expected an expression");
+            parser.error("expected an expression :#RTE");
         }
         Some(m.complete(parser, RANGE_TEST))
     } else {

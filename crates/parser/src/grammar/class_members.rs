@@ -136,6 +136,13 @@ pub(crate) fn function_body(parser: &mut Parser<'_>) -> Option<CompletedMarker> 
     }
 }
 
+// test object_declaration
+// object Foo
+// object Foo : Bar by baz
+// object Foo {}
+// object Foo : Something() {}
+// data object Foo
+// object Foo : Boo by Bae, Bar(), Baz, B.() -> Unit by A {}
 pub(crate) fn object_declaration(
     parser: &mut Parser<'_>,
     modifiers_marker: Option<CompletedMarker>,
@@ -177,7 +184,7 @@ fn property_delegate(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
         let m = parser.start();
         parser.eat(T![by]);
         if expression(parser).is_none() {
-            parser.error("expected an expression");
+            parser.error("expected an expression :#1");
         }
         Some(m.complete(parser, PROPERTY_DELEGATE))
     } else {
@@ -242,7 +249,7 @@ pub(super) fn property_declaration(
     type_constraints(parser);
     if parser.eat(T![=]) {
         if expression(parser).is_none() {
-            parser.error("expected an expression");
+            parser.error("expected an expression :#2");
         }
     } else {
         property_delegate(parser);
@@ -380,7 +387,7 @@ fn function_value_parameter(parser: &mut Parser<'_>) -> Option<CompletedMarker> 
     }
 
     if parser.eat(T![=]) && expression(parser).is_none() {
-        parser.error("expected an expression");
+        parser.error("expected an expression :#3");
     }
     Some(m.complete(parser, FUNCTION_VALUE_PARAMETER))
 }
@@ -393,7 +400,7 @@ fn function_value_parameter_with_optional_type(parser: &mut Parser<'_>) -> Optio
     }
 
     if parser.eat(T![=]) && expression(parser).is_none() {
-        parser.error("expected an expression");
+        parser.error("expected an expression :#4");
     }
     Some(m.complete(parser, FUNCTION_VALUE_PARAMETER_WITH_OPTIONAL_TYPE))
 }
@@ -464,7 +471,7 @@ fn parameter_with_opt_type(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
 fn constructor_delegation_call(parser: &mut Parser<'_>) -> Option<()> {
     if parser.eat(T![this]) || parser.eat(T![super]) {
         if value_arguments(parser).is_none() {
-            parser.error("expected an expression");
+            parser.error("expected an expression :#5");
         }
         Some(())
     } else {

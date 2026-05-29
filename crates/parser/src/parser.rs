@@ -255,7 +255,7 @@ impl Marker {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) struct CompletedMarker {
     start_pos: u32,
     end_pos: u32,

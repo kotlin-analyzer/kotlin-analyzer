@@ -1,0 +1,165 @@
+KOTLIN_FILE
+  TOP_LEVEL_OBJECT
+    OBJECT_DECLARATION
+      OBJECT_KW "object"
+      WHITESPACE " "
+      SIMPLE_IDENTIFIER
+        IDENT "Foo"
+  NEWLINE "\n"
+  TOP_LEVEL_OBJECT
+    OBJECT_DECLARATION
+      OBJECT_KW "object"
+      WHITESPACE " "
+      SIMPLE_IDENTIFIER
+        IDENT "Foo"
+      WHITESPACE " "
+      COLON ":"
+      WHITESPACE " "
+      DELEGATION_SPECIFIERS
+        ANNOTATED_DELEGATION_SPECIFIER
+          DELEGATION_SPECIFIER
+            EXPLICIT_DELEGATION
+              USER_TYPE
+                SIMPLE_USER_TYPE
+                  SIMPLE_IDENTIFIER
+                    IDENT "Bar"
+              WHITESPACE " "
+              BY_KW "by"
+              WHITESPACE " "
+              EXPRESSION
+                POSTFIX_UNARY_EXPRESSION
+                  SIMPLE_IDENTIFIER
+                    IDENT "baz"
+  NEWLINE "\n"
+  TOP_LEVEL_OBJECT
+    OBJECT_DECLARATION
+      OBJECT_KW "object"
+      WHITESPACE " "
+      SIMPLE_IDENTIFIER
+        IDENT "Foo"
+      WHITESPACE " "
+      CLASS_BODY
+        L_CURL "{"
+        CLASS_MEMBER_DECLARATIONS
+        R_CURL "}"
+  NEWLINE "\n"
+  TOP_LEVEL_OBJECT
+    OBJECT_DECLARATION
+      OBJECT_KW "object"
+      WHITESPACE " "
+      SIMPLE_IDENTIFIER
+        IDENT "Foo"
+      WHITESPACE " "
+      COLON ":"
+      WHITESPACE " "
+      DELEGATION_SPECIFIERS
+        ANNOTATED_DELEGATION_SPECIFIER
+          DELEGATION_SPECIFIER
+            CONSTRUCTOR_INVOCATION
+              USER_TYPE
+                SIMPLE_USER_TYPE
+                  SIMPLE_IDENTIFIER
+                    IDENT "Something"
+              VALUE_ARGUMENTS
+                L_PAREN "("
+                R_PAREN ")"
+      WHITESPACE " "
+      CLASS_BODY
+        L_CURL "{"
+        CLASS_MEMBER_DECLARATIONS
+        R_CURL "}"
+  NEWLINE "\n"
+  TOP_LEVEL_OBJECT
+    OBJECT_DECLARATION
+      MODIFIERS
+        CLASS_MODIFIER
+          DATA_KW "data"
+      WHITESPACE " "
+      OBJECT_KW "object"
+      WHITESPACE " "
+      SIMPLE_IDENTIFIER
+        IDENT "Foo"
+  NEWLINE "\n"
+  TOP_LEVEL_OBJECT
+    OBJECT_DECLARATION
+      OBJECT_KW "object"
+      WHITESPACE " "
+      SIMPLE_IDENTIFIER
+        IDENT "Foo"
+      WHITESPACE " "
+      COLON ":"
+      WHITESPACE " "
+      DELEGATION_SPECIFIERS
+        ANNOTATED_DELEGATION_SPECIFIER
+          DELEGATION_SPECIFIER
+            EXPLICIT_DELEGATION
+              USER_TYPE
+                SIMPLE_USER_TYPE
+                  SIMPLE_IDENTIFIER
+                    IDENT "Boo"
+              WHITESPACE " "
+              BY_KW "by"
+              WHITESPACE " "
+              EXPRESSION
+                POSTFIX_UNARY_EXPRESSION
+                  SIMPLE_IDENTIFIER
+                    IDENT "Bae"
+        COMMA ","
+        WHITESPACE " "
+        ANNOTATED_DELEGATION_SPECIFIER
+          DELEGATION_SPECIFIER
+            CONSTRUCTOR_INVOCATION
+              USER_TYPE
+                SIMPLE_USER_TYPE
+                  SIMPLE_IDENTIFIER
+                    IDENT "Bar"
+              VALUE_ARGUMENTS
+                L_PAREN "("
+                R_PAREN ")"
+        COMMA ","
+        WHITESPACE " "
+        ANNOTATED_DELEGATION_SPECIFIER
+          DELEGATION_SPECIFIER
+            USER_TYPE
+              SIMPLE_USER_TYPE
+                SIMPLE_IDENTIFIER
+                  IDENT "Baz"
+        COMMA ","
+        WHITESPACE " "
+        ANNOTATED_DELEGATION_SPECIFIER
+          DELEGATION_SPECIFIER
+            EXPLICIT_DELEGATION
+              FUNCTION_TYPE
+                RECEIVER_TYPE
+                  TYPE_REFERENCE
+                    USER_TYPE
+                      SIMPLE_USER_TYPE
+                        SIMPLE_IDENTIFIER
+                          IDENT "B"
+                DOT "."
+                FUNCTION_TYPE_PARAMETERS
+                  L_PAREN "("
+                  R_PAREN ")"
+                WHITESPACE " "
+                ARROW "->"
+                WHITESPACE " "
+                TYPE
+                  TYPE_REFERENCE
+                    USER_TYPE
+                      SIMPLE_USER_TYPE
+                        SIMPLE_IDENTIFIER
+                          IDENT "Unit"
+              WHITESPACE " "
+              BY_KW "by"
+              WHITESPACE " "
+              EXPRESSION
+                POSTFIX_UNARY_EXPRESSION
+                  SIMPLE_IDENTIFIER
+                    IDENT "A"
+                  WHITESPACE " "
+                  CALL_SUFFIX
+                    ANNOTATED_LAMBDA
+                      LAMBDA_LITERAL
+                        L_CURL "{"
+                        R_CURL "}"
+  NEWLINE "\n"
