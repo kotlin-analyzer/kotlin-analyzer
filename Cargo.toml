@@ -5,7 +5,7 @@ members = ["crates/*", "libs/*", "xtask/"]
 [workspace.package]
 version = "0.0.1"
 edition = "2024"
-rust-version = "1.94.1"
+rust-version = "1.96.0"
 repository = "https://github.com/kotlin-analyzer/kotlin-analyzer"
 license = "MIT OR Apache-2.0"
 
