@@ -1,7 +1,7 @@
 use crate::{SyntaxKind::*, T};
 
 use super::classes::constructor_invocation;
-use super::types::user_type;
+use super::types::{UserType, user_type};
 use crate::{CompletedMarker, Parser, TokenSet};
 
 const ANNO_RECOVERY: TokenSet = TokenSet::new(&[R_SQUARE, SEMICOLON, R_CURL, EOF]);
@@ -93,7 +93,7 @@ fn annotation_use_site_target_or_at(parser: &mut Parser<'_>) -> Option<Completed
 }
 
 pub(crate) fn unescaped_annotation(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    if let Some(user_type_marker) = user_type(parser) {
+    if let Some(user_type_marker) = user_type(parser, UserType::All) {
         constructor_invocation(parser, user_type_marker.clone(), true).or(Some(user_type_marker))
     } else {
         None

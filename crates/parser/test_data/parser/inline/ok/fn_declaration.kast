@@ -1,0 +1,451 @@
+KOTLIN_FILE
+  TOP_LEVEL_OBJECT
+    FUNCTION_DECLARATION
+      FUN_KW "fun"
+      WHITESPACE " "
+      SIMPLE_IDENTIFIER
+        IDENT "foo"
+      FUNCTION_VALUE_PARAMETERS
+        L_PAREN "("
+        R_PAREN ")"
+      WHITESPACE " "
+      FUNCTION_BODY
+        BLOCK
+          L_CURL "{"
+          R_CURL "}"
+  NEWLINE "\n"
+  TOP_LEVEL_OBJECT
+    FUNCTION_DECLARATION
+      FUN_KW "fun"
+      WHITESPACE " "
+      SIMPLE_IDENTIFIER
+        IDENT "foo"
+      FUNCTION_VALUE_PARAMETERS
+        L_PAREN "("
+        FUNCTION_VALUE_PARAMETER
+          PARAMETER
+            SIMPLE_IDENTIFIER
+              IDENT "bar"
+            COLON ":"
+            WHITESPACE " "
+            TYPE
+              TYPE_REFERENCE
+                USER_TYPE
+                  SIMPLE_USER_TYPE
+                    SIMPLE_IDENTIFIER
+                      IDENT "Int"
+        R_PAREN ")"
+      WHITESPACE " "
+      FUNCTION_BODY
+        BLOCK
+          L_CURL "{"
+          R_CURL "}"
+  NEWLINE "\n"
+  TOP_LEVEL_OBJECT
+    FUNCTION_DECLARATION
+      FUN_KW "fun"
+      WHITESPACE " "
+      SIMPLE_IDENTIFIER
+        IDENT "foo"
+      FUNCTION_VALUE_PARAMETERS
+        L_PAREN "("
+        FUNCTION_VALUE_PARAMETER
+          PARAMETER
+            SIMPLE_IDENTIFIER
+              IDENT "bar"
+            COLON ":"
+            WHITESPACE " "
+            TYPE
+              TYPE_REFERENCE
+                USER_TYPE
+                  SIMPLE_USER_TYPE
+                    SIMPLE_IDENTIFIER
+                      IDENT "Int"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          EXPRESSION
+            POSTFIX_UNARY_EXPRESSION
+              LITERAL_CONSTANT
+                INT "2"
+        COMMA ","
+        WHITESPACE " "
+        FUNCTION_VALUE_PARAMETER
+          PARAMETER
+            SIMPLE_IDENTIFIER
+              IDENT "baz"
+            COLON ":"
+            WHITESPACE " "
+            TYPE
+              TYPE_REFERENCE
+                USER_TYPE
+                  SIMPLE_USER_TYPE
+                    SIMPLE_IDENTIFIER
+                      IDENT "Int"
+        COMMA ","
+        WHITESPACE " "
+        FUNCTION_VALUE_PARAMETER
+          PARAMETER
+            SIMPLE_IDENTIFIER
+              IDENT "meh"
+            COLON ":"
+            WHITESPACE " "
+            TYPE
+              TYPE_REFERENCE
+                USER_TYPE
+                  SIMPLE_USER_TYPE
+                    SIMPLE_IDENTIFIER
+                      IDENT "String"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          EXPRESSION
+            POSTFIX_UNARY_EXPRESSION
+              LINE_STRING_LITERAL
+                QUOTE "\""
+                QUOTE "\""
+        R_PAREN ")"
+      WHITESPACE " "
+      FUNCTION_BODY
+        BLOCK
+          L_CURL "{"
+          R_CURL "}"
+  NEWLINE "\n"
+  TOP_LEVEL_OBJECT
+    FUNCTION_DECLARATION
+      FUN_KW "fun"
+      WHITESPACE " "
+      TYPE_PARAMETERS
+        L_ANGLE "<"
+        TYPE_PARAMETER
+          SIMPLE_IDENTIFIER
+            IDENT "T"
+        R_ANGLE ">"
+      WHITESPACE " "
+      SIMPLE_IDENTIFIER
+        IDENT "foo"
+      FUNCTION_VALUE_PARAMETERS
+        L_PAREN "("
+        FUNCTION_VALUE_PARAMETER
+          PARAMETER_MODIFIERS
+            SINGLE_ANNOTATION
+              AT "@"
+              USER_TYPE
+                SIMPLE_USER_TYPE
+                  SIMPLE_IDENTIFIER
+                    IDENT "Anno"
+          WHITESPACE " "
+          PARAMETER
+            SIMPLE_IDENTIFIER
+              IDENT "bar"
+            COLON ":"
+            WHITESPACE " "
+            TYPE
+              TYPE_REFERENCE
+                USER_TYPE
+                  SIMPLE_USER_TYPE
+                    SIMPLE_IDENTIFIER
+                      IDENT "T"
+        R_PAREN ")"
+      WHITESPACE " "
+      FUNCTION_BODY
+        BLOCK
+          L_CURL "{"
+          R_CURL "}"
+  NEWLINE "\n"
+  TOP_LEVEL_OBJECT
+    FUNCTION_DECLARATION
+      FUN_KW "fun"
+      WHITESPACE " "
+      TYPE_PARAMETERS
+        L_ANGLE "<"
+        TYPE_PARAMETER
+          SIMPLE_IDENTIFIER
+            IDENT "T"
+        R_ANGLE ">"
+      WHITESPACE " "
+      SIMPLE_IDENTIFIER
+        IDENT "foo"
+      FUNCTION_VALUE_PARAMETERS
+        L_PAREN "("
+        R_PAREN ")"
+      COLON ":"
+      WHITESPACE " "
+      TYPE
+        TYPE_REFERENCE
+          USER_TYPE
+            SIMPLE_USER_TYPE
+              SIMPLE_IDENTIFIER
+                IDENT "Int"
+      WHITESPACE " "
+      FUNCTION_BODY
+        BLOCK
+          L_CURL "{"
+          R_CURL "}"
+  NEWLINE "\n"
+  TOP_LEVEL_OBJECT
+    FUNCTION_DECLARATION
+      FUN_KW "fun"
+      WHITESPACE " "
+      TYPE_PARAMETERS
+        L_ANGLE "<"
+        TYPE_PARAMETER
+          SIMPLE_IDENTIFIER
+            IDENT "T"
+        R_ANGLE ">"
+      WHITESPACE " "
+      RECEIVER_TYPE
+        TYPE_REFERENCE
+          USER_TYPE
+            SIMPLE_USER_TYPE
+              SIMPLE_IDENTIFIER
+                IDENT "Receiver"
+      DOT "."
+      SIMPLE_IDENTIFIER
+        IDENT "foo"
+      FUNCTION_VALUE_PARAMETERS
+        L_PAREN "("
+        R_PAREN ")"
+      COLON ":"
+      WHITESPACE " "
+      TYPE
+        TYPE_REFERENCE
+          USER_TYPE
+            SIMPLE_USER_TYPE
+              SIMPLE_IDENTIFIER
+                IDENT "Int"
+      WHITESPACE " "
+      FUNCTION_BODY
+        BLOCK
+          L_CURL "{"
+          R_CURL "}"
+  NEWLINE "\n"
+  TOP_LEVEL_OBJECT
+    FUNCTION_DECLARATION
+      FUN_KW "fun"
+      WHITESPACE " "
+      TYPE_PARAMETERS
+        L_ANGLE "<"
+        TYPE_PARAMETER
+          SIMPLE_IDENTIFIER
+            IDENT "T"
+        R_ANGLE ">"
+      WHITESPACE " "
+      RECEIVER_TYPE
+        TYPE_REFERENCE
+          USER_TYPE
+            SIMPLE_USER_TYPE
+              SIMPLE_IDENTIFIER
+                IDENT "T"
+      DOT "."
+      SIMPLE_IDENTIFIER
+        IDENT "foo"
+      FUNCTION_VALUE_PARAMETERS
+        L_PAREN "("
+        FUNCTION_VALUE_PARAMETER
+          PARAMETER
+            SIMPLE_IDENTIFIER
+              IDENT "bar"
+            COLON ":"
+            WHITESPACE " "
+            TYPE
+              TYPE_REFERENCE
+                USER_TYPE
+                  SIMPLE_USER_TYPE
+                    SIMPLE_IDENTIFIER
+                      IDENT "Int"
+        COMMA ","
+        WHITESPACE " "
+        FUNCTION_VALUE_PARAMETER
+          PARAMETER
+            SIMPLE_IDENTIFIER
+              IDENT "baz"
+            COLON ":"
+            WHITESPACE " "
+            TYPE
+              TYPE_REFERENCE
+                USER_TYPE
+                  SIMPLE_USER_TYPE
+                    SIMPLE_IDENTIFIER
+                      IDENT "T"
+        R_PAREN ")"
+      COLON ":"
+      WHITESPACE " "
+      TYPE
+        TYPE_REFERENCE
+          USER_TYPE
+            SIMPLE_USER_TYPE
+              SIMPLE_IDENTIFIER
+                IDENT "Int"
+      WHITESPACE " "
+      TYPE_CONSTRAINTS
+        WHERE_KW "where"
+        WHITESPACE " "
+        TYPE_CONSTRAINT
+          SIMPLE_IDENTIFIER
+            IDENT "T"
+          COLON ":"
+          WHITESPACE " "
+          TYPE
+            TYPE_REFERENCE
+              USER_TYPE
+                SIMPLE_USER_TYPE
+                  SIMPLE_IDENTIFIER
+                    IDENT "Any"
+        COMMA ","
+        WHITESPACE " "
+        TYPE_CONSTRAINT
+          SIMPLE_IDENTIFIER
+            IDENT "T"
+          COLON ":"
+          WHITESPACE " "
+          TYPE
+            TYPE_REFERENCE
+              USER_TYPE
+                SIMPLE_USER_TYPE
+                  SIMPLE_IDENTIFIER
+                    IDENT "Serializable"
+      WHITESPACE " "
+      FUNCTION_BODY
+        BLOCK
+          L_CURL "{"
+          R_CURL "}"
+  NEWLINE "\n"
+  TOP_LEVEL_OBJECT
+    FUNCTION_DECLARATION
+      MODIFIERS
+        FUNCTION_MODIFIER
+          INFIX_KW "infix"
+      WHITESPACE " "
+      FUN_KW "fun"
+      WHITESPACE " "
+      RECEIVER_TYPE
+        TYPE_REFERENCE
+          USER_TYPE
+            SIMPLE_USER_TYPE
+              SIMPLE_IDENTIFIER
+                IDENT "Int"
+      DOT "."
+      SIMPLE_IDENTIFIER
+        IDENT "shl"
+      FUNCTION_VALUE_PARAMETERS
+        L_PAREN "("
+        FUNCTION_VALUE_PARAMETER
+          PARAMETER
+            SIMPLE_IDENTIFIER
+              IDENT "x"
+            COLON ":"
+            WHITESPACE " "
+            TYPE
+              TYPE_REFERENCE
+                USER_TYPE
+                  SIMPLE_USER_TYPE
+                    SIMPLE_IDENTIFIER
+                      IDENT "Int"
+        R_PAREN ")"
+      COLON ":"
+      WHITESPACE " "
+      TYPE
+        TYPE_REFERENCE
+          USER_TYPE
+            SIMPLE_USER_TYPE
+              SIMPLE_IDENTIFIER
+                IDENT "Int"
+  NEWLINE "\n"
+  TOP_LEVEL_OBJECT
+    FUNCTION_DECLARATION
+      FUN_KW "fun"
+      WHITESPACE " "
+      TYPE_PARAMETERS
+        L_ANGLE "<"
+        TYPE_PARAMETER
+          SIMPLE_IDENTIFIER
+            IDENT "T"
+        R_ANGLE ">"
+      WHITESPACE " "
+      SIMPLE_IDENTIFIER
+        IDENT "asList"
+      FUNCTION_VALUE_PARAMETERS
+        L_PAREN "("
+        FUNCTION_VALUE_PARAMETER
+          PARAMETER_MODIFIERS
+            PARAMETER_MODIFIER
+              VARARG_KW "vararg"
+          WHITESPACE " "
+          PARAMETER
+            SIMPLE_IDENTIFIER
+              IDENT "ts"
+            COLON ":"
+            WHITESPACE " "
+            TYPE
+              TYPE_REFERENCE
+                USER_TYPE
+                  SIMPLE_USER_TYPE
+                    SIMPLE_IDENTIFIER
+                      IDENT "T"
+        R_PAREN ")"
+      COLON ":"
+      WHITESPACE " "
+      TYPE
+        TYPE_REFERENCE
+          USER_TYPE
+            SIMPLE_USER_TYPE
+              SIMPLE_IDENTIFIER
+                IDENT "List"
+              TYPE_ARGUMENTS
+                L_ANGLE "<"
+                TYPE_PROJECTION
+                  TYPE
+                    TYPE_REFERENCE
+                      USER_TYPE
+                        SIMPLE_USER_TYPE
+                          SIMPLE_IDENTIFIER
+                            IDENT "T"
+                R_ANGLE ">"
+  NEWLINE "\n"
+  TOP_LEVEL_OBJECT
+    FUNCTION_DECLARATION
+      FUN_KW "fun"
+      WHITESPACE " "
+      SIMPLE_IDENTIFIER
+        IDENT "double"
+      FUNCTION_VALUE_PARAMETERS
+        L_PAREN "("
+        FUNCTION_VALUE_PARAMETER
+          PARAMETER
+            SIMPLE_IDENTIFIER
+              IDENT "x"
+            COLON ":"
+            WHITESPACE " "
+            TYPE
+              TYPE_REFERENCE
+                USER_TYPE
+                  SIMPLE_USER_TYPE
+                    SIMPLE_IDENTIFIER
+                      IDENT "Int"
+        R_PAREN ")"
+      COLON ":"
+      WHITESPACE " "
+      TYPE
+        TYPE_REFERENCE
+          USER_TYPE
+            SIMPLE_USER_TYPE
+              SIMPLE_IDENTIFIER
+                IDENT "Int"
+      WHITESPACE " "
+      EQ "="
+      WHITESPACE " "
+      EXPRESSION
+        MULTIPLICATIVE_EXPRESSION
+          POSTFIX_UNARY_EXPRESSION
+            SIMPLE_IDENTIFIER
+              IDENT "x"
+          WHITESPACE " "
+          MULTIPLICATIVE_OPERATOR
+            MULT "*"
+          WHITESPACE " "
+          POSTFIX_UNARY_EXPRESSION
+            LITERAL_CONSTANT
+              INT "2"
+      NEWLINE "\n"
+      FUNCTION_BODY

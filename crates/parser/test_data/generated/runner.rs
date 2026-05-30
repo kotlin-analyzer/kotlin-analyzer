@@ -5,6 +5,10 @@ mod ok {
         run_and_expect_no_errors("test_data/parser/inline/ok/class_declaration.kt");
     }
     #[test]
+    fn fn_declaration() {
+        run_and_expect_no_errors("test_data/parser/inline/ok/fn_declaration.kt");
+    }
+    #[test]
     fn multi_annotation() {
         run_and_expect_no_errors("test_data/parser/inline/ok/multi_annotation.kt");
     }

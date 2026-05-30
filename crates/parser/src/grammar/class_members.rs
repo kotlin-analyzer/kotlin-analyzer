@@ -4,7 +4,7 @@ use super::classes::{class_body, delegation_specifiers, type_constraints};
 use super::general::declaration;
 use super::identifiers::is_simple_identifier;
 use super::statements::{block, semi, semis};
-use super::types::{RecvType, receiver_type, user_type};
+use super::types::{RecvType, UserType, receiver_type, user_type};
 use crate::{CompletedMarker, Parser, TokenSet};
 
 use super::annotations::annotation;
@@ -86,7 +86,18 @@ pub(crate) fn starts_fn_declaration(parser: &mut Parser<'_>) -> bool {
     parser.at(T![fun]) && !parser.nth_at(1, T![interface])
 }
 
-pub(crate) fn function_declaration(
+// test fn_declaration
+// fun foo() {}
+// fun foo(bar: Int) {}
+// fun foo(bar: Int = 2, baz: Int, meh: String = "") {}
+// fun <T> foo(@Anno bar: T) {}
+// fun <T> foo(): Int {}
+// fun <T> Receiver.foo(): Int {}
+// fun <T> T.foo(bar: Int, baz: T): Int where T: Any, T: Serializable {}
+// infix fun Int.shl(x: Int): Int
+// fun <T> asList(vararg ts: T): List<T>
+// fun double(x: Int): Int = x * 2
+pub(super) fn function_declaration(
     parser: &mut Parser<'_>,
     modifiers_marker: Option<CompletedMarker>,
 ) -> Option<CompletedMarker> {
@@ -98,14 +109,15 @@ pub(crate) fn function_declaration(
 
     parser.bump(T![fun]);
     type_parameters(parser);
-    // HKGIC: In the grammar, function name is before receiver type, but we want to parse it before, as function name is a valid receiver type
+    // HKGIC: In the grammar, function name is before receiver type, 
+    // but we want to parse it before if the function does not contain a receiver type, as function name is a valid receiver type
     if is_simple_identifier(parser) && parser.nth_at(1, T!['(']) {
         simple_identifier(parser);
     } else {
-        receiver_type(parser, RecvType::Dotted);
+        receiver_type(parser, RecvType::Dotted(UserType::BeforeFnName));
 
         if simple_identifier(parser).is_none() {
-            parser.error("expected an identifier");
+            parser.error("expected an identifier: #FN");
         }
     }
     if function_value_parameters(parser).is_none() {
@@ -121,7 +133,7 @@ pub(crate) fn function_declaration(
     Some(m.complete(parser, FUNCTION_DECLARATION))
 }
 
-pub(crate) fn function_body(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+pub(super) fn function_body(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     if let Some(cm) = block(parser) {
         Some(cm.precede(parser).complete(parser, FUNCTION_BODY))
     } else {
@@ -166,7 +178,7 @@ pub(crate) fn object_declaration(
 
 // can also parse userType
 fn constructor_invocation(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    if let Some(cm) = user_type(parser) {
+    if let Some(cm) = user_type(parser, UserType::All) {
         let m = cm.precede(parser);
         if value_arguments(parser).is_some() {
             Some(m.complete(parser, CONSTRUCTOR_INVOCATION))
@@ -227,6 +239,11 @@ const AFTER_PROP_NAME: TokenSet =
     TokenSet::new(&[T![=], T![:], T![where], T![by], T![get], T![set]]);
 
 /// Starts with either 'val' or 'var' keyword
+// test property_declaration
+// val x: Int
+//   val <T> List<T>.lastIndex: Int
+//      get() = this.size - 1
+// val greet: String.() -> Unit = { }
 pub(super) fn property_declaration(
     parser: &mut Parser<'_>,
     modifiers_marker: Option<CompletedMarker>,
@@ -242,7 +259,7 @@ pub(super) fn property_declaration(
     if is_simple_identifier(parser) && parser.nth_ats(1, AFTER_PROP_NAME) {
         multi_variable_declaration(parser).or_else(|| variable_declaration(parser));
     } else {
-        receiver_type(parser, RecvType::Dotted);
+        receiver_type(parser, RecvType::Dotted(UserType::All));
         multi_variable_declaration(parser).or_else(|| variable_declaration(parser));
     }
 

@@ -13,7 +13,7 @@ use super::class_members::{
 use super::classes::{class_body, delegation_specifiers, type_constraints};
 use super::identifiers::{is_simple_identifier, simple_identifier};
 use super::statements::{CaptureStmts, block, control_structure_body, label, semi, statements};
-use super::types::{RecvType, receiver_type, ty, type_projection};
+use super::types::{RecvType, UserType, receiver_type, ty, type_projection};
 use crate::{CompletedMarker, Parser};
 
 macro_rules! define_operator {
@@ -581,6 +581,7 @@ fn primary_expression(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
         .or_else(|| try_expression(parser))
         .or_else(|| jump_expression(parser))
         .or_else(|| {
+            // HGKIC: this is to prevent this from matching callable references, which also start with a simple identifier, but require a `::` after them.
             if is_simple_identifier(parser) && !parser.nth_at(1, T![::]) {
                 simple_identifier(parser)
             } else {
@@ -1078,7 +1079,7 @@ fn jump_expression(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
 
 fn callable_reference(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     let m = parser.start();
-    let recv = receiver_type(parser, RecvType::NotDotted);
+    let recv = receiver_type(parser, RecvType::NotDotted(UserType::All));
     if !parser.eat(T![::]) {
         m.abandon(parser);
         return recv;
