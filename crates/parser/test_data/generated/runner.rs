@@ -17,6 +17,10 @@ mod ok {
         run_and_expect_no_errors("test_data/parser/inline/ok/object_declaration.kt");
     }
     #[test]
+    fn property_declaration() {
+        run_and_expect_no_errors("test_data/parser/inline/ok/property_declaration.kt");
+    }
+    #[test]
     fn single_annotation() {
         run_and_expect_no_errors("test_data/parser/inline/ok/single_annotation.kt");
     }

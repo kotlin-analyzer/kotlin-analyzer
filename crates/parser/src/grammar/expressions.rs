@@ -557,12 +557,15 @@ fn value_argument(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     if parser.eat(T![*]) {
         seen = true;
     }
+    let expr = expression(parser);
 
-    if seen && expression(parser).is_none() {
-        parser.error("expected an expression :#VA");
-    } else {
-        m.abandon(parser);
-        return None;
+    if expr.is_none() {
+        if seen {
+            parser.error("expected an expression :#VA");
+        } else {
+            m.abandon(parser);
+            return None;
+        }
     }
     Some(m.complete(parser, VALUE_ARGUMENT))
 }

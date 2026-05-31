@@ -109,12 +109,12 @@ pub(super) fn function_declaration(
 
     parser.bump(T![fun]);
     type_parameters(parser);
-    // HKGIC: In the grammar, function name is before receiver type, 
-    // but we want to parse it before if the function does not contain a receiver type, as function name is a valid receiver type
+    // HKGIC: In the grammar, function name is before receiver type,
+    // but we want to parse it before, if the function does not contain a receiver type, as function name is a valid receiver type
     if is_simple_identifier(parser) && parser.nth_at(1, T!['(']) {
         simple_identifier(parser);
     } else {
-        receiver_type(parser, RecvType::Dotted(UserType::BeforeFnName));
+        receiver_type(parser, RecvType::Dotted(UserType::BeforeName));
 
         if simple_identifier(parser).is_none() {
             parser.error("expected an identifier: #FN");
@@ -155,7 +155,7 @@ pub(super) fn function_body(parser: &mut Parser<'_>) -> Option<CompletedMarker> 
 // object Foo : Something() {}
 // data object Foo
 // object Foo : Boo by Bae, Bar(), Baz, B.() -> Unit by A {}
-pub(crate) fn object_declaration(
+pub(super) fn object_declaration(
     parser: &mut Parser<'_>,
     modifiers_marker: Option<CompletedMarker>,
 ) -> Option<CompletedMarker> {
@@ -204,14 +204,14 @@ fn property_delegate(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     }
 }
 
-pub(crate) const PROPERTY_DECLARATION_START: TokenSet = TokenSet::new(&[VAL_KW, VAR_KW]);
+pub(super) const PROPERTY_DECLARATION_START: TokenSet = TokenSet::new(&[VAL_KW, VAR_KW]);
 
-pub(crate) fn multi_variable_declaration(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+pub(super) fn multi_variable_declaration(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     if parser.at(T!['(']) {
         let m = parser.start();
         parser.eat(T!['(']);
         if variable_declaration(parser).is_some() {
-            while !parser.eat(T![,]) && variable_declaration(parser).is_some() {}
+            while parser.eat(T![,]) && variable_declaration(parser).is_some() {}
         }
         if !parser.eat(T![')']) {
             parser.error("expected ')'");
@@ -221,9 +221,14 @@ pub(crate) fn multi_variable_declaration(parser: &mut Parser<'_>) -> Option<Comp
         None
     }
 }
-pub(crate) fn variable_declaration(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+pub(super) fn variable_declaration(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     let m = parser.start();
     annotation(parser);
+    // Optimization
+    if is_simple_identifier(parser) && parser.nth_at(1, T!['(']) {
+        m.abandon(parser);
+        return None
+    }
     if simple_identifier(parser).is_some() {
         if parser.eat(T![:]) && ty(parser).is_none() {
             parser.error("expected a type");
@@ -241,8 +246,10 @@ const AFTER_PROP_NAME: TokenSet =
 /// Starts with either 'val' or 'var' keyword
 // test property_declaration
 // val x: Int
-//   val <T> List<T>.lastIndex: Int
-//      get() = this.size - 1
+// val (@Anno x: A.B, @Deco x: T.() -> Unit) = listOf(a, b)
+// val count by remember { mutableStateOf(0) }
+// val <T> List<T>.lastIndex: Int
+//    get() = this.size - 1
 // val greet: String.() -> Unit = { }
 pub(super) fn property_declaration(
     parser: &mut Parser<'_>,
@@ -259,7 +266,17 @@ pub(super) fn property_declaration(
     if is_simple_identifier(parser) && parser.nth_ats(1, AFTER_PROP_NAME) {
         multi_variable_declaration(parser).or_else(|| variable_declaration(parser));
     } else {
-        receiver_type(parser, RecvType::Dotted(UserType::All));
+        if !parser.at(T!['(']) {
+            // HKGIC: This is quite rare, and makes the grammar more complex, but can be fixed later
+            // by parsing contents of (...) and deciding if it is a receiver type or
+            // a multi variable declaration based on whether it contains a variable declaration or not.
+            // Would look somewhat like this:
+            // `val ((a: A) -> B).foo` or `val (Foo).baz = ...`
+            // and also `val (arg: (a: A) -> B).foo`, where arg can be variable name or an argument until we see the dot,
+            // but not `val (arg: Foo).baz = ...` as that would be grammatically incorrect.
+            // NB that we cannot have `val (a: A) -> B.foo` as `.foo` would be ambiguous even though the grammar allows that.
+            receiver_type(parser, RecvType::Dotted(UserType::BeforeName));
+        }
         multi_variable_declaration(parser).or_else(|| variable_declaration(parser));
     }
 

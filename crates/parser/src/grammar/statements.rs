@@ -255,7 +255,10 @@ mod assignment {
                 }
                 Some(m.complete(parser, ASSIGNMENT))
             }
-            AssignmentFragment::UnAssignable(cm) => Some(cm),
+            AssignmentFragment::UnAssignable(cm) => {
+                m.abandon(parser);
+                Some(cm)
+            }
         }
     }
 
@@ -292,13 +295,11 @@ mod assignment {
 
     fn parenthesized(p: &mut Parser<'_>) -> Option<AssignmentFragment> {
         if p.at(T!['(']) {
-            let m = p.start();
             p.eat(T!['(']);
 
             let Some(frag) = entry(p) else {
                 p.error("expected an expression");
                 p.eat(T![')']); // try to eat the closing paren to avoid cascading errors
-                m.abandon(p);
                 return None;
             };
 

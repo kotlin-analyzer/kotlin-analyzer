@@ -317,10 +317,12 @@ impl CompletedMarker {
 
     /// Extends this completed marker *to the right* up to end.
     pub(crate) fn extend_right(self, parser: &mut Parser<'_>) -> CompletedMarker {
-        let idx = self.end_pos as usize;
+        let idx = (self.end_pos - 1) as usize;
         match mem::replace(&mut parser.events[idx], Event::tombstone()) {
             Event::Finish => {}
-            _ => unreachable!(),
+            _ => {
+                unreachable!()
+            },
         };
         parser.push_event(Event::Finish);
         let end_pos = parser.events.len() as u32;

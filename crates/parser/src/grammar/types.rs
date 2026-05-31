@@ -63,7 +63,10 @@ fn type_suffix(parser: &mut Parser<'_>, lhs: TypeResult, forward_user_type: bool
             let m = lhs.marker().precede(parser);
             parser.bump(T![&]);
             type_modifiers(parser);
-            if user_type(parser, UserType::All).or_else(|| parenthesized_user_type(parser)).is_none() {
+            if user_type(parser, UserType::All)
+                .or_else(|| parenthesized_user_type(parser))
+                .is_none()
+            {
                 // FIXME: recovery
                 parser.error("expected type after `&`");
             }
@@ -224,7 +227,7 @@ pub(super) fn user_type(parser: &mut Parser<'_>, mode: UserType) -> Option<Compl
         let m = cm.precede(parser);
         // HGKIC: todo
         while parser.at(T![.]) && is_simple_ident_at(parser, 1) {
-            if parser.nth_at(2, T!['(']) && matches!(mode, UserType::BeforeFnName) {
+            if !parser.nth_at(2, T![.]) && matches!(mode, UserType::BeforeName) {
                 break;
             }
             parser.eat(T![.]);
@@ -426,8 +429,8 @@ impl RecvType {
 pub(super) enum UserType {
     /// parse `A.B.C` in `A.B.C()`
     All,
-    /// parse `A.B` in `A.B.C()`, useful before function name
-    BeforeFnName,
+    /// parse `A.B` in `A.B.C()` or `A.` in `A.name: T`, useful before function name
+    BeforeName,
 }
 
 pub(super) fn receiver_type(
