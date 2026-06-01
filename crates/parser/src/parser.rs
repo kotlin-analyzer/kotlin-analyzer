@@ -255,12 +255,11 @@ impl Marker {
     }
 }
 
-#[derive(Clone, Debug)]
 pub(crate) struct CompletedMarker {
     start_pos: u32,
     end_pos: u32,
     kind: SyntaxKind,
-    dangling: Option<Box<CompletedMarker>>,
+    dangling: Option<Marker>,
 }
 
 impl CompletedMarker {
@@ -268,13 +267,18 @@ impl CompletedMarker {
         CompletedMarker { start_pos, end_pos, kind, dangling: None }
     }
 
-    pub(crate) fn with_dangling(mut self, dangling: Option<CompletedMarker>) -> Self {
-        self.dangling = dangling.map(Box::new);
+    pub(crate) fn with_dangling(mut self, dangling: Option<Marker>) -> Self {
+        self.dangling = dangling;
         self
     }
 
-    pub(crate) fn dangling(self) -> Option<CompletedMarker> {
-        self.dangling.map(|d| *d)
+    pub(crate) fn dangling(self) -> Option<Marker> {
+        self.dangling
+    }
+
+    pub(crate) fn into_parts(self) -> (Self, Option<Marker>) {
+        let Self { start_pos, end_pos, kind, dangling } = self;
+        (Self { start_pos, end_pos, kind, dangling: None }, dangling)
     }
 
     /// This method allows to create a new node which starts
@@ -322,7 +326,7 @@ impl CompletedMarker {
             Event::Finish => {}
             _ => {
                 unreachable!()
-            },
+            }
         };
         parser.push_event(Event::Finish);
         let end_pos = parser.events.len() as u32;
@@ -341,4 +345,59 @@ impl CompletedMarker {
             _ => None,
         })
     }
+}
+
+pub(crate) struct DelimitedMarkers {
+    parent: Marker,
+    items: Vec<CompletedMarker>,
+}
+
+impl DelimitedMarkers {
+    fn new(parent: Marker) -> Self {
+        DelimitedMarkers { parent, items: Vec::new() }
+    }
+    fn add_item(&mut self, item: CompletedMarker) {
+        self.items.push(item);
+    }
+    pub(crate) fn remap_items(self, kind: SyntaxKind) -> Self {
+        self.for_each(|it| {
+            it.kind = kind;
+        })
+    }
+    pub(crate) fn complete(
+        self,
+        parser: &mut Parser<'_>,
+        kind: SyntaxKind,
+    ) -> Option<CompletedMarker> {
+        if self.items.is_empty() {
+            self.parent.abandon(parser);
+            return None;
+        }
+        Some(self.parent.complete(parser, kind))
+    }
+
+    #[inline]
+    pub(crate) fn for_each(mut self, mut f: impl FnMut(&mut CompletedMarker)) -> Self {
+        for item in &mut self.items {
+            f(item);
+        }
+        self
+    }
+}
+
+pub(crate) fn delimited(
+    parser: &mut Parser<'_>,
+    mut item: impl FnMut(&mut Parser<'_>) -> Option<CompletedMarker>,
+    mut delim: impl FnMut(&mut Parser<'_>) -> bool,
+) -> DelimitedMarkers {
+    let mut m = DelimitedMarkers::new(parser.start());
+    if let Some(first) = item(parser) {
+        m.add_item(first);
+        while delim(parser) {
+            if let Some(next) = item(parser) {
+                m.add_item(next);
+            }
+        }
+    }
+    m
 }

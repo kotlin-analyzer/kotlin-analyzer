@@ -177,7 +177,6 @@ fn complex(parser: &mut Parser<'_>) -> Option<TypeResult> {
     }
 }
 
-#[derive(Debug)]
 pub(crate) enum TypeResult {
     Simple(CompletedMarker),
     User(CompletedMarker),

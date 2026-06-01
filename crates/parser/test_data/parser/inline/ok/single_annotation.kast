@@ -16,20 +16,20 @@ KOTLIN_FILE
           WHITESPACE " "
           WHITESPACE " "
           STATEMENTS
-            SINGLE_ANNOTATION
-              ANNOTATION_USE_SITE_TARGET
-                AT " @"
-                GET_KW "get"
-                COLON ":"
-              USER_TYPE
-                SIMPLE_USER_TYPE
-                  SIMPLE_IDENTIFIER
-                    IDENT "Anno1"
-            NEWLINE "\n"
-            WHITESPACE " "
-            WHITESPACE " "
-            WHITESPACE " "
             PROPERTY_DECLARATION
+              SINGLE_ANNOTATION
+                ANNOTATION_USE_SITE_TARGET
+                  AT " @"
+                  GET_KW "get"
+                  COLON ":"
+                USER_TYPE
+                  SIMPLE_USER_TYPE
+                    SIMPLE_IDENTIFIER
+                      IDENT "Anno1"
+              NEWLINE "\n"
+              WHITESPACE " "
+              WHITESPACE " "
+              WHITESPACE " "
               VAL_KW "val"
               WHITESPACE " "
               VARIABLE_DECLARATION

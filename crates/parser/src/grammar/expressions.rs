@@ -2,17 +2,16 @@
 //! Expressions are similar to assigments, this makes parsing them a bit tricky, because of the ambiguity.
 //! The code here tries to factor that into their logic.
 
-use crate::{SyntaxKind::*, T};
+use crate::{Marker, SyntaxKind::*, T, TokenSet};
 use casey::shouty;
 
 use super::annotations::{annotation, starts_annotation};
 use super::class_members::{
-    context_parameter_list, function_body, multi_variable_declaration, parameters_with_opt_type,
-    variable_declaration,
+    context_parameter_list, function_body, parameters_with_opt_type, variable_declaration,
 };
 use super::classes::{class_body, delegation_specifiers, type_constraints};
 use super::identifiers::{is_simple_identifier, simple_identifier};
-use super::statements::{CaptureStmts, block, control_structure_body, label, semi, statements};
+use super::statements::{StmtStart, block, control_structure_body, label, semi, statements};
 use super::types::{RecvType, UserType, receiver_type, ty, type_projection};
 use crate::{CompletedMarker, Parser};
 
@@ -39,8 +38,8 @@ macro_rules! define_operator {
 }
 
 pub(crate) fn expression(parser: &mut Parser<'_>) -> Option<Expression> {
+    let m = parser.start();
     if let Some(ex) = disjunction(parser) {
-        let m = ex.clone().marker().precede(parser);
         let cm = m.complete(parser, EXPRESSION);
         let res = match ex {
             Expression::Affixed(AffixedExpression::Postfix(_)) => {
@@ -53,6 +52,7 @@ pub(crate) fn expression(parser: &mut Parser<'_>) -> Option<Expression> {
         };
         Some(res)
     } else {
+        m.abandon(parser);
         None
     }
 }
@@ -134,8 +134,8 @@ fn comparison(parser: &mut Parser<'_>) -> Option<Expression> {
 }
 
 fn generic_call_like_comparison(parser: &mut Parser<'_>) -> Option<Expression> {
+    let m = parser.start();
     if let Some(ex) = infix_operation(parser) {
-        let m = ex.clone().marker().precede(parser);
         let mut seen = 0;
         while call_suffix(parser, CallSuffix::Full).is_some() {
             seen += 1;
@@ -147,6 +147,7 @@ fn generic_call_like_comparison(parser: &mut Parser<'_>) -> Option<Expression> {
             Some(ex)
         }
     } else {
+        m.abandon(parser);
         None
     }
 }
@@ -362,7 +363,6 @@ fn assignable_expression(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
         .or_else(|| prefix_unary_expression(parser).map(|pue| pue.marker()))
 }
 
-#[derive(Clone)]
 pub(crate) enum AffixedExpression {
     Prefix(CompletedMarker),
     Postfix(CompletedMarker),
@@ -376,7 +376,6 @@ impl AffixedExpression {
     }
 }
 
-#[derive(Clone)]
 pub(crate) enum Expression {
     Affixed(AffixedExpression),
     Other(CompletedMarker),
@@ -732,30 +731,95 @@ fn lambda_literal(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     }
     let m = parser.start();
     parser.bump(T!['{']);
-    if lambda_parameters(parser).is_some() && !parser.eat(T![->]) {
-        parser.error("expected `->`");
-    }
-    statements(parser, CaptureStmts::Capture);
+    let partial = match lambda_parameters(parser) {
+        Some(Ok(_)) => {
+            if !parser.eat(T![->]) {
+                parser.error("expected `->`");
+            }
+            None
+        }
+        Some(Err(p)) => Some(p),
+        None => None,
+    };
+
+    statements(parser, partial.map(StmtStart::Partial));
     if !parser.eat(T!['}']) {
         parser.error("expected `}`");
     }
     Some(m.complete(parser, LAMBDA_LITERAL))
 }
 
-fn lambda_parameters(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    if let Some(cm) = lambda_parameter(parser) {
-        let m = cm.precede(parser);
-        while parser.eat(T![,]) && lambda_parameter(parser).is_some() {}
-        Some(m.complete(parser, LAMBDA_PARAMETERS))
+fn lambda_parameters(parser: &mut Parser<'_>) -> Option<Result<CompletedMarker, PartialMarker>> {
+    let cm = lambda_parameter(parser)?;
+    let Ok(cm) = cm else {
+        return Some(cm);
+    };
+    let m = cm.precede(parser);
+    while parser.eat(T![,]) && lambda_parameter(parser).is_some() {}
+    Some(Ok(m.complete(parser, LAMBDA_PARAMETERS)))
+}
+
+fn lambda_parameter(parser: &mut Parser<'_>) -> Option<Result<CompletedMarker, PartialMarker>> {
+    let alts =
+        multi_lambda_parameter_decl(parser).or_else(|| single_lambda_parameter_decl(parser))?;
+    Some(alts.map(|cm| cm.precede(parser).complete(parser, LAMBDA_PARAMETER)))
+}
+
+pub(super) enum PartialMarker {
+    Parens(Marker),
+    Simple(CompletedMarker),
+}
+
+fn multi_lambda_parameter_decl(
+    parser: &mut Parser<'_>,
+) -> Option<Result<CompletedMarker, PartialMarker>> {
+    if parser.at(T!['(']) {
+        let m = parser.start();
+        parser.eat(T!['(']);
+        match single_lambda_parameter_decl(parser) {
+            Some(Ok(_)) => {
+                while parser.eat(T![,]) {
+                    if single_lambda_parameter_decl(parser).and_then(Result::ok).is_none() {
+                        // TODO: error recovery if there is a `,` but no parameter after it.
+                        break;
+                    }
+                }
+            }
+            Some(Err(PartialMarker::Parens(_))) => unreachable!(),
+            Some(Err(PartialMarker::Simple(_))) | None => {
+                return Some(Err(PartialMarker::Parens(m)));
+            }
+        }
+        if !parser.eat(T![')']) {
+            parser.error("expected ')'");
+        }
+        if parser.eat(T![:]) && ty(parser).is_none() {
+            parser.error("expected a type");
+        }
+        Some(Ok(m.complete(parser, MULTI_VARIABLE_DECLARATION)))
     } else {
         None
     }
 }
 
-fn lambda_parameter(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    multi_variable_declaration(parser)
-        .or_else(|| variable_declaration(parser))
-        .map(|cm| cm.precede(parser).complete(parser, LAMBDA_PARAMETER))
+const AFTER_LAMBDA_VAR_NAME: TokenSet = TokenSet::new(&[T![:], T![,], T![->], T![')']]);
+fn single_lambda_parameter_decl(
+    parser: &mut Parser<'_>,
+) -> Option<Result<CompletedMarker, PartialMarker>> {
+    let cm = annotation(parser);
+    // Optimization
+    if is_simple_identifier(parser) && !parser.nth_ats(1, AFTER_LAMBDA_VAR_NAME) {
+        return cm.map(|cm| Err(PartialMarker::Simple(cm)));
+    }
+    if simple_identifier(parser).is_some() {
+        let m = cm.map(|cm| cm.precede(parser)).unwrap_or_else(|| parser.start());
+        if parser.eat(T![:]) && ty(parser).is_none() {
+            parser.error("expected a type");
+        }
+        Some(Ok(m.complete(parser, VARIABLE_DECLARATION)))
+    } else {
+        cm.map(|cm| Err(PartialMarker::Simple(cm)))
+    }
 }
 
 fn anonymous_function(parser: &mut Parser<'_>) -> Option<CompletedMarker> {

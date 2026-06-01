@@ -124,19 +124,20 @@ KOTLIN_FILE
                   L_CURL "{"
                   WHITESPACE " "
                   STATEMENTS
-                    EXPRESSION
-                      POSTFIX_UNARY_EXPRESSION
-                        SIMPLE_IDENTIFIER
-                          IDENT "mutableStateOf"
-                        CALL_SUFFIX
-                          VALUE_ARGUMENTS
-                            L_PAREN "("
-                            VALUE_ARGUMENT
-                              EXPRESSION
-                                POSTFIX_UNARY_EXPRESSION
-                                  LITERAL_CONSTANT
-                                    INT "0"
-                            R_PAREN ")"
+                    STATEMENT
+                      EXPRESSION
+                        POSTFIX_UNARY_EXPRESSION
+                          SIMPLE_IDENTIFIER
+                            IDENT "mutableStateOf"
+                          CALL_SUFFIX
+                            VALUE_ARGUMENTS
+                              L_PAREN "("
+                              VALUE_ARGUMENT
+                                EXPRESSION
+                                  POSTFIX_UNARY_EXPRESSION
+                                    LITERAL_CONSTANT
+                                      INT "0"
+                              R_PAREN ")"
                   WHITESPACE " "
                   R_CURL "}"
   NEWLINE "\n"

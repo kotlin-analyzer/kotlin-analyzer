@@ -238,7 +238,6 @@ KOTLIN_FILE
       WHITESPACE " "
       CLASS_BODY
         L_CURL "{"
-        CLASS_MEMBER_DECLARATIONS
         R_CURL "}"
   NEWLINE "\n"
   TOP_LEVEL_OBJECT
@@ -376,7 +375,6 @@ KOTLIN_FILE
       WHITESPACE " "
       CLASS_BODY
         L_CURL "{"
-        CLASS_MEMBER_DECLARATIONS
         R_CURL "}"
   NEWLINE "\n"
   TOP_LEVEL_OBJECT

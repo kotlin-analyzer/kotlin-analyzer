@@ -1,5 +1,5 @@
 // use syntax::Token;
-use crate::{SyntaxKind::*, T};
+use crate::{Marker, SyntaxKind::*, T};
 
 use super::annotations::unescaped_annotation;
 use super::class_members::PROPERTY_DECLARATION_START;
@@ -10,7 +10,7 @@ use super::classes::starts_class_declaration;
 use super::classes::{class_declaration, type_parameters};
 use super::identifiers::{identifier, simple_identifier};
 use super::modifiers::modifiers;
-use super::statements::{CaptureStmts, semi, semis, statements};
+use super::statements::{semi, semis, statements};
 use super::types::ty;
 use crate::{CompletedMarker, Parser};
 
@@ -31,7 +31,7 @@ pub(crate) fn script(parser: &mut Parser<'_>) {
     package_header(parser);
     import_list(parser);
 
-    statements(parser, CaptureStmts::NoCapture);
+    statements(parser, None);
 
     m.complete(parser, SCRIPT);
 }
@@ -132,25 +132,31 @@ fn import_alias(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
 
 fn top_level_object(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     let m = parser.start();
-    let modifiers_marker = modifiers(parser);
+    modifiers(parser);
 
-    if declaration(parser, modifiers_marker).is_none() {
-        m.abandon(parser);
-        return None;
+    match declaration(parser, m) {
+        Ok(cm) => {
+            let (cm, optm) = cm.into_parts();
+            if let Some(optm) = optm {
+                // TODO: this should be forwarded to the next declaration
+                optm.abandon(parser);
+            }
+            let m = cm.precede(parser);
+            semis(parser);
+            Some(m.complete(parser, TOP_LEVEL_OBJECT))
+        }
+        Err(cm) => {
+            cm.abandon(parser);
+            None
+        }
     }
-
-    semis(parser);
-    Some(m.complete(parser, TOP_LEVEL_OBJECT))
 }
 
-fn type_alias(
-    parser: &mut Parser<'_>,
-    modifiers_marker: Option<CompletedMarker>,
-) -> Option<CompletedMarker> {
+fn type_alias(parser: &mut Parser<'_>, start: Marker) -> Result<CompletedMarker, Marker> {
     if !parser.at(T![typealias]) {
-        return None;
+        return Err(start);
     }
-    let m = modifiers_marker.map(|cm| cm.precede(parser)).unwrap_or_else(|| parser.start());
+    let m = start;
 
     parser.bump(T![typealias]);
 
@@ -164,24 +170,24 @@ fn type_alias(
     if ty(parser).is_none() {
         parser.error("expected type");
     }
-    Some(m.complete(parser, TYPE_ALIAS))
+    Ok(m.complete(parser, TYPE_ALIAS))
 }
 
 pub(super) fn declaration(
     parser: &mut Parser<'_>,
-    modifiers_marker: Option<CompletedMarker>,
-) -> Option<CompletedMarker> {
+    start: Marker,
+) -> Result<CompletedMarker, Marker> {
     if starts_class_declaration(parser) {
-        class_declaration(parser, modifiers_marker)
+        class_declaration(parser, start)
     } else if starts_fn_declaration(parser) {
-        function_declaration(parser, modifiers_marker)
+        function_declaration(parser, start)
     } else if parser.at(T![object]) {
-        object_declaration(parser, modifiers_marker)
+        object_declaration(parser, start)
     } else if parser.at_ts(PROPERTY_DECLARATION_START) {
-        property_declaration(parser, modifiers_marker)
+        property_declaration(parser, start)
     } else if parser.at(T![typealias]) {
-        type_alias(parser, modifiers_marker)
+        type_alias(parser, start)
     } else {
-        None
+        Err(start)
     }
 }

@@ -1,9 +1,9 @@
-use crate::SyntaxKind::*;
 use crate::T;
+use crate::{Marker, SyntaxKind::*};
 
 use super::annotations::annotation;
 use super::class_members::{multi_variable_declaration, variable_declaration};
-use super::expressions::expression;
+use super::expressions::{PartialMarker, expression};
 use super::general::declaration;
 use super::identifiers::{is_simple_identifier, simple_identifier};
 use super::modifiers::modifiers;
@@ -30,48 +30,63 @@ pub(crate) fn semis(parser: &mut Parser<'_>) -> bool {
     }
 }
 
-pub(super) enum CaptureStmts {
-    Capture,
-    NoCapture,
+pub(super) enum StmtStart {
+    Partial(PartialMarker),
+    Dangling(Marker),
 }
 
 pub(super) fn statements(
     parser: &mut Parser<'_>,
-    capture: CaptureStmts,
+    start: Option<StmtStart>,
 ) -> Option<CompletedMarker> {
-    let m = { if matches!(capture, CaptureStmts::Capture) { Some(parser.start()) } else { None } };
-    let mut dangling = None;
-    let mut found = false;
-
-    while let Some(cm) = statement(parser, dangling) {
-        found = true;
-        dangling = cm.dangling();
-        if !semis(parser) {
-            break;
+    if let Some(first) = statement(parser, start) {
+        let (first, mut dangling) = first.into_parts();
+        let m = first.precede(parser);
+        while let Some(cm) = statement(parser, dangling.map(StmtStart::Dangling)) {
+            dangling = cm.dangling();
+            if !semis(parser) {
+                break;
+            }
         }
-    }
-    if found {
-        m.map(|m| m.complete(parser, STATEMENTS))
+        Some(m.complete(parser, STATEMENTS))
     } else {
-        m.map(|m| m.abandon(parser));
         None
     }
 }
 
 pub(super) fn statement(
     parser: &mut Parser<'_>,
-    dangling: Option<CompletedMarker>,
+    start: Option<StmtStart>,
 ) -> Option<CompletedMarker> {
-    // HKGIC: Not making statement a node makes life a lot easier in regards to passing dangling modifiers markers
+    let m = match start {
+        Some(StmtStart::Partial(PartialMarker::Parens(m))) => {
+            // only this can start with a paren
+            return assignment::assignment_or_expression(parser, Some(m));
+        }
+        Some(StmtStart::Dangling(m)) => m,
+        Some(StmtStart::Partial(PartialMarker::Simple(cm))) => cm.precede(parser),
+        None => parser.start(),
+    };
+
     while label(parser).or_else(|| annotation(parser)).is_some() {}
 
-    loop_statement(parser)
-        .or_else(|| {
-            // TODO: join this with annotation from above
-            let modifiers = dangling.or_else(|| modifiers(parser));
-            declaration(parser, modifiers)
-        })
-        .or_else(|| assignment::assignment_or_expression(parser))
+    if loop_statement(parser).is_some() {
+        Some(m.complete(parser, STATEMENT))
+    } else {
+        modifiers(parser);
+        // NB: we are not capturing declarations as statements
+        match declaration(parser, m) {
+            Ok(cm) => Some(cm),
+            Err(m) => {
+                if assignment::assignment_or_expression(parser, None).is_some() {
+                    Some(m.complete(parser, STATEMENT))
+                } else {
+                    m.abandon(parser);
+                    None
+                }
+            }
+        }
+    }
 }
 
 fn loop_statement(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
@@ -188,7 +203,7 @@ pub(crate) fn label(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
 }
 
 pub(crate) fn control_structure_body(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    block(parser).or_else(|| statements(parser, CaptureStmts::Capture))
+    block(parser).or_else(|| statements(parser, None))
 }
 
 pub(crate) fn block(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
@@ -196,7 +211,7 @@ pub(crate) fn block(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
         let m = parser.start();
         parser.eat(T!['{']);
 
-        while statements(parser, CaptureStmts::Capture).is_some() {}
+        while statements(parser, None).is_some() {}
 
         if !parser.eat(T!['}']) {
             parser.error("expected '}'");
@@ -230,9 +245,13 @@ mod assignment {
         }
     }
 
-    pub(super) fn assignment_or_expression(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-        let m = parser.start();
-        let Some(left) = entry(parser) else {
+    pub(super) fn assignment_or_expression(
+        parser: &mut Parser<'_>,
+        opening_paren: Option<Marker>,
+    ) -> Option<CompletedMarker> {
+        let has_opening_paren = opening_paren.is_some();
+        let m = opening_paren.unwrap_or_else(|| parser.start());
+        let Some(left) = entry(parser, has_opening_paren) else {
             m.abandon(parser);
             return None;
         };
@@ -262,9 +281,9 @@ mod assignment {
         }
     }
 
-    fn entry(p: &mut Parser<'_>) -> Option<AssignmentFragment> {
-        if p.at(T!['(']) {
-            return parenthesized(p);
+    fn entry(p: &mut Parser<'_>, has_opening_paren: bool) -> Option<AssignmentFragment> {
+        if p.at(T!['(']) || has_opening_paren {
+            return parenthesized(p, has_opening_paren);
         }
         let m = p.start();
         let Some(expr) = expression(p) else {
@@ -293,11 +312,11 @@ mod assignment {
         }
     }
 
-    fn parenthesized(p: &mut Parser<'_>) -> Option<AssignmentFragment> {
-        if p.at(T!['(']) {
-            p.eat(T!['(']);
+    fn parenthesized(p: &mut Parser<'_>, has_opening_paren: bool) -> Option<AssignmentFragment> {
+        if p.at(T!['(']) || has_opening_paren {
+            p.eat(T!['(']); // optional
 
-            let Some(frag) = entry(p) else {
+            let Some(frag) = entry(p, false) else {
                 p.error("expected an expression");
                 p.eat(T![')']); // try to eat the closing paren to avoid cascading errors
                 return None;

@@ -8,26 +8,26 @@ use super::modifiers::modifiers;
 use crate::{CompletedMarker, Marker, Parser};
 
 pub(crate) enum BodyResult {
-    None(Marker),
+    None { opening_brace: Marker, first_entry: Marker },
     EnumClassBody(CompletedMarker),
 }
 
 pub(crate) fn enum_class_body(
     parser: &mut Parser<'_>,
     opening_brace: Marker,
-    modifiers_marker: Option<CompletedMarker>,
+    first_entry: Marker,
 ) -> BodyResult {
     let m = opening_brace;
 
-    if enum_entries(parser, modifiers_marker.clone()).is_none() {
-        return BodyResult::None(m); // so classBody can handle it
+    if let Err(fm) = enum_entries(parser, Some(first_entry)) {
+        return BodyResult::None { opening_brace: m, first_entry: fm };
     }
 
     if !parser.at(T!['}']) {
         if !parser.eat(T![;]) {
             parser.error("expected ';' after enum variants");
         }
-        class_member_declarations(parser, modifiers_marker);
+        class_member_declarations(parser, None);
     }
 
     if !parser.eat(T!['}']) {
@@ -38,35 +38,32 @@ pub(crate) fn enum_class_body(
 
 fn enum_entries(
     parser: &mut Parser<'_>,
-    modifiers_marker: Option<CompletedMarker>,
-) -> Option<CompletedMarker> {
-    if let Some(cm) = enum_entry(parser, modifiers_marker) {
-        let m = cm.precede(parser);
-        while parser.eat(T![,]) {
-            if enum_entry(parser, None).is_none() {
-                break;
+    first_entry: Option<Marker>,
+) -> Result<CompletedMarker, Marker> {
+    match enum_entry(parser, first_entry) {
+        Ok(cm) => {
+            let m = cm.precede(parser);
+            while parser.eat(T![,]) {
+                if enum_entry(parser, None).is_err() {
+                    break;
+                }
             }
+            Ok(m.complete(parser, ENUM_ENTRIES))
         }
-        Some(m.complete(parser, ENUM_ENTRIES))
-    } else {
-        None
+        Err(m) => Err(m),
     }
 }
-fn enum_entry(
-    parser: &mut Parser<'_>,
-    modifiers_marker: Option<CompletedMarker>,
-) -> Option<CompletedMarker> {
-    let has_modifiers = modifiers_marker.is_some();
-    let m = modifiers_marker.map(|cm| cm.precede(parser)).unwrap_or_else(|| parser.start());
+fn enum_entry(parser: &mut Parser<'_>, start: Option<Marker>) -> Result<CompletedMarker, Marker> {
+    let has_modifiers = start.is_some();
+    let m = start.unwrap_or_else(|| parser.start());
 
     if !has_modifiers {
         modifiers(parser);
     }
     if simple_identifier(parser).is_none() {
-        m.abandon(parser);
-        return None;
+        return Err(m);
     }
     value_arguments(parser);
     class_body(parser, None, None);
-    Some(m.complete(parser, ENUM_ENTRY))
+    Ok(m.complete(parser, ENUM_ENTRY))
 }

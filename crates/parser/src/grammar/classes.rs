@@ -31,13 +31,13 @@ pub(crate) fn starts_class_declaration(parser: &mut Parser<'_>) -> bool {
 // data class Foo12<T>(val name: String, val age: Int)
 pub(crate) fn class_declaration(
     parser: &mut Parser<'_>,
-    modifiers_marker: Option<CompletedMarker>,
-) -> Option<CompletedMarker> {
+    start: Marker,
+) -> Result<CompletedMarker, Marker> {
     if !starts_class_declaration(parser) {
-        return None;
+        return Err(start);
     }
 
-    let m = modifiers_marker.map(|cm| cm.precede(parser)).unwrap_or_else(|| parser.start());
+    let m = start;
 
     if parser.at(T![class]) || parser.at(T![interface]) {
         parser.bump_any();
@@ -63,14 +63,17 @@ pub(crate) fn class_declaration(
         let m = parser.start();
 
         parser.bump(T!['{']);
-        let first_modifiers = modifiers(parser);
+        let first_entry = parser.start();
+        modifiers(parser);
 
-        if let BodyResult::None(m) = enum_class_body(parser, m, first_modifiers.clone()) {
-            class_body(parser, Some(m), first_modifiers);
+        if let BodyResult::None { opening_brace, first_entry } =
+            enum_class_body(parser, m, first_entry)
+        {
+            class_body(parser, Some(opening_brace), Some(first_entry));
         }
     }
 
-    Some(m.complete(parser, CLASS_DECLARATION))
+    Ok(m.complete(parser, CLASS_DECLARATION))
 }
 
 fn primary_constructor(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
@@ -91,7 +94,7 @@ fn primary_constructor(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
 pub(crate) fn class_body(
     parser: &mut Parser<'_>,
     opening_brace: Option<Marker>,
-    modifier_marker: Option<CompletedMarker>,
+    first_entry: Option<Marker>,
 ) -> Option<CompletedMarker> {
     let m = opening_brace.or_else(|| {
         if !parser.at(T!['{']) {
@@ -103,7 +106,7 @@ pub(crate) fn class_body(
         }
     })?;
 
-    class_member_declarations(parser, modifier_marker);
+    class_member_declarations(parser, first_entry);
 
     if !parser.eat(T!['}']) {
         parser.error("expected '}'");
@@ -198,11 +201,10 @@ fn delegation_specifier(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
             explicit_delegation(parser, cm);
         }
         TypeResult::User(cm) if parser.at(T!['(']) => {
-            constructor_invocation(parser, cm, false);
+            let _ = constructor_invocation(parser, cm, false);
         }
         TypeResult::User(_) | TypeResult::Fn(_) => {}
-        ta => {
-            eprintln!("unexpected type in delegation specifier: {:?}", ta);
+        _ => {
             // maybe move this error linting phase
             parser.error("expected delegation specifier");
         }
@@ -259,13 +261,13 @@ pub(crate) fn constructor_invocation(
     parser: &mut Parser<'_>,
     user_type_marker: CompletedMarker,
     in_fn_type_position: bool,
-) -> Option<CompletedMarker> {
+) -> Result<CompletedMarker, CompletedMarker> {
     if !parser.at(T!['(']) || (in_fn_type_position && parser.at_lparen_after_ws()) {
-        return None;
+        return Err(user_type_marker);
     }
     let m = user_type_marker.precede(parser);
     value_arguments(parser);
-    Some(m.complete(parser, CONSTRUCTOR_INVOCATION))
+    Ok(m.complete(parser, CONSTRUCTOR_INVOCATION))
 }
 
 fn type_parameter(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
