@@ -11,3 +11,6 @@ fun interface Foo9<T> where T: Any, T: Serializable
 enum class Foo10<T> where T: Any, T: Serializable {}
 abstract class Foo11<T>(val name: String, val age: Int) where T: Any, T: Serializable
 data class Foo12<T>(val name: String, val age: Int)
+class A
+{}
+abstract class AB private fun f() = 1

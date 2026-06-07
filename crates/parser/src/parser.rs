@@ -276,6 +276,10 @@ impl CompletedMarker {
         self.dangling
     }
 
+    pub(crate) fn has_dangling(&self) -> bool {
+        self.dangling.is_some()
+    }
+
     pub(crate) fn into_parts(self) -> (Self, Option<Marker>) {
         let Self { start_pos, end_pos, kind, dangling } = self;
         (Self { start_pos, end_pos, kind, dangling: None }, dangling)

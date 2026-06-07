@@ -1,88 +1,89 @@
 KOTLIN_FILE
-  TOP_LEVEL_OBJECT
-    FUNCTION_DECLARATION
-      FUN_KW "fun"
-      WHITESPACE " "
-      SIMPLE_IDENTIFIER
-        IDENT "foo"
-      FUNCTION_VALUE_PARAMETERS
-        L_PAREN "("
-        R_PAREN ")"
-      WHITESPACE " "
-      FUNCTION_BODY
-        BLOCK
-          L_CURL "{"
+  FUNCTION_DECLARATION
+    FUN_KW "fun"
+    WHITESPACE " "
+    SIMPLE_IDENTIFIER
+      IDENT "foo"
+    FUNCTION_VALUE_PARAMETERS
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    FUNCTION_BODY
+      BLOCK
+        L_CURL "{"
+        NEWLINE "\n"
+        WHITESPACE " "
+        WHITESPACE " "
+        WHITESPACE " "
+        STATEMENTS
+          PROPERTY_DECLARATION
+            MULTI_ANNOTATION
+              ANNOTATION_USE_SITE_TARGET
+                AT "@"
+                GET_KW "get"
+                COLON ":"
+              L_SQUARE "["
+              USER_TYPE
+                SIMPLE_USER_TYPE
+                  SIMPLE_IDENTIFIER
+                    IDENT "Anno1"
+              WHITESPACE " "
+              USER_TYPE
+                SIMPLE_USER_TYPE
+                  SIMPLE_IDENTIFIER
+                    IDENT "Anno2"
+              R_SQUARE "]"
+            NEWLINE "\n"
+            WHITESPACE " "
+            WHITESPACE " "
+            WHITESPACE " "
+            VAL_KW "val"
+            WHITESPACE " "
+            VARIABLE_DECLARATION
+              SIMPLE_IDENTIFIER
+                IDENT "x"
+              COLON ":"
+              WHITESPACE " "
+              TYPE
+                TYPE_REFERENCE
+                  USER_TYPE
+                    SIMPLE_USER_TYPE
+                      SIMPLE_IDENTIFIER
+                        IDENT "Int"
           NEWLINE "\n"
           WHITESPACE " "
           WHITESPACE " "
-          STATEMENTS
-            PROPERTY_DECLARATION
+          WHITESPACE " "
+          PROPERTY_DECLARATION
+            MODIFIERS
               MULTI_ANNOTATION
                 ANNOTATION_USE_SITE_TARGET
-                  AT " @"
-                  GET_KW "get"
+                  AT "@"
+                  SET_KW "set"
                   COLON ":"
                 L_SQUARE "["
                 USER_TYPE
                   SIMPLE_USER_TYPE
                     SIMPLE_IDENTIFIER
-                      IDENT "Anno1"
-                WHITESPACE " "
-                USER_TYPE
-                  SIMPLE_USER_TYPE
-                    SIMPLE_IDENTIFIER
-                      IDENT "Anno2"
+                      IDENT "Anno3"
                 R_SQUARE "]"
-              NEWLINE "\n"
-              WHITESPACE " "
-              WHITESPACE " "
-              WHITESPACE " "
-              VAL_KW "val"
-              WHITESPACE " "
-              VARIABLE_DECLARATION
-                SIMPLE_IDENTIFIER
-                  IDENT "x"
-                COLON ":"
-                WHITESPACE " "
-                TYPE
-                  TYPE_REFERENCE
-                    USER_TYPE
-                      SIMPLE_USER_TYPE
-                        SIMPLE_IDENTIFIER
-                          IDENT "Int"
             NEWLINE "\n"
             WHITESPACE " "
             WHITESPACE " "
-            PROPERTY_DECLARATION
-              MODIFIERS
-                MULTI_ANNOTATION
-                  ANNOTATION_USE_SITE_TARGET
-                    AT " @"
-                    SET_KW "set"
-                    COLON ":"
-                  L_SQUARE "["
+            WHITESPACE " "
+            VAR_KW "var"
+            WHITESPACE " "
+            VARIABLE_DECLARATION
+              SIMPLE_IDENTIFIER
+                IDENT "y"
+              COLON ":"
+              WHITESPACE " "
+              TYPE
+                TYPE_REFERENCE
                   USER_TYPE
                     SIMPLE_USER_TYPE
                       SIMPLE_IDENTIFIER
-                        IDENT "Anno3"
-                  R_SQUARE "]"
-              NEWLINE "\n"
-              WHITESPACE " "
-              WHITESPACE " "
-              WHITESPACE " "
-              VAR_KW "var"
-              WHITESPACE " "
-              VARIABLE_DECLARATION
-                SIMPLE_IDENTIFIER
-                  IDENT "y"
-                COLON ":"
-                WHITESPACE " "
-                TYPE
-                  TYPE_REFERENCE
-                    USER_TYPE
-                      SIMPLE_USER_TYPE
-                        SIMPLE_IDENTIFIER
-                          IDENT "Int"
-          NEWLINE "\n"
-          R_CURL "}"
+                        IDENT "Int"
+        NEWLINE "\n"
+        R_CURL "}"
   NEWLINE "\n"

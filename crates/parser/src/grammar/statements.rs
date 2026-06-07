@@ -45,6 +45,7 @@ pub(super) fn statements(
         while let Some(cm) = statement(parser, dangling.map(StmtStart::Dangling)) {
             dangling = cm.dangling();
             if !semis(parser) {
+                dangling.map(|d| d.abandon(parser));
                 break;
             }
         }

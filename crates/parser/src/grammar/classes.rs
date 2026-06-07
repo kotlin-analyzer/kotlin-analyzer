@@ -29,6 +29,9 @@ pub(crate) fn starts_class_declaration(parser: &mut Parser<'_>) -> bool {
 // enum class Foo10<T> where T: Any, T: Serializable {}
 // abstract class Foo11<T>(val name: String, val age: Int) where T: Any, T: Serializable
 // data class Foo12<T>(val name: String, val age: Int)
+// class A
+// {}
+// abstract class AB private fun f() = 1
 pub(crate) fn class_declaration(
     parser: &mut Parser<'_>,
     start: Marker,
@@ -51,7 +54,11 @@ pub(crate) fn class_declaration(
     }
 
     type_parameters(parser);
-    primary_constructor(parser);
+    let cm = m.complete(parser, CLASS_DECLARATION);
+
+    if let Some(Err(dangling)) = primary_constructor(parser) {
+        return Ok(cm.with_dangling(Some(dangling)));
+    }
 
     if parser.eat(T![:]) && delegation_specifiers(parser).is_none() {
         parser.error("expected delegation specifiers");
@@ -73,22 +80,28 @@ pub(crate) fn class_declaration(
         }
     }
 
-    Ok(m.complete(parser, CLASS_DECLARATION))
+    Ok(cm.extend_right(parser))
 }
 
-fn primary_constructor(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+fn primary_constructor(parser: &mut Parser<'_>) -> Option<Result<CompletedMarker, Marker>> {
     let m = parser.start();
 
-    if modifiers(parser).is_some() && !parser.eat(T![constructor]) {
-        parser.error("expected 'constructor'");
+    match (modifiers(parser), parser.eat(T![constructor])) {
+        (None, false) => {
+            if !parser.at(T!['(']) {
+                m.abandon(parser);
+                return None;
+            }
+        }
+        (Some(_), false) => {
+            return Some(Err(m));
+        }
+        (_, true) => {}
     }
 
-    if class_parameters(parser).is_none() {
-        m.abandon(parser);
-        return None;
-    }
+    class_parameters(parser);
 
-    Some(m.complete(parser, PRIMARY_CONSTRUCTOR))
+    Some(Ok(m.complete(parser, PRIMARY_CONSTRUCTOR)))
 }
 
 pub(crate) fn class_body(

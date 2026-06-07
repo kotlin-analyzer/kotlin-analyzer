@@ -1,0 +1,43 @@
+KOTLIN_FILE
+  IMPORT_LIST
+    IMPORT_HEADER
+      IMPORT_KW "import"
+      WHITESPACE " "
+      IDENTIFIER
+        SIMPLE_IDENTIFIER
+          IDENT "foo"
+        DOT "."
+        SIMPLE_IDENTIFIER
+          IDENT "bar"
+    NEWLINE "\n"
+    IMPORT_HEADER
+      IMPORT_KW "import"
+      WHITESPACE " "
+      IDENTIFIER
+        SIMPLE_IDENTIFIER
+          IDENT "foo"
+        DOT "."
+        SIMPLE_IDENTIFIER
+          IDENT "bar"
+      DOT "."
+      MULT "*"
+    NEWLINE "\n"
+    IMPORT_HEADER
+      IMPORT_KW "import"
+      WHITESPACE " "
+      IDENTIFIER
+        SIMPLE_IDENTIFIER
+          IDENT "foo"
+        DOT "."
+        SIMPLE_IDENTIFIER
+          IDENT "bar"
+        DOT "."
+        SIMPLE_IDENTIFIER
+          IDENT "Baz"
+      WHITESPACE " "
+      IMPORT_ALIAS
+        AS_KW "as"
+        WHITESPACE " "
+        SIMPLE_IDENTIFIER
+          IDENT "BazAlias"
+  NEWLINE "\n"

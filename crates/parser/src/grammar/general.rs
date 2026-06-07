@@ -20,7 +20,7 @@ pub(crate) fn kotlin_file(parser: &mut Parser<'_>) {
     while file_annotation(parser).is_some() {}
     package_header(parser);
     import_list(parser);
-    while top_level_object(parser).is_some() {}
+    top_level_objects(parser);
     m.complete(parser, KOTLIN_FILE);
 }
 
@@ -36,6 +36,8 @@ pub(crate) fn script(parser: &mut Parser<'_>) {
     m.complete(parser, SCRIPT);
 }
 
+// test shebang_line
+// #!/usr/bin/env kotlinc
 fn shebang_line(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     if parser.at(SHEBANG) {
         let m = parser.start();
@@ -46,6 +48,9 @@ fn shebang_line(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     }
 }
 
+// test file_annotation
+// @file:JvmName("Foo")
+// @file:[JvmName("Foo") JvmMultifileClass]
 fn file_annotation(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     match (parser.current(), parser.nth(1)) {
         (T![@], T![file]) => {
@@ -56,9 +61,16 @@ fn file_annotation(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
             if !parser.eat(T![:]) {
                 parser.error("expected `:`");
             }
-
+            // test_err file_annotation
+            // @file:[JvmName("Foo"), JvmMultifileClass]
+            // @file:[JvmName("Foo"), JvmMultifileClass
+            // @file:
             if parser.eat(T!['[']) {
-                while unescaped_annotation(parser).is_some() {}
+                while unescaped_annotation(parser).is_some() {
+                    if parser.eat(T![,]) {
+                        parser.error("file annotations should not be separated by ','");
+                    }
+                }
                 if !parser.eat(T![']']) {
                     parser.error("expected ']'");
                 }
@@ -72,6 +84,11 @@ fn file_annotation(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     }
 }
 
+// test package_header
+// package foo.bar
+
+// test package_header2
+// package foo.bar.baz
 fn package_header(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     if parser.at(T![package]) {
         let m = parser.start();
@@ -84,6 +101,10 @@ fn package_header(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     }
 }
 
+// test import_list
+// import foo.bar
+// import foo.bar.*
+// import foo.bar.Baz as BazAlias
 fn import_list(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     let m = parser.start();
     let mut has_imports = false;
@@ -129,21 +150,30 @@ fn import_alias(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
         None
     }
 }
+fn top_level_objects(parser: &mut Parser<'_>) {
+    if let Some(first) = top_level_object(parser, None) {
+        let (_, mut dangling) = first.into_parts();
+        while let Some(cm) = top_level_object(parser, dangling) {
+            dangling = cm.dangling();
+        }
+    }
+}
 
-fn top_level_object(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    let m = parser.start();
-    modifiers(parser);
+fn top_level_object(parser: &mut Parser<'_>, start: Option<Marker>) -> Option<CompletedMarker> {
+    let m = start.unwrap_or_else(|| {
+        let s = parser.start();
+        modifiers(parser);
+        s
+    });
 
     match declaration(parser, m) {
         Ok(cm) => {
-            let (cm, optm) = cm.into_parts();
-            if let Some(optm) = optm {
-                // TODO: this should be forwarded to the next declaration
-                optm.abandon(parser);
+            if !cm.has_dangling() {
+                // can not parse semis if we are forwarding the dangling marker to the caller
+                semis(parser);
             }
-            let m = cm.precede(parser);
-            semis(parser);
-            Some(m.complete(parser, TOP_LEVEL_OBJECT))
+            Some(cm)
+            // Some(m.complete(parser, TOP_LEVEL_OBJECT)) // can not complete the marker here because we might have a dangling marker. same as in statement
         }
         Err(cm) => {
             cm.abandon(parser);

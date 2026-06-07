@@ -1,9 +1,32 @@
 KOTLIN_FILE
-  TOP_LEVEL_OBJECT
-    PROPERTY_DECLARATION
-      VAL_KW "val"
+  PROPERTY_DECLARATION
+    VAL_KW "val"
+    WHITESPACE " "
+    VARIABLE_DECLARATION
+      SIMPLE_IDENTIFIER
+        IDENT "x"
+      COLON ":"
       WHITESPACE " "
+      TYPE
+        TYPE_REFERENCE
+          USER_TYPE
+            SIMPLE_USER_TYPE
+              SIMPLE_IDENTIFIER
+                IDENT "Int"
+  NEWLINE "\n"
+  PROPERTY_DECLARATION
+    VAL_KW "val"
+    WHITESPACE " "
+    MULTI_VARIABLE_DECLARATION
+      L_PAREN "("
       VARIABLE_DECLARATION
+        SINGLE_ANNOTATION
+          AT "@"
+          USER_TYPE
+            SIMPLE_USER_TYPE
+              SIMPLE_IDENTIFIER
+                IDENT "Anno"
+        WHITESPACE " "
         SIMPLE_IDENTIFIER
           IDENT "x"
         COLON ":"
@@ -13,210 +36,22 @@ KOTLIN_FILE
             USER_TYPE
               SIMPLE_USER_TYPE
                 SIMPLE_IDENTIFIER
-                  IDENT "Int"
-  NEWLINE "\n"
-  TOP_LEVEL_OBJECT
-    PROPERTY_DECLARATION
-      VAL_KW "val"
-      WHITESPACE " "
-      MULTI_VARIABLE_DECLARATION
-        L_PAREN "("
-        VARIABLE_DECLARATION
-          SINGLE_ANNOTATION
-            AT "@"
-            USER_TYPE
-              SIMPLE_USER_TYPE
-                SIMPLE_IDENTIFIER
-                  IDENT "Anno"
-          WHITESPACE " "
-          SIMPLE_IDENTIFIER
-            IDENT "x"
-          COLON ":"
-          WHITESPACE " "
-          TYPE
-            TYPE_REFERENCE
-              USER_TYPE
-                SIMPLE_USER_TYPE
-                  SIMPLE_IDENTIFIER
-                    IDENT "A"
-                DOT "."
-                SIMPLE_USER_TYPE
-                  SIMPLE_IDENTIFIER
-                    IDENT "B"
-        COMMA ","
-        VARIABLE_DECLARATION
-          SINGLE_ANNOTATION
-            AT " @"
-            USER_TYPE
-              SIMPLE_USER_TYPE
-                SIMPLE_IDENTIFIER
-                  IDENT "Deco"
-          WHITESPACE " "
-          SIMPLE_IDENTIFIER
-            IDENT "x"
-          COLON ":"
-          WHITESPACE " "
-          TYPE
-            FUNCTION_TYPE
-              RECEIVER_TYPE
-                TYPE_REFERENCE
-                  USER_TYPE
-                    SIMPLE_USER_TYPE
-                      SIMPLE_IDENTIFIER
-                        IDENT "T"
+                  IDENT "A"
               DOT "."
-              FUNCTION_TYPE_PARAMETERS
-                L_PAREN "("
-                R_PAREN ")"
-              WHITESPACE " "
-              ARROW "->"
-              WHITESPACE " "
-              TYPE
-                TYPE_REFERENCE
-                  USER_TYPE
-                    SIMPLE_USER_TYPE
-                      SIMPLE_IDENTIFIER
-                        IDENT "Unit"
-        R_PAREN ")"
-      WHITESPACE " "
-      EQ "="
-      WHITESPACE " "
-      EXPRESSION
-        POSTFIX_UNARY_EXPRESSION
-          SIMPLE_IDENTIFIER
-            IDENT "listOf"
-          CALL_SUFFIX
-            VALUE_ARGUMENTS
-              L_PAREN "("
-              VALUE_ARGUMENT
-                EXPRESSION
-                  POSTFIX_UNARY_EXPRESSION
-                    SIMPLE_IDENTIFIER
-                      IDENT "a"
-              COMMA ","
-              WHITESPACE " "
-              VALUE_ARGUMENT
-                EXPRESSION
-                  POSTFIX_UNARY_EXPRESSION
-                    SIMPLE_IDENTIFIER
-                      IDENT "b"
-              R_PAREN ")"
-  NEWLINE "\n"
-  TOP_LEVEL_OBJECT
-    PROPERTY_DECLARATION
-      VAL_KW "val"
-      WHITESPACE " "
+              SIMPLE_USER_TYPE
+                SIMPLE_IDENTIFIER
+                  IDENT "B"
+      COMMA ","
       VARIABLE_DECLARATION
-        SIMPLE_IDENTIFIER
-          IDENT "count"
-      WHITESPACE " "
-      PROPERTY_DELEGATE
-        BY_KW "by"
-        WHITESPACE " "
-        EXPRESSION
-          POSTFIX_UNARY_EXPRESSION
-            SIMPLE_IDENTIFIER
-              IDENT "remember"
-            WHITESPACE " "
-            CALL_SUFFIX
-              ANNOTATED_LAMBDA
-                LAMBDA_LITERAL
-                  L_CURL "{"
-                  WHITESPACE " "
-                  STATEMENTS
-                    STATEMENT
-                      EXPRESSION
-                        POSTFIX_UNARY_EXPRESSION
-                          SIMPLE_IDENTIFIER
-                            IDENT "mutableStateOf"
-                          CALL_SUFFIX
-                            VALUE_ARGUMENTS
-                              L_PAREN "("
-                              VALUE_ARGUMENT
-                                EXPRESSION
-                                  POSTFIX_UNARY_EXPRESSION
-                                    LITERAL_CONSTANT
-                                      INT "0"
-                              R_PAREN ")"
-                  WHITESPACE " "
-                  R_CURL "}"
-  NEWLINE "\n"
-  TOP_LEVEL_OBJECT
-    PROPERTY_DECLARATION
-      VAL_KW "val"
-      WHITESPACE " "
-      TYPE_PARAMETERS
-        L_ANGLE "<"
-        TYPE_PARAMETER
-          SIMPLE_IDENTIFIER
-            IDENT "T"
-        R_ANGLE ">"
-      WHITESPACE " "
-      RECEIVER_TYPE
-        TYPE_REFERENCE
+        SINGLE_ANNOTATION
+          AT " @"
           USER_TYPE
             SIMPLE_USER_TYPE
               SIMPLE_IDENTIFIER
-                IDENT "List"
-              TYPE_ARGUMENTS
-                L_ANGLE "<"
-                TYPE_PROJECTION
-                  TYPE
-                    TYPE_REFERENCE
-                      USER_TYPE
-                        SIMPLE_USER_TYPE
-                          SIMPLE_IDENTIFIER
-                            IDENT "T"
-                R_ANGLE ">"
-      DOT "."
-      VARIABLE_DECLARATION
+                IDENT "Deco"
+        WHITESPACE " "
         SIMPLE_IDENTIFIER
-          IDENT "lastIndex"
-        COLON ":"
-        WHITESPACE " "
-        TYPE
-          TYPE_REFERENCE
-            USER_TYPE
-              SIMPLE_USER_TYPE
-                SIMPLE_IDENTIFIER
-                  IDENT "Int"
-      NEWLINE "\n"
-      WHITESPACE " "
-      WHITESPACE " "
-      WHITESPACE " "
-      GETTER
-        GET_KW "get"
-        L_PAREN "("
-        R_PAREN ")"
-        WHITESPACE " "
-        EQ "="
-        WHITESPACE " "
-        EXPRESSION
-          ADDITIVE_EXPRESSION
-            POSTFIX_UNARY_EXPRESSION
-              THIS_EXPRESSION
-                THIS_KW "this"
-              NAVIGATION_SUFFIX
-                MEMBER_ACCESS_OPERATOR
-                  DOT "."
-                SIMPLE_IDENTIFIER
-                  IDENT "size"
-            WHITESPACE " "
-            ADDITIVE_OPERATOR
-              SUB "-"
-            WHITESPACE " "
-            POSTFIX_UNARY_EXPRESSION
-              LITERAL_CONSTANT
-                INT "1"
-        NEWLINE "\n"
-        FUNCTION_BODY
-  TOP_LEVEL_OBJECT
-    PROPERTY_DECLARATION
-      VAL_KW "val"
-      WHITESPACE " "
-      VARIABLE_DECLARATION
-        SIMPLE_IDENTIFIER
-          IDENT "greet"
+          IDENT "x"
         COLON ":"
         WHITESPACE " "
         TYPE
@@ -226,7 +61,7 @@ KOTLIN_FILE
                 USER_TYPE
                   SIMPLE_USER_TYPE
                     SIMPLE_IDENTIFIER
-                      IDENT "String"
+                      IDENT "T"
             DOT "."
             FUNCTION_TYPE_PARAMETERS
               L_PAREN "("
@@ -240,13 +75,173 @@ KOTLIN_FILE
                   SIMPLE_USER_TYPE
                     SIMPLE_IDENTIFIER
                       IDENT "Unit"
+      R_PAREN ")"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    EXPRESSION
+      POSTFIX_UNARY_EXPRESSION
+        SIMPLE_IDENTIFIER
+          IDENT "listOf"
+        CALL_SUFFIX
+          VALUE_ARGUMENTS
+            L_PAREN "("
+            VALUE_ARGUMENT
+              EXPRESSION
+                POSTFIX_UNARY_EXPRESSION
+                  SIMPLE_IDENTIFIER
+                    IDENT "a"
+            COMMA ","
+            WHITESPACE " "
+            VALUE_ARGUMENT
+              EXPRESSION
+                POSTFIX_UNARY_EXPRESSION
+                  SIMPLE_IDENTIFIER
+                    IDENT "b"
+            R_PAREN ")"
+  NEWLINE "\n"
+  PROPERTY_DECLARATION
+    VAL_KW "val"
+    WHITESPACE " "
+    VARIABLE_DECLARATION
+      SIMPLE_IDENTIFIER
+        IDENT "count"
+    WHITESPACE " "
+    PROPERTY_DELEGATE
+      BY_KW "by"
+      WHITESPACE " "
+      EXPRESSION
+        POSTFIX_UNARY_EXPRESSION
+          SIMPLE_IDENTIFIER
+            IDENT "remember"
+          WHITESPACE " "
+          CALL_SUFFIX
+            ANNOTATED_LAMBDA
+              LAMBDA_LITERAL
+                L_CURL "{"
+                WHITESPACE " "
+                STATEMENTS
+                  STATEMENT
+                    EXPRESSION
+                      POSTFIX_UNARY_EXPRESSION
+                        SIMPLE_IDENTIFIER
+                          IDENT "mutableStateOf"
+                        CALL_SUFFIX
+                          VALUE_ARGUMENTS
+                            L_PAREN "("
+                            VALUE_ARGUMENT
+                              EXPRESSION
+                                POSTFIX_UNARY_EXPRESSION
+                                  LITERAL_CONSTANT
+                                    INT "0"
+                            R_PAREN ")"
+                WHITESPACE " "
+                R_CURL "}"
+  NEWLINE "\n"
+  PROPERTY_DECLARATION
+    VAL_KW "val"
+    WHITESPACE " "
+    TYPE_PARAMETERS
+      L_ANGLE "<"
+      TYPE_PARAMETER
+        SIMPLE_IDENTIFIER
+          IDENT "T"
+      R_ANGLE ">"
+    WHITESPACE " "
+    RECEIVER_TYPE
+      TYPE_REFERENCE
+        USER_TYPE
+          SIMPLE_USER_TYPE
+            SIMPLE_IDENTIFIER
+              IDENT "List"
+            TYPE_ARGUMENTS
+              L_ANGLE "<"
+              TYPE_PROJECTION
+                TYPE
+                  TYPE_REFERENCE
+                    USER_TYPE
+                      SIMPLE_USER_TYPE
+                        SIMPLE_IDENTIFIER
+                          IDENT "T"
+              R_ANGLE ">"
+    DOT "."
+    VARIABLE_DECLARATION
+      SIMPLE_IDENTIFIER
+        IDENT "lastIndex"
+      COLON ":"
+      WHITESPACE " "
+      TYPE
+        TYPE_REFERENCE
+          USER_TYPE
+            SIMPLE_USER_TYPE
+              SIMPLE_IDENTIFIER
+                IDENT "Int"
+    NEWLINE "\n"
+    WHITESPACE " "
+    WHITESPACE " "
+    WHITESPACE " "
+    GETTER
+      GET_KW "get"
+      L_PAREN "("
+      R_PAREN ")"
       WHITESPACE " "
       EQ "="
       WHITESPACE " "
       EXPRESSION
-        POSTFIX_UNARY_EXPRESSION
-          LAMBDA_LITERAL
-            L_CURL "{"
-            WHITESPACE " "
-            R_CURL "}"
+        ADDITIVE_EXPRESSION
+          POSTFIX_UNARY_EXPRESSION
+            THIS_EXPRESSION
+              THIS_KW "this"
+            NAVIGATION_SUFFIX
+              MEMBER_ACCESS_OPERATOR
+                DOT "."
+              SIMPLE_IDENTIFIER
+                IDENT "size"
+          WHITESPACE " "
+          ADDITIVE_OPERATOR
+            SUB "-"
+          WHITESPACE " "
+          POSTFIX_UNARY_EXPRESSION
+            LITERAL_CONSTANT
+              INT "1"
+      NEWLINE "\n"
+      FUNCTION_BODY
+  PROPERTY_DECLARATION
+    VAL_KW "val"
+    WHITESPACE " "
+    VARIABLE_DECLARATION
+      SIMPLE_IDENTIFIER
+        IDENT "greet"
+      COLON ":"
+      WHITESPACE " "
+      TYPE
+        FUNCTION_TYPE
+          RECEIVER_TYPE
+            TYPE_REFERENCE
+              USER_TYPE
+                SIMPLE_USER_TYPE
+                  SIMPLE_IDENTIFIER
+                    IDENT "String"
+          DOT "."
+          FUNCTION_TYPE_PARAMETERS
+            L_PAREN "("
+            R_PAREN ")"
+          WHITESPACE " "
+          ARROW "->"
+          WHITESPACE " "
+          TYPE
+            TYPE_REFERENCE
+              USER_TYPE
+                SIMPLE_USER_TYPE
+                  SIMPLE_IDENTIFIER
+                    IDENT "Unit"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    EXPRESSION
+      POSTFIX_UNARY_EXPRESSION
+        LAMBDA_LITERAL
+          L_CURL "{"
+          WHITESPACE " "
+          R_CURL "}"
   NEWLINE "\n"
