@@ -1,0 +1,971 @@
+KOTLIN_FILE
+  TOP_LEVEL_OBJECT
+    PROPERTY_DECLARATION
+      VAL_KW "val"
+      WHITESPACE " "
+      VARIABLE_DECLARATION
+        SIMPLE_IDENTIFIER
+          IDENT "a"
+      WHITESPACE " "
+      EQ "="
+      WHITESPACE " "
+      EXPRESSION
+        POSTFIX_UNARY_EXPRESSION
+          LAMBDA_LITERAL
+            L_CURL "{"
+            WHITESPACE " "
+            LAMBDA_PARAMETERS
+              LAMBDA_PARAMETER
+                VARIABLE_DECLARATION
+                  SIMPLE_IDENTIFIER
+                    IDENT "a"
+                  COLON ":"
+                  WHITESPACE " "
+                  TYPE
+                    TYPE_REFERENCE
+                      USER_TYPE
+                        SIMPLE_USER_TYPE
+                          SIMPLE_IDENTIFIER
+                            IDENT "Int"
+              COMMA ","
+              WHITESPACE " "
+              LAMBDA_PARAMETER
+                VARIABLE_DECLARATION
+                  SIMPLE_IDENTIFIER
+                    IDENT "b"
+            WHITESPACE " "
+            ARROW "->"
+            WHITESPACE " "
+            STATEMENTS
+              STATEMENT
+                EXPRESSION
+                  ADDITIVE_EXPRESSION
+                    POSTFIX_UNARY_EXPRESSION
+                      SIMPLE_IDENTIFIER
+                        IDENT "a"
+                    WHITESPACE " "
+                    ADDITIVE_OPERATOR
+                      ADD "+"
+                    WHITESPACE " "
+                    POSTFIX_UNARY_EXPRESSION
+                      SIMPLE_IDENTIFIER
+                        IDENT "b"
+            WHITESPACE " "
+            R_CURL "}"
+  NEWLINE "\n"
+  TOP_LEVEL_OBJECT
+    PROPERTY_DECLARATION
+      VAL_KW "val"
+      WHITESPACE " "
+      VARIABLE_DECLARATION
+        SIMPLE_IDENTIFIER
+          IDENT "b"
+      WHITESPACE " "
+      EQ "="
+      WHITESPACE " "
+      EXPRESSION
+        POSTFIX_UNARY_EXPRESSION
+          LAMBDA_LITERAL
+            L_CURL "{"
+            WHITESPACE " "
+            LAMBDA_PARAMETERS
+              LAMBDA_PARAMETER
+                VARIABLE_DECLARATION
+                  SIMPLE_IDENTIFIER
+                    IDENT "a"
+              COMMA ","
+              WHITESPACE " "
+              LAMBDA_PARAMETER
+                VARIABLE_DECLARATION
+                  SIMPLE_IDENTIFIER
+                    IDENT "b"
+                  COLON ":"
+                  WHITESPACE " "
+                  TYPE
+                    TYPE_REFERENCE
+                      USER_TYPE
+                        SIMPLE_USER_TYPE
+                          SIMPLE_IDENTIFIER
+                            IDENT "Int"
+            WHITESPACE " "
+            ARROW "->"
+            WHITESPACE " "
+            STATEMENTS
+              STATEMENT
+                EXPRESSION
+                  ADDITIVE_EXPRESSION
+                    POSTFIX_UNARY_EXPRESSION
+                      SIMPLE_IDENTIFIER
+                        IDENT "a"
+                    WHITESPACE " "
+                    ADDITIVE_OPERATOR
+                      ADD "+"
+                    WHITESPACE " "
+                    POSTFIX_UNARY_EXPRESSION
+                      SIMPLE_IDENTIFIER
+                        IDENT "b"
+            WHITESPACE " "
+            R_CURL "}"
+  NEWLINE "\n"
+  TOP_LEVEL_OBJECT
+    PROPERTY_DECLARATION
+      VAL_KW "val"
+      WHITESPACE " "
+      VARIABLE_DECLARATION
+        SIMPLE_IDENTIFIER
+          IDENT "c"
+      WHITESPACE " "
+      EQ "="
+      WHITESPACE " "
+      EXPRESSION
+        POSTFIX_UNARY_EXPRESSION
+          LAMBDA_LITERAL
+            L_CURL "{"
+            WHITESPACE " "
+            LAMBDA_PARAMETERS
+              LAMBDA_PARAMETER
+                VARIABLE_DECLARATION
+                  SIMPLE_IDENTIFIER
+                    IDENT "a"
+              COMMA ","
+              WHITESPACE " "
+              LAMBDA_PARAMETER
+                VARIABLE_DECLARATION
+                  SIMPLE_IDENTIFIER
+                    IDENT "b"
+            WHITESPACE " "
+            ARROW "->"
+            WHITESPACE " "
+            STATEMENTS
+              STATEMENT
+                EXPRESSION
+                  ADDITIVE_EXPRESSION
+                    POSTFIX_UNARY_EXPRESSION
+                      SIMPLE_IDENTIFIER
+                        IDENT "a"
+                    WHITESPACE " "
+                    ADDITIVE_OPERATOR
+                      ADD "+"
+                    WHITESPACE " "
+                    POSTFIX_UNARY_EXPRESSION
+                      SIMPLE_IDENTIFIER
+                        IDENT "b"
+            WHITESPACE " "
+            R_CURL "}"
+  NEWLINE "\n"
+  TOP_LEVEL_OBJECT
+    PROPERTY_DECLARATION
+      VAL_KW "val"
+      WHITESPACE " "
+      VARIABLE_DECLARATION
+        SIMPLE_IDENTIFIER
+          IDENT "d"
+      WHITESPACE " "
+      EQ "="
+      WHITESPACE " "
+      EXPRESSION
+        POSTFIX_UNARY_EXPRESSION
+          LAMBDA_LITERAL
+            L_CURL "{"
+            WHITESPACE " "
+            ARROW "->"
+            WHITESPACE " "
+            STATEMENTS
+              STATEMENT
+                EXPRESSION
+                  POSTFIX_UNARY_EXPRESSION
+                    SIMPLE_IDENTIFIER
+                      IDENT "println"
+                    CALL_SUFFIX
+                      VALUE_ARGUMENTS
+                        L_PAREN "("
+                        VALUE_ARGUMENT
+                          EXPRESSION
+                            POSTFIX_UNARY_EXPRESSION
+                              LINE_STRING_LITERAL
+                                QUOTE "\""
+                                LINE_STRING_CONTENT
+                                  TEXT "no params"
+                                QUOTE "\""
+                        R_PAREN ")"
+            WHITESPACE " "
+            R_CURL "}"
+  NEWLINE "\n"
+  TOP_LEVEL_OBJECT
+    PROPERTY_DECLARATION
+      VAL_KW "val"
+      WHITESPACE " "
+      VARIABLE_DECLARATION
+        SIMPLE_IDENTIFIER
+          IDENT "e"
+      WHITESPACE " "
+      EQ "="
+      WHITESPACE " "
+      EXPRESSION
+        POSTFIX_UNARY_EXPRESSION
+          LAMBDA_LITERAL
+            L_CURL "{"
+            WHITESPACE " "
+            STATEMENTS
+              STATEMENT
+                EXPRESSION
+                  POSTFIX_UNARY_EXPRESSION
+                    SIMPLE_IDENTIFIER
+                      IDENT "println"
+                    CALL_SUFFIX
+                      VALUE_ARGUMENTS
+                        L_PAREN "("
+                        VALUE_ARGUMENT
+                          EXPRESSION
+                            POSTFIX_UNARY_EXPRESSION
+                              LINE_STRING_LITERAL
+                                QUOTE "\""
+                                LINE_STRING_CONTENT
+                                  TEXT "no params, no arrow"
+                                QUOTE "\""
+                        R_PAREN ")"
+            WHITESPACE " "
+            R_CURL "}"
+  NEWLINE "\n"
+  TOP_LEVEL_OBJECT
+    PROPERTY_DECLARATION
+      VAL_KW "val"
+      WHITESPACE " "
+      VARIABLE_DECLARATION
+        SIMPLE_IDENTIFIER
+          IDENT "f"
+      WHITESPACE " "
+      EQ "="
+      WHITESPACE " "
+      EXPRESSION
+        POSTFIX_UNARY_EXPRESSION
+          LAMBDA_LITERAL
+            L_CURL "{"
+            WHITESPACE " "
+            LAMBDA_PARAMETERS
+              LAMBDA_PARAMETER
+                VARIABLE_DECLARATION
+                  SIMPLE_IDENTIFIER
+                    IDENT "a"
+                  COLON ":"
+                  WHITESPACE " "
+                  TYPE
+                    TYPE_REFERENCE
+                      USER_TYPE
+                        SIMPLE_USER_TYPE
+                          SIMPLE_IDENTIFIER
+                            IDENT "Int"
+            WHITESPACE " "
+            ARROW "->"
+            WHITESPACE " "
+            STATEMENTS
+              STATEMENT
+                EXPRESSION
+                  POSTFIX_UNARY_EXPRESSION
+                    SIMPLE_IDENTIFIER
+                      IDENT "println"
+                    CALL_SUFFIX
+                      VALUE_ARGUMENTS
+                        L_PAREN "("
+                        VALUE_ARGUMENT
+                          EXPRESSION
+                            POSTFIX_UNARY_EXPRESSION
+                              LINE_STRING_LITERAL
+                                QUOTE "\""
+                                LINE_STRING_CONTENT
+                                  TEXT "single param, no comma"
+                                QUOTE "\""
+                        R_PAREN ")"
+            WHITESPACE " "
+            R_CURL "}"
+  NEWLINE "\n"
+  TOP_LEVEL_OBJECT
+    PROPERTY_DECLARATION
+      VAL_KW "val"
+      WHITESPACE " "
+      VARIABLE_DECLARATION
+        SIMPLE_IDENTIFIER
+          IDENT "g"
+      WHITESPACE " "
+      EQ "="
+      WHITESPACE " "
+      EXPRESSION
+        POSTFIX_UNARY_EXPRESSION
+          LAMBDA_LITERAL
+            L_CURL "{"
+            WHITESPACE " "
+            LAMBDA_PARAMETERS
+              LAMBDA_PARAMETER
+                VARIABLE_DECLARATION
+                  SIMPLE_IDENTIFIER
+                    IDENT "a"
+            WHITESPACE " "
+            ARROW "->"
+            WHITESPACE " "
+            STATEMENTS
+              STATEMENT
+                EXPRESSION
+                  POSTFIX_UNARY_EXPRESSION
+                    SIMPLE_IDENTIFIER
+                      IDENT "println"
+                    CALL_SUFFIX
+                      VALUE_ARGUMENTS
+                        L_PAREN "("
+                        VALUE_ARGUMENT
+                          EXPRESSION
+                            POSTFIX_UNARY_EXPRESSION
+                              LINE_STRING_LITERAL
+                                QUOTE "\""
+                                LINE_STRING_CONTENT
+                                  TEXT "single param, no type"
+                                QUOTE "\""
+                        R_PAREN ")"
+            WHITESPACE " "
+            R_CURL "}"
+  NEWLINE "\n"
+  TOP_LEVEL_OBJECT
+    PROPERTY_DECLARATION
+      VAL_KW "val"
+      WHITESPACE " "
+      VARIABLE_DECLARATION
+        SIMPLE_IDENTIFIER
+          IDENT "h"
+      WHITESPACE " "
+      EQ "="
+      WHITESPACE " "
+      EXPRESSION
+        POSTFIX_UNARY_EXPRESSION
+          LAMBDA_LITERAL
+            L_CURL "{"
+            LAMBDA_PARAMETERS
+              LAMBDA_PARAMETER
+                VARIABLE_DECLARATION
+                  SINGLE_ANNOTATION
+                    AT " @"
+                    USER_TYPE
+                      SIMPLE_USER_TYPE
+                        SIMPLE_IDENTIFIER
+                          IDENT "Anno"
+                  WHITESPACE " "
+                  SIMPLE_IDENTIFIER
+                    IDENT "a"
+                  COLON ":"
+                  WHITESPACE " "
+                  TYPE
+                    TYPE_REFERENCE
+                      USER_TYPE
+                        SIMPLE_USER_TYPE
+                          SIMPLE_IDENTIFIER
+                            IDENT "Int"
+            WHITESPACE " "
+            ARROW "->"
+            WHITESPACE " "
+            STATEMENTS
+              STATEMENT
+                EXPRESSION
+                  POSTFIX_UNARY_EXPRESSION
+                    SIMPLE_IDENTIFIER
+                      IDENT "println"
+                    CALL_SUFFIX
+                      VALUE_ARGUMENTS
+                        L_PAREN "("
+                        VALUE_ARGUMENT
+                          EXPRESSION
+                            POSTFIX_UNARY_EXPRESSION
+                              LINE_STRING_LITERAL
+                                QUOTE "\""
+                                LINE_STRING_CONTENT
+                                  TEXT "single param, with annotation"
+                                QUOTE "\""
+                        R_PAREN ")"
+            WHITESPACE " "
+            R_CURL "}"
+  NEWLINE "\n"
+  TOP_LEVEL_OBJECT
+    PROPERTY_DECLARATION
+      VAL_KW "val"
+      WHITESPACE " "
+      VARIABLE_DECLARATION
+        SIMPLE_IDENTIFIER
+          IDENT "i"
+      WHITESPACE " "
+      EQ "="
+      WHITESPACE " "
+      EXPRESSION
+        POSTFIX_UNARY_EXPRESSION
+          LAMBDA_LITERAL
+            L_CURL "{"
+            LAMBDA_PARAMETERS
+              LAMBDA_PARAMETER
+                VARIABLE_DECLARATION
+                  SINGLE_ANNOTATION
+                    AT " @"
+                    USER_TYPE
+                      SIMPLE_USER_TYPE
+                        SIMPLE_IDENTIFIER
+                          IDENT "Anno"
+                  WHITESPACE " "
+                  SIMPLE_IDENTIFIER
+                    IDENT "a"
+                  COLON ":"
+                  WHITESPACE " "
+                  TYPE
+                    TYPE_REFERENCE
+                      USER_TYPE
+                        SIMPLE_USER_TYPE
+                          SIMPLE_IDENTIFIER
+                            IDENT "Int"
+              COMMA ","
+              LAMBDA_PARAMETER
+                VARIABLE_DECLARATION
+                  SINGLE_ANNOTATION
+                    AT " @"
+                    USER_TYPE
+                      SIMPLE_USER_TYPE
+                        SIMPLE_IDENTIFIER
+                          IDENT "Anno2"
+                  WHITESPACE " "
+                  SIMPLE_IDENTIFIER
+                    IDENT "b"
+                  COLON ":"
+                  WHITESPACE " "
+                  TYPE
+                    TYPE_REFERENCE
+                      USER_TYPE
+                        SIMPLE_USER_TYPE
+                          SIMPLE_IDENTIFIER
+                            IDENT "String"
+            WHITESPACE " "
+            ARROW "->"
+            WHITESPACE " "
+            STATEMENTS
+              STATEMENT
+                EXPRESSION
+                  POSTFIX_UNARY_EXPRESSION
+                    SIMPLE_IDENTIFIER
+                      IDENT "println"
+                    CALL_SUFFIX
+                      VALUE_ARGUMENTS
+                        L_PAREN "("
+                        VALUE_ARGUMENT
+                          EXPRESSION
+                            POSTFIX_UNARY_EXPRESSION
+                              LINE_STRING_LITERAL
+                                QUOTE "\""
+                                LINE_STRING_CONTENT
+                                  TEXT "multiple params, with annotations"
+                                QUOTE "\""
+                        R_PAREN ")"
+            WHITESPACE " "
+            R_CURL "}"
+  NEWLINE "\n"
+  TOP_LEVEL_OBJECT
+    PROPERTY_DECLARATION
+      VAL_KW "val"
+      WHITESPACE " "
+      VARIABLE_DECLARATION
+        SIMPLE_IDENTIFIER
+          IDENT "j"
+      WHITESPACE " "
+      EQ "="
+      WHITESPACE " "
+      EXPRESSION
+        POSTFIX_UNARY_EXPRESSION
+          LAMBDA_LITERAL
+            L_CURL "{"
+            WHITESPACE " "
+            LAMBDA_PARAMETERS
+              LAMBDA_PARAMETER
+                VARIABLE_DECLARATION
+                  SIMPLE_IDENTIFIER
+                    IDENT "a"
+              COMMA ","
+              WHITESPACE " "
+              LAMBDA_PARAMETER
+                MULTI_VARIABLE_DECLARATION
+                  L_PAREN "("
+                  VARIABLE_DECLARATION
+                    SIMPLE_IDENTIFIER
+                      IDENT "b"
+                  COMMA ","
+                  WHITESPACE " "
+                  VARIABLE_DECLARATION
+                    SIMPLE_IDENTIFIER
+                      IDENT "c"
+                  R_PAREN ")"
+              COMMA ","
+              WHITESPACE " "
+              LAMBDA_PARAMETER
+                VARIABLE_DECLARATION
+                  SIMPLE_IDENTIFIER
+                    IDENT "d"
+            WHITESPACE " "
+            ARROW "->"
+            WHITESPACE " "
+            STATEMENTS
+              STATEMENT
+                EXPRESSION
+                  POSTFIX_UNARY_EXPRESSION
+                    SIMPLE_IDENTIFIER
+                      IDENT "println"
+                    CALL_SUFFIX
+                      VALUE_ARGUMENTS
+                        L_PAREN "("
+                        VALUE_ARGUMENT
+                          EXPRESSION
+                            POSTFIX_UNARY_EXPRESSION
+                              LINE_STRING_LITERAL
+                                QUOTE "\""
+                                LINE_STRING_CONTENT
+                                  TEXT "multiple params"
+                                QUOTE "\""
+                        R_PAREN ")"
+            WHITESPACE " "
+            R_CURL "}"
+  NEWLINE "\n"
+  TOP_LEVEL_OBJECT
+    PROPERTY_DECLARATION
+      VAL_KW "val"
+      WHITESPACE " "
+      VARIABLE_DECLARATION
+        SIMPLE_IDENTIFIER
+          IDENT "k"
+      WHITESPACE " "
+      EQ "="
+      WHITESPACE " "
+      EXPRESSION
+        POSTFIX_UNARY_EXPRESSION
+          LAMBDA_LITERAL
+            L_CURL "{"
+            WHITESPACE " "
+            LAMBDA_PARAMETERS
+              LAMBDA_PARAMETER
+                VARIABLE_DECLARATION
+                  SIMPLE_IDENTIFIER
+                    IDENT "a"
+              COMMA ","
+              WHITESPACE " "
+              LAMBDA_PARAMETER
+                MULTI_VARIABLE_DECLARATION
+                  L_PAREN "("
+                  VARIABLE_DECLARATION
+                    SIMPLE_IDENTIFIER
+                      IDENT "b"
+                  COMMA ","
+                  WHITESPACE " "
+                  VARIABLE_DECLARATION
+                    SIMPLE_IDENTIFIER
+                      IDENT "c"
+                  R_PAREN ")"
+                  COLON ":"
+                  WHITESPACE " "
+                  TYPE
+                    TYPE_REFERENCE
+                      USER_TYPE
+                        SIMPLE_USER_TYPE
+                          SIMPLE_IDENTIFIER
+                            IDENT "Pair"
+                          TYPE_ARGUMENTS
+                            L_ANGLE "<"
+                            TYPE_PROJECTION
+                              TYPE
+                                TYPE_REFERENCE
+                                  USER_TYPE
+                                    SIMPLE_USER_TYPE
+                                      SIMPLE_IDENTIFIER
+                                        IDENT "B"
+                            COMMA ","
+                            WHITESPACE " "
+                            TYPE_PROJECTION
+                              TYPE
+                                TYPE_REFERENCE
+                                  USER_TYPE
+                                    SIMPLE_USER_TYPE
+                                      SIMPLE_IDENTIFIER
+                                        IDENT "C"
+                            R_ANGLE ">"
+              COMMA ","
+              WHITESPACE " "
+              LAMBDA_PARAMETER
+                VARIABLE_DECLARATION
+                  SIMPLE_IDENTIFIER
+                    IDENT "d"
+            WHITESPACE " "
+            ARROW "->"
+            WHITESPACE " "
+            STATEMENTS
+              STATEMENT
+                EXPRESSION
+                  POSTFIX_UNARY_EXPRESSION
+                    SIMPLE_IDENTIFIER
+                      IDENT "println"
+                    CALL_SUFFIX
+                      VALUE_ARGUMENTS
+                        L_PAREN "("
+                        VALUE_ARGUMENT
+                          EXPRESSION
+                            POSTFIX_UNARY_EXPRESSION
+                              LINE_STRING_LITERAL
+                                QUOTE "\""
+                                LINE_STRING_CONTENT
+                                  TEXT "multiple params"
+                                QUOTE "\""
+                        R_PAREN ")"
+            WHITESPACE " "
+            R_CURL "}"
+  NEWLINE "\n"
+  TOP_LEVEL_OBJECT
+    PROPERTY_DECLARATION
+      VAL_KW "val"
+      WHITESPACE " "
+      VARIABLE_DECLARATION
+        SIMPLE_IDENTIFIER
+          IDENT "l"
+      WHITESPACE " "
+      EQ "="
+      WHITESPACE " "
+      EXPRESSION
+        POSTFIX_UNARY_EXPRESSION
+          LAMBDA_LITERAL
+            L_CURL "{"
+            WHITESPACE " "
+            LAMBDA_PARAMETERS
+              LAMBDA_PARAMETER
+                MULTI_VARIABLE_DECLARATION
+                  L_PAREN "("
+                  VARIABLE_DECLARATION
+                    SIMPLE_IDENTIFIER
+                      IDENT "a"
+                  COMMA ","
+                  WHITESPACE " "
+                  VARIABLE_DECLARATION
+                    SIMPLE_IDENTIFIER
+                      IDENT "b"
+                    COLON ":"
+                    WHITESPACE " "
+                    TYPE
+                      TYPE_REFERENCE
+                        USER_TYPE
+                          SIMPLE_USER_TYPE
+                            SIMPLE_IDENTIFIER
+                              IDENT "Int"
+                  R_PAREN ")"
+              COMMA ","
+            WHITESPACE " "
+            ARROW "->"
+            WHITESPACE " "
+            STATEMENTS
+              STATEMENT
+                EXPRESSION
+                  POSTFIX_UNARY_EXPRESSION
+                    SIMPLE_IDENTIFIER
+                      IDENT "println"
+                    CALL_SUFFIX
+                      VALUE_ARGUMENTS
+                        L_PAREN "("
+                        VALUE_ARGUMENT
+                          EXPRESSION
+                            POSTFIX_UNARY_EXPRESSION
+                              LINE_STRING_LITERAL
+                                QUOTE "\""
+                                LINE_STRING_CONTENT
+                                  TEXT "single multi param"
+                                QUOTE "\""
+                        R_PAREN ")"
+            WHITESPACE " "
+            R_CURL "}"
+  NEWLINE "\n"
+  TOP_LEVEL_OBJECT
+    PROPERTY_DECLARATION
+      VAL_KW "val"
+      WHITESPACE " "
+      VARIABLE_DECLARATION
+        SIMPLE_IDENTIFIER
+          IDENT "m"
+      WHITESPACE " "
+      EQ "="
+      WHITESPACE " "
+      EXPRESSION
+        POSTFIX_UNARY_EXPRESSION
+          LAMBDA_LITERAL
+            L_CURL "{"
+            WHITESPACE " "
+            LAMBDA_PARAMETERS
+              LAMBDA_PARAMETER
+                MULTI_VARIABLE_DECLARATION
+                  L_PAREN "("
+                  VARIABLE_DECLARATION
+                    SIMPLE_IDENTIFIER
+                      IDENT "a"
+                  COMMA ","
+                  WHITESPACE " "
+                  VARIABLE_DECLARATION
+                    SIMPLE_IDENTIFIER
+                      IDENT "b"
+                    COLON ":"
+                    WHITESPACE " "
+                    TYPE
+                      TYPE_REFERENCE
+                        USER_TYPE
+                          SIMPLE_USER_TYPE
+                            SIMPLE_IDENTIFIER
+                              IDENT "Int"
+                  R_PAREN ")"
+              COMMA ","
+              WHITESPACE " "
+              LAMBDA_PARAMETER
+                MULTI_VARIABLE_DECLARATION
+                  L_PAREN "("
+                  VARIABLE_DECLARATION
+                    SIMPLE_IDENTIFIER
+                      IDENT "a"
+                  COMMA ","
+                  WHITESPACE " "
+                  VARIABLE_DECLARATION
+                    SIMPLE_IDENTIFIER
+                      IDENT "b"
+                    COLON ":"
+                    WHITESPACE " "
+                    TYPE
+                      TYPE_REFERENCE
+                        USER_TYPE
+                          SIMPLE_USER_TYPE
+                            SIMPLE_IDENTIFIER
+                              IDENT "Int"
+                  R_PAREN ")"
+              COMMA ","
+            WHITESPACE " "
+            ARROW "->"
+            WHITESPACE " "
+            STATEMENTS
+              STATEMENT
+                EXPRESSION
+                  POSTFIX_UNARY_EXPRESSION
+                    SIMPLE_IDENTIFIER
+                      IDENT "println"
+                    CALL_SUFFIX
+                      VALUE_ARGUMENTS
+                        L_PAREN "("
+                        VALUE_ARGUMENT
+                          EXPRESSION
+                            POSTFIX_UNARY_EXPRESSION
+                              LINE_STRING_LITERAL
+                                QUOTE "\""
+                                LINE_STRING_CONTENT
+                                  TEXT "multiple multi params"
+                                QUOTE "\""
+                        R_PAREN ")"
+            WHITESPACE " "
+            R_CURL "}"
+  NEWLINE "\n"
+  TOP_LEVEL_OBJECT
+    PROPERTY_DECLARATION
+      VAL_KW "val"
+      WHITESPACE " "
+      VARIABLE_DECLARATION
+        SIMPLE_IDENTIFIER
+          IDENT "n"
+      WHITESPACE " "
+      EQ "="
+      WHITESPACE " "
+      EXPRESSION
+        POSTFIX_UNARY_EXPRESSION
+          LAMBDA_LITERAL
+            L_CURL "{"
+            WHITESPACE " "
+            LAMBDA_PARAMETERS
+              LAMBDA_PARAMETER
+                VARIABLE_DECLARATION
+                  SIMPLE_IDENTIFIER
+                    IDENT "a"
+                  COLON ":"
+                  WHITESPACE " "
+                  TYPE
+                    TYPE_MODIFIERS
+                      TYPE_MODIFIER
+                        SUSPEND_KW "suspend"
+                    WHITESPACE " "
+                    FUNCTION_TYPE
+                      FUNCTION_TYPE_PARAMETERS
+                        L_PAREN "("
+                        TYPE
+                          TYPE_REFERENCE
+                            USER_TYPE
+                              SIMPLE_USER_TYPE
+                                SIMPLE_IDENTIFIER
+                                  IDENT "Int"
+                        R_PAREN ")"
+                      WHITESPACE " "
+                      ARROW "->"
+                      WHITESPACE " "
+                      TYPE
+                        TYPE_REFERENCE
+                          USER_TYPE
+                            SIMPLE_USER_TYPE
+                              SIMPLE_IDENTIFIER
+                                IDENT "Unit"
+              COMMA ","
+              WHITESPACE " "
+              LAMBDA_PARAMETER
+                VARIABLE_DECLARATION
+                  SIMPLE_IDENTIFIER
+                    IDENT "b"
+                  COLON ":"
+                  WHITESPACE " "
+                  TYPE
+                    TYPE_REFERENCE
+                      USER_TYPE
+                        SIMPLE_USER_TYPE
+                          SIMPLE_IDENTIFIER
+                            IDENT "Int"
+            WHITESPACE " "
+            ARROW "->"
+            WHITESPACE " "
+            STATEMENTS
+              STATEMENT
+                EXPRESSION
+                  POSTFIX_UNARY_EXPRESSION
+                    SIMPLE_IDENTIFIER
+                      IDENT "a"
+                    CALL_SUFFIX
+                      VALUE_ARGUMENTS
+                        L_PAREN "("
+                        VALUE_ARGUMENT
+                          EXPRESSION
+                            POSTFIX_UNARY_EXPRESSION
+                              SIMPLE_IDENTIFIER
+                                IDENT "b"
+                        R_PAREN ")"
+            WHITESPACE " "
+            R_CURL "}"
+  NEWLINE "\n"
+  TOP_LEVEL_OBJECT
+    PROPERTY_DECLARATION
+      VAL_KW "val"
+      WHITESPACE " "
+      VARIABLE_DECLARATION
+        SIMPLE_IDENTIFIER
+          IDENT "o"
+      WHITESPACE " "
+      EQ "="
+      WHITESPACE " "
+      EXPRESSION
+        POSTFIX_UNARY_EXPRESSION
+          LAMBDA_LITERAL
+            L_CURL "{"
+            WHITESPACE " "
+            LAMBDA_PARAMETERS
+              LAMBDA_PARAMETER
+                VARIABLE_DECLARATION
+                  SIMPLE_IDENTIFIER
+                    IDENT "a"
+                  COLON ":"
+                  WHITESPACE " "
+                  TYPE
+                    PARENTHESIZED_TYPE
+                      L_PAREN "("
+                      TYPE
+                        TYPE_MODIFIERS
+                          TYPE_MODIFIER
+                            SUSPEND_KW "suspend"
+                        WHITESPACE " "
+                        FUNCTION_TYPE
+                          FUNCTION_TYPE_PARAMETERS
+                            L_PAREN "("
+                            TYPE
+                              TYPE_REFERENCE
+                                USER_TYPE
+                                  SIMPLE_USER_TYPE
+                                    SIMPLE_IDENTIFIER
+                                      IDENT "Int"
+                            R_PAREN ")"
+                          WHITESPACE " "
+                          ARROW "->"
+                          WHITESPACE " "
+                          TYPE
+                            TYPE_REFERENCE
+                              USER_TYPE
+                                SIMPLE_USER_TYPE
+                                  SIMPLE_IDENTIFIER
+                                    IDENT "Unit"
+                      R_PAREN ")"
+              COMMA ","
+              WHITESPACE " "
+              LAMBDA_PARAMETER
+                VARIABLE_DECLARATION
+                  SIMPLE_IDENTIFIER
+                    IDENT "b"
+                  COLON ":"
+                  WHITESPACE " "
+                  TYPE
+                    TYPE_REFERENCE
+                      USER_TYPE
+                        SIMPLE_USER_TYPE
+                          SIMPLE_IDENTIFIER
+                            IDENT "Int"
+            WHITESPACE " "
+            ARROW "->"
+            WHITESPACE " "
+            STATEMENTS
+              STATEMENT
+                EXPRESSION
+                  POSTFIX_UNARY_EXPRESSION
+                    SIMPLE_IDENTIFIER
+                      IDENT "a"
+                    CALL_SUFFIX
+                      VALUE_ARGUMENTS
+                        L_PAREN "("
+                        VALUE_ARGUMENT
+                          EXPRESSION
+                            POSTFIX_UNARY_EXPRESSION
+                              SIMPLE_IDENTIFIER
+                                IDENT "b"
+                        R_PAREN ")"
+            WHITESPACE " "
+            R_CURL "}"
+  NEWLINE "\n"
+  TOP_LEVEL_OBJECT
+    PROPERTY_DECLARATION
+      VAL_KW "val"
+      WHITESPACE " "
+      VARIABLE_DECLARATION
+        SIMPLE_IDENTIFIER
+          IDENT "p"
+      WHITESPACE " "
+      EQ "="
+      WHITESPACE " "
+      EXPRESSION
+        POSTFIX_UNARY_EXPRESSION
+          LAMBDA_LITERAL
+            L_CURL "{"
+            STATEMENTS
+              STATEMENT
+                SINGLE_ANNOTATION
+                  AT " @"
+                  USER_TYPE
+                    SIMPLE_USER_TYPE
+                      SIMPLE_IDENTIFIER
+                        IDENT "Anno"
+                WHITESPACE " "
+                EXPRESSION
+                  POSTFIX_UNARY_EXPRESSION
+                    SIMPLE_IDENTIFIER
+                      IDENT "func"
+                    CALL_SUFFIX
+                      VALUE_ARGUMENTS
+                        L_PAREN "("
+                        VALUE_ARGUMENT
+                          EXPRESSION
+                            POSTFIX_UNARY_EXPRESSION
+                              SIMPLE_IDENTIFIER
+                                IDENT "x"
+                        COMMA ","
+                        VALUE_ARGUMENT
+                          EXPRESSION
+                            POSTFIX_UNARY_EXPRESSION
+                              SIMPLE_IDENTIFIER
+                                IDENT "y"
+                        R_PAREN ")"
+            WHITESPACE " "
+            R_CURL "}"
+  NEWLINE "\n"

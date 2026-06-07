@@ -9,6 +9,10 @@ mod ok {
         run_and_expect_no_errors("test_data/parser/inline/ok/fn_declaration.kt");
     }
     #[test]
+    fn lambda_literal() {
+        run_and_expect_no_errors("test_data/parser/inline/ok/lambda_literal.kt");
+    }
+    #[test]
     fn multi_annotation() {
         run_and_expect_no_errors("test_data/parser/inline/ok/multi_annotation.kt");
     }

@@ -1,0 +1,16 @@
+val a = { a: Int, b -> a + b }
+val b = { a, b: Int -> a + b }
+val c = { a, b -> a + b }
+val d = { -> println("no params") }
+val e = { println("no params, no arrow") }
+val f = { a: Int -> println("single param, no comma") }
+val g = { a -> println("single param, no type") }
+val h = { @Anno a: Int -> println("single param, with annotation") }
+val i = { @Anno a: Int, @Anno2 b: String -> println("multiple params, with annotations") }
+val j = { a, (b, c), d -> println("multiple params") }
+val k = { a, (b, c): Pair<B, C>, d -> println("multiple params") }
+val l = { (a, b: Int), -> println("single multi param") }
+val m = { (a, b: Int), (a, b: Int), -> println("multiple multi params") }
+val n = { a: suspend (Int) -> Unit, b: Int -> a(b) }
+val o = { a: (suspend (Int) -> Unit), b: Int -> a(b) }
+val p = { @Anno func(x,y) }

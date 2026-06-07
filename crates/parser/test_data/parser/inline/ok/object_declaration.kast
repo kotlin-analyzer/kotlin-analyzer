@@ -154,10 +154,8 @@ KOTLIN_FILE
                 POSTFIX_UNARY_EXPRESSION
                   SIMPLE_IDENTIFIER
                     IDENT "A"
-                  WHITESPACE " "
-                  CALL_SUFFIX
-                    ANNOTATED_LAMBDA
-                      LAMBDA_LITERAL
-                        L_CURL "{"
-                        R_CURL "}"
+      WHITESPACE " "
+      CLASS_BODY
+        L_CURL "{"
+        R_CURL "}"
   NEWLINE "\n"
