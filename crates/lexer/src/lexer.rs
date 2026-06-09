@@ -350,16 +350,7 @@ fn wrap_with_err<'a>(parser: impl ParseFn<'a>) -> impl ParseFn<'a> {
 }
 
 fn parse_comment(step: Step<'_>) -> Option<Step<'_>> {
-    if let Some(step) = shebang.or(line_comment).or(delimited_comment)(step) {
-        match step.res {
-            DELIMITED_COMMENT | LINE_COMMENT => {
-                opt(opt(hidden.or(nl)).and(tag("@")).with(AT_PRE_WS))(step)
-            }
-            _ => Some(step),
-        }
-    } else {
-        None
-    }
+    shebang.or(line_comment).or(delimited_comment)(step)
 }
 
 fn parse_operator(step: Step<'_>) -> Option<Step<'_>> {
@@ -413,12 +404,6 @@ fn handle_operator<'a>(mut step: Step<'a>, token: &Token) -> Option<Step<'a>> {
             Some(step)
         }
         EXCL_NO_WS => opt(hidden.with(EXCL_WS))(step),
-        AT_NO_WS => opt(hidden.or(nl).with(AT_POST_WS))(step),
-        QUEST_NO_WS => opt(hidden.or(nl).with(QUEST_WS))(step),
-        NEWLINE | WHITESPACE => {
-            // TODO: handle multiple hidden | nl before
-            opt(tag("@").with(AT_PRE_WS).and(opt(hidden.with(AT_BOTH_WS))))(step)
-        }
         R_CURL => {
             // special case for string interpolation:
             // whenever we see a }, we pop lexer mode queue
@@ -470,10 +455,6 @@ fn handle_keyword<'a>(step: Step<'a>, token: &Token) -> Option<Step<'a>> {
 
 fn ws(step: Step<'_>) -> Option<Step<'_>> {
     tag("\u{0020}").or(tag("\u{0009}")).or(tag("\u{000C}")).with(WHITESPACE)(step)
-}
-
-fn nl(step: Step<'_>) -> Option<Step<'_>> {
-    tag("\u{000A}").or(tag("\u{000D}").and(opt(tag("\u{000A}")))).with(WHITESPACE)(step)
 }
 
 fn hidden(step: Step<'_>) -> Option<Step<'_>> {

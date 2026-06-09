@@ -43,12 +43,8 @@ pub enum Token {
     // DOUBLE_SEMICOLON,
     // DOUBLE_ARROW,
     // HASH,
-    AT_NO_WS,
-    AT_POST_WS,
-    AT_PRE_WS,
-    AT_BOTH_WS,
-    QUEST_WS,
-    QUEST_NO_WS,
+    AT,
+    QUEST,
     L_ANGLE,
     R_ANGLE,
     LE,
@@ -237,9 +233,9 @@ impl Token {
             // ";;" => Some(DOUBLE_SEMICOLON),
 
             // "#" => Some(HASH),
-            "@" => Some(AT_NO_WS),
+            "@" => Some(AT),
 
-            "?" => Some(QUEST_NO_WS),
+            "?" => Some(QUEST),
 
             "<" => Some(L_ANGLE),
 
