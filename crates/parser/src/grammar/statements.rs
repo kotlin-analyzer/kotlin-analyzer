@@ -252,8 +252,7 @@ mod assignment {
     ) -> Option<CompletedMarker> {
         let has_opening_paren = opening_paren.is_some();
         let m = opening_paren.unwrap_or_else(|| parser.start());
-        let Some(left) = entry(parser, has_opening_paren) else {
-            m.abandon(parser);
+        let Some(left) = entry(parser, m, has_opening_paren) else {
             return None;
         };
 
@@ -275,20 +274,21 @@ mod assignment {
                 }
                 Some(m.complete(parser, ASSIGNMENT))
             }
-            AssignmentFragment::UnAssignable(cm) => {
-                m.abandon(parser);
-                Some(cm)
-            }
+            AssignmentFragment::UnAssignable(cm) => Some(cm),
         }
     }
 
-    fn entry(p: &mut Parser<'_>, has_opening_paren: bool) -> Option<AssignmentFragment> {
+    fn entry(
+        p: &mut Parser<'_>,
+        start: Marker,
+        has_opening_paren: bool,
+    ) -> Option<AssignmentFragment> {
         if p.at(T!['(']) || has_opening_paren {
-            return parenthesized(p, has_opening_paren);
+            return parenthesized(p, start, has_opening_paren);
         }
-        let m = p.start();
+
         let Some(expr) = expression(p) else {
-            m.abandon(p);
+            start.abandon(p);
             return None;
         };
 
@@ -297,29 +297,38 @@ mod assignment {
             Expression::Affixed(AffixedExpression::Prefix(cm) | AffixedExpression::Postfix(cm))
                 if assignment_and_operator::is(p) =>
             {
+                start.abandon(p);
                 Some(AssignmentFragment::AssignableExpression(cm))
             }
             Expression::Affixed(AffixedExpression::Postfix(_))
                 if assignable_suffix(p).is_some() || p.at(T![=]) =>
             {
                 Some(AssignmentFragment::DirectlyAssignableExpression(
-                    m.complete(p, DIRECTLY_ASSIGNABLE_EXPRESSION),
+                    start.complete(p, DIRECTLY_ASSIGNABLE_EXPRESSION),
                 ))
             }
             e => {
-                m.abandon(p);
+                start.abandon(p);
                 Some(AssignmentFragment::UnAssignable(e.marker()))
             }
         }
     }
 
-    fn parenthesized(p: &mut Parser<'_>, has_opening_paren: bool) -> Option<AssignmentFragment> {
+    fn parenthesized(
+        p: &mut Parser<'_>,
+        start: Marker,
+        has_opening_paren: bool,
+    ) -> Option<AssignmentFragment> {
         if p.at(T!['(']) || has_opening_paren {
-            p.eat(T!['(']); // optional
+            if !has_opening_paren {
+                p.eat(T!['(']);
+            }
 
-            let Some(frag) = entry(p, false) else {
+            let e_start = p.start();
+            let Some(frag) = entry(p, e_start, false) else {
                 p.error("expected an expression");
                 p.eat(T![')']); // try to eat the closing paren to avoid cascading errors
+                start.abandon(p);
                 return None;
             };
 
@@ -328,21 +337,18 @@ mod assignment {
             }
 
             match frag {
-                AssignmentFragment::DirectlyAssignableExpression(cm) => {
+                AssignmentFragment::DirectlyAssignableExpression(_) => {
                     Some(AssignmentFragment::DirectlyAssignableExpression(
-                        cm.precede(p).complete(p, PARENTHESIZED_DIRECTLY_ASSIGNABLE_EXPRESSION),
+                        start.complete(p, PARENTHESIZED_DIRECTLY_ASSIGNABLE_EXPRESSION),
                     ))
                 }
-                AssignmentFragment::AssignableExpression(cm) => {
+                AssignmentFragment::AssignableExpression(_) => {
                     Some(AssignmentFragment::AssignableExpression(
-                        cm.precede(p).complete(p, PARENTHESIZED_ASSIGNABLE_EXPRESSION),
+                        start.complete(p, PARENTHESIZED_ASSIGNABLE_EXPRESSION),
                     ))
                 }
-                AssignmentFragment::UnAssignable(cm) => Some(AssignmentFragment::UnAssignable(
-                    cm.precede(p)
-                        .complete(p, PARENTHESIZED_EXPRESSION)
-                        .precede(p)
-                        .complete(p, EXPRESSION),
+                AssignmentFragment::UnAssignable(_) => Some(AssignmentFragment::UnAssignable(
+                    start.complete(p, PARENTHESIZED_EXPRESSION).precede(p).complete(p, EXPRESSION),
                 )),
             }
         } else {

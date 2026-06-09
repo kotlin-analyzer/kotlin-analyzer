@@ -190,10 +190,11 @@ const SOFT_KEYWORDS: &[&str] = &[
 
 // keywords that are keywords depending on the edition
 const VERSION_DEPENDENT_KEYWORDS: &[(&str, KtVersion)] = &[
-    ("contract", KtVersion::V1_3),
-    // fun interface => Version::V1_4
-    ("value", KtVersion::V1_5),
-    ("context", KtVersion::V1_7),
+    // TODO: these should treated as soft keywords with a version requirement
+    // ("contract", KtVersion::V1_3),
+    // // fun interface => Version::V1_4
+    // ("value", KtVersion::V1_5),
+    // ("context", KtVersion::V1_7),
 ];
 
 pub(crate) fn generate_kind_src(

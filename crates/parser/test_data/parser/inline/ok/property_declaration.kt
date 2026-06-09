@@ -4,3 +4,6 @@ val count by remember { mutableStateOf(0) }
 val <T> List<T>.lastIndex: Int
    get() = this.size - 1
 val greet: String.() -> Unit = { }
+@Anno var <T> T.foo: T
+   get() = this
+   set(value) { this = value }

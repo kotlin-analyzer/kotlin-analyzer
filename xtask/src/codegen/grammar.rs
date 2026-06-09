@@ -616,7 +616,7 @@ fn generate_syntax_kinds(grammar: KindsSrc) -> String {
 
             /// Checks whether this syntax kind is a strict keyword for the given version.
             /// Strict keywords are identifiers that are always considered keywords.
-            pub fn is_strict_keyword(self, version: KtVersion) -> bool {
+            pub fn is_strict_keyword(self, _version: KtVersion) -> bool {
                 matches!(self, #(#strict_keywords_variants)|*)
                 || match self {
                     #(#version_dependent_keywords_variants_match_arm => true,)*
@@ -626,7 +626,7 @@ fn generate_syntax_kinds(grammar: KindsSrc) -> String {
 
             /// Checks whether this syntax kind is a soft keyword for the given version.
             /// Soft keywords are identifiers that are considered keywords only in certain contexts.
-            pub fn is_soft_keyword(self, version: KtVersion) -> bool {
+            pub fn is_soft_keyword(self, _version: KtVersion) -> bool {
                 match self {
                     #(#soft_keywords_variants_match_arm => true,)*
                     _ => false,
@@ -634,7 +634,7 @@ fn generate_syntax_kinds(grammar: KindsSrc) -> String {
             }
 
             /// Checks whether this syntax kind is a strict or soft keyword for the given version.
-            pub fn is_keyword(self, version: KtVersion) -> bool {
+            pub fn is_keyword(self, _version: KtVersion) -> bool {
                 matches!(self, #(#strict_keywords_variants)|*)
                 || match self {
                     #(#version_dependent_keywords_variants_match_arm => true,)*
@@ -651,7 +651,7 @@ fn generate_syntax_kinds(grammar: KindsSrc) -> String {
                 matches!(self, #(#literals)|*)
             }
 
-            pub fn from_keyword(ident: &str, version: KtVersion) -> Option<SyntaxKind> {
+            pub fn from_keyword(ident: &str, _version: KtVersion) -> Option<SyntaxKind> {
                 let kw = match ident {
                     #(#strict_keywords_texts => #strict_keywords_variants,)*
                     #(#version_dependent_keywords_str_match_arm => #version_dependent_keywords_variants,)*
@@ -660,7 +660,7 @@ fn generate_syntax_kinds(grammar: KindsSrc) -> String {
                 Some(kw)
             }
 
-            pub fn from_contextual_keyword(ident: &str, version: KtVersion) -> Option<SyntaxKind> {
+            pub fn from_contextual_keyword(ident: &str, _version: KtVersion) -> Option<SyntaxKind> {
                 let kw = match ident {
                     #(#soft_keywords_str_match_arm => #soft_keywords_variants,)*
                     _ => return None,

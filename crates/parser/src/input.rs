@@ -17,6 +17,7 @@ pub struct Input {
     kind: Vec<SyntaxKind>,
     contextual_kind: Vec<SyntaxKind>,
     ws_before: Vec<bits>,
+    nl_before: Vec<bits>,
     version: Vec<KtVersion>,
 }
 
@@ -28,6 +29,7 @@ impl Input {
             kind: Vec::with_capacity(capacity),
             contextual_kind: Vec::with_capacity(capacity),
             ws_before: Vec::with_capacity(capacity / size_of::<bits>()),
+            nl_before: Vec::with_capacity(capacity / size_of::<bits>()),
             version: Vec::with_capacity(capacity),
         }
     }
@@ -44,10 +46,18 @@ impl Input {
     }
 
     #[inline]
+    pub fn set_nl_before(&mut self) {
+        let n = self.len() - 1;
+        let (idx, b_idx) = self.bit_index(n);
+        self.nl_before[idx] |= 1 << b_idx;
+    }
+
+    #[inline]
     fn push_impl(&mut self, kind: SyntaxKind, contextual_kind: SyntaxKind, version: KtVersion) {
         let idx = self.len();
         if idx.is_multiple_of(bits::BITS as usize) {
             self.ws_before.push(0);
+            self.nl_before.push(0);
         }
         self.kind.push(kind);
         self.contextual_kind.push(contextual_kind);
@@ -69,6 +79,11 @@ impl Input {
     pub(crate) fn has_ws_before(&self, n: usize) -> bool {
         let (idx, b_idx) = self.bit_index(n);
         self.ws_before[idx] & (1 << b_idx) != 0
+    }
+
+    pub(crate) fn has_nl_before(&self, n: usize) -> bool {
+        let (idx, b_idx) = self.bit_index(n);
+        self.nl_before[idx] & (1 << b_idx) != 0
     }
 }
 

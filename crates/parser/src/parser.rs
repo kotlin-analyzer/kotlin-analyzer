@@ -111,6 +111,11 @@ impl<'t> Parser<'t> {
     pub(crate) fn has_ws_before(&self) -> bool {
         self.inp.has_ws_before(self.pos)
     }
+
+    /// Checks if the current token has a newline before it.
+    pub(crate) fn has_nl_before(&self) -> bool {
+        self.inp.has_nl_before(self.pos)
+    }
     /// Starts a new node in the syntax tree. All nodes and tokens
     /// consumed between the `start` and the corresponding `Marker::complete`
     /// belong to the same node.

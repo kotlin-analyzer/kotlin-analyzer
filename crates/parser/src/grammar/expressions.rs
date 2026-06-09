@@ -151,13 +151,14 @@ fn generic_call_like_comparison(
 ) -> Option<Expression> {
     let m = parser.start();
     if let Some(ex) = infix_operation(parser, dis_allowed) {
-        let mut seen = 0;
+        let mut index = 1;
         while !matches!(dis_allowed, Some(DisAllowed::CallSuffix))
+            && !(parser.has_nl_before() && index % 2 == 1)
             && call_suffix(parser, CallSuffix::Full).is_some()
         {
-            seen += 1;
+            index += 1;
         }
-        if seen > 0 {
+        if index > 1 {
             Some(Expression::Other(m.complete(parser, GENERIC_CALL_LIKE_COMPARISON)))
         } else {
             m.abandon(parser);
@@ -242,14 +243,18 @@ fn infix_function_call(
     dis_allowed: Option<DisAllowed>,
 ) -> Option<Expression> {
     if let Some(cm) = range_expression(parser, dis_allowed) {
-        if is_simple_identifier(parser) {
+        if !parser.has_nl_before() && is_simple_identifier(parser) {
             let m = cm.marker().precede(parser);
-            while simple_identifier(parser).is_some() {
+            let mut seen = 1;
+            while !(parser.has_nl_before() && seen % 2 == 1) && simple_identifier(parser).is_some()
+            {
                 if range_expression(parser, dis_allowed).is_none() {
                     parser.error("expected an expression :#IFC");
                     break;
                 }
+                seen += 1;
             }
+
             Some(Expression::Other(m.complete(parser, INFIX_FUNCTION_CALL)))
         } else {
             Some(cm)
@@ -429,7 +434,7 @@ pub(super) fn prefix_unary_expression(
     let m = parser.start();
     let mut has_prefix = false;
 
-    while unary_prefix(parser).is_some() {
+    while !parser.has_nl_before() && unary_prefix(parser).is_some() {
         has_prefix = true;
     }
     let postfix = postfix_unary_expression(parser, dis_allowed);
@@ -455,11 +460,23 @@ fn postfix_unary_expression(
     parser: &mut Parser<'_>,
     dis_allowed: Option<DisAllowed>,
 ) -> Option<AffixedExpression> {
-    primary_expression(parser).map(|aff| {
-        let m = aff.precede(parser);
-        while postfix_unary_suffix(parser, dis_allowed).is_some() {}
-        AffixedExpression::Postfix(m.complete(parser, POSTFIX_UNARY_EXPRESSION))
-    })
+    if let Some(pm) = primary_expression(parser) {
+        let m = pm.precede(parser);
+        if parser.has_nl_before() {
+            return Some(AffixedExpression::Postfix(m.complete(parser, POSTFIX_UNARY_EXPRESSION)));
+        }
+        let mut index = 1;
+        // HGKIC: we want to allow postfix unary operators on a new line iff they are the first postfix unary operator.
+        // This is how the Kotlin compiler behaves.
+        while !(parser.has_nl_before() && index % 2 == 1)
+            && postfix_unary_suffix(parser, dis_allowed).is_some()
+        {
+            index += 1;
+        }
+        Some(AffixedExpression::Postfix(m.complete(parser, POSTFIX_UNARY_EXPRESSION)))
+    } else {
+        None
+    }
 }
 
 fn postfix_unary_suffix(

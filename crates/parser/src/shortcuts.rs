@@ -33,6 +33,7 @@ impl LexedStr<'_> {
         let _p = tracing::info_span!("LexedStr::to_input").entered();
         let mut res = Input::with_capacity(self.len());
         let mut seen_ws = false;
+        let mut seen_nl = false;
         for i in 0..self.len() {
             let kind = self.kind(i);
             if !kind.is_trivia() {
@@ -40,9 +41,16 @@ impl LexedStr<'_> {
                 if seen_ws {
                     res.set_ws_before();
                 }
+                if seen_nl {
+                    res.set_nl_before();
+                }
                 seen_ws = false;
+                seen_nl = false;
             } else if matches!(kind, WHITESPACE | NEWLINE) {
                 seen_ws = true;
+                if matches!(kind, NEWLINE) {
+                    seen_nl = true;
+                }
             }
         }
         res

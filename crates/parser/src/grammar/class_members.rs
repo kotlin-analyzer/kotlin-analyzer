@@ -514,11 +514,14 @@ pub(crate) fn parameters_with_opt_type(parser: &mut Parser<'_>) -> Option<Comple
 }
 
 fn parameter_with_opt_type(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    if is_simple_identifier(parser) && parser.nth_at(1, T![:]) {
+    if is_simple_identifier(parser) {
         let m = parser.start();
         simple_identifier(parser);
-        parser.eat(T![:]);
-        ty(parser);
+        if parser.eat(T![:]) {
+            if ty(parser).is_none() {
+                parser.error("expected a type");
+            }
+        }
         Some(m.complete(parser, PARAMETER_WITH_OPTIONAL_TYPE))
     } else {
         None

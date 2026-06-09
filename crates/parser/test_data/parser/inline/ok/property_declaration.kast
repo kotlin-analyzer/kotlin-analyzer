@@ -42,9 +42,10 @@ KOTLIN_FILE
                 SIMPLE_IDENTIFIER
                   IDENT "B"
       COMMA ","
+      WHITESPACE " "
       VARIABLE_DECLARATION
         SINGLE_ANNOTATION
-          AT " @"
+          AT "@"
           USER_TYPE
             SIMPLE_USER_TYPE
               SIMPLE_IDENTIFIER
@@ -242,6 +243,93 @@ KOTLIN_FILE
       POSTFIX_UNARY_EXPRESSION
         LAMBDA_LITERAL
           L_CURL "{"
+          WHITESPACE " "
+          R_CURL "}"
+  NEWLINE "\n"
+  PROPERTY_DECLARATION
+    MODIFIERS
+      SINGLE_ANNOTATION
+        AT "@"
+        USER_TYPE
+          SIMPLE_USER_TYPE
+            SIMPLE_IDENTIFIER
+              IDENT "Anno"
+    WHITESPACE " "
+    VAR_KW "var"
+    WHITESPACE " "
+    TYPE_PARAMETERS
+      L_ANGLE "<"
+      TYPE_PARAMETER
+        SIMPLE_IDENTIFIER
+          IDENT "T"
+      R_ANGLE ">"
+    WHITESPACE " "
+    RECEIVER_TYPE
+      TYPE_REFERENCE
+        USER_TYPE
+          SIMPLE_USER_TYPE
+            SIMPLE_IDENTIFIER
+              IDENT "T"
+    DOT "."
+    VARIABLE_DECLARATION
+      SIMPLE_IDENTIFIER
+        IDENT "foo"
+      COLON ":"
+      WHITESPACE " "
+      TYPE
+        TYPE_REFERENCE
+          USER_TYPE
+            SIMPLE_USER_TYPE
+              SIMPLE_IDENTIFIER
+                IDENT "T"
+    NEWLINE "\n"
+    WHITESPACE " "
+    WHITESPACE " "
+    WHITESPACE " "
+    GETTER
+      GET_KW "get"
+      L_PAREN "("
+      R_PAREN ")"
+      WHITESPACE " "
+      EQ "="
+      WHITESPACE " "
+      EXPRESSION
+        POSTFIX_UNARY_EXPRESSION
+          THIS_EXPRESSION
+            THIS_KW "this"
+      NEWLINE "\n"
+      WHITESPACE " "
+      WHITESPACE " "
+      WHITESPACE " "
+      FUNCTION_BODY
+    SETTER
+      SET_KW "set"
+      L_PAREN "("
+      FUNCTION_VALUE_PARAMETER_WITH_OPTIONAL_TYPE
+        PARAMETER_WITH_OPTIONAL_TYPE
+          SIMPLE_IDENTIFIER
+            VALUE_KW "value"
+      R_PAREN ")"
+      WHITESPACE " "
+      FUNCTION_BODY
+        BLOCK
+          L_CURL "{"
+          WHITESPACE " "
+          STATEMENTS
+            STATEMENT
+              ASSIGNMENT
+                DIRECTLY_ASSIGNABLE_EXPRESSION
+                  EXPRESSION
+                    POSTFIX_UNARY_EXPRESSION
+                      THIS_EXPRESSION
+                        THIS_KW "this"
+                WHITESPACE " "
+                EQ "="
+                WHITESPACE " "
+                EXPRESSION
+                  POSTFIX_UNARY_EXPRESSION
+                    SIMPLE_IDENTIFIER
+                      VALUE_KW "value"
           WHITESPACE " "
           R_CURL "}"
   NEWLINE "\n"

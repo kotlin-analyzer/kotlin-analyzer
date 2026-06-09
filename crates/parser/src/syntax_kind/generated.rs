@@ -639,14 +639,11 @@ impl SyntaxKind {
             VALUE_KW => "value",
             VARARG_KW => "vararg",
             WHERE_KW => "where",
-            CONTEXT_KW => "context",
-            CONTRACT_KW => "contract",
-            VALUE_KW => "value",
         }
     }
     #[doc = r" Checks whether this syntax kind is a strict keyword for the given version."]
     #[doc = r" Strict keywords are identifiers that are always considered keywords."]
-    pub fn is_strict_keyword(self, version: KtVersion) -> bool {
+    pub fn is_strict_keyword(self, _version: KtVersion) -> bool {
         matches!(
             self,
             AS_KW
@@ -686,15 +683,12 @@ impl SyntaxKind {
                 | THIS_AT_KW
                 | SUPER_AT_KW
         ) || match self {
-            CONTEXT_KW if KtVersion::V1_7 <= version => true,
-            CONTRACT_KW if KtVersion::V1_3 <= version => true,
-            VALUE_KW if KtVersion::V1_5 <= version => true,
             _ => false,
         }
     }
     #[doc = r" Checks whether this syntax kind is a soft keyword for the given version."]
     #[doc = r" Soft keywords are identifiers that are considered keywords only in certain contexts."]
-    pub fn is_soft_keyword(self, version: KtVersion) -> bool {
+    pub fn is_soft_keyword(self, _version: KtVersion) -> bool {
         match self {
             ABSTRACT_KW => true,
             ACTUAL_KW => true,
@@ -704,8 +698,8 @@ impl SyntaxKind {
             COMPANION_KW => true,
             CONST_KW => true,
             CONSTRUCTOR_KW => true,
-            CONTEXT_KW if version < KtVersion::V1_7 => true,
-            CONTRACT_KW if version < KtVersion::V1_3 => true,
+            CONTEXT_KW => true,
+            CONTRACT_KW => true,
             CROSSINLINE_KW => true,
             DATA_KW => true,
             DELEGATE_KW => true,
@@ -742,14 +736,14 @@ impl SyntaxKind {
             SETPARAM_KW => true,
             SUSPEND_KW => true,
             TAILREC_KW => true,
-            VALUE_KW if version < KtVersion::V1_5 => true,
+            VALUE_KW => true,
             VARARG_KW => true,
             WHERE_KW => true,
             _ => false,
         }
     }
     #[doc = r" Checks whether this syntax kind is a strict or soft keyword for the given version."]
-    pub fn is_keyword(self, version: KtVersion) -> bool {
+    pub fn is_keyword(self, _version: KtVersion) -> bool {
         matches!(
             self,
             AS_KW
@@ -789,9 +783,6 @@ impl SyntaxKind {
                 | THIS_AT_KW
                 | SUPER_AT_KW
         ) || match self {
-            CONTEXT_KW if KtVersion::V1_7 <= version => true,
-            CONTRACT_KW if KtVersion::V1_3 <= version => true,
-            VALUE_KW if KtVersion::V1_5 <= version => true,
             ABSTRACT_KW => true,
             ACTUAL_KW => true,
             ANNOTATION_KW => true,
@@ -800,8 +791,8 @@ impl SyntaxKind {
             COMPANION_KW => true,
             CONST_KW => true,
             CONSTRUCTOR_KW => true,
-            CONTEXT_KW if version < KtVersion::V1_7 => true,
-            CONTRACT_KW if version < KtVersion::V1_3 => true,
+            CONTEXT_KW => true,
+            CONTRACT_KW => true,
             CROSSINLINE_KW => true,
             DATA_KW => true,
             DELEGATE_KW => true,
@@ -838,7 +829,7 @@ impl SyntaxKind {
             SETPARAM_KW => true,
             SUSPEND_KW => true,
             TAILREC_KW => true,
-            VALUE_KW if version < KtVersion::V1_5 => true,
+            VALUE_KW => true,
             VARARG_KW => true,
             WHERE_KW => true,
             _ => false,
@@ -896,7 +887,7 @@ impl SyntaxKind {
     pub fn is_literal(self) -> bool {
         matches!(self, BIN | BOOL | CHAR | HEX | INT | LONG | REAL | UNSIGNED)
     }
-    pub fn from_keyword(ident: &str, version: KtVersion) -> Option<SyntaxKind> {
+    pub fn from_keyword(ident: &str, _version: KtVersion) -> Option<SyntaxKind> {
         let kw = match ident {
             "as" => AS_KW,
             "break" => BREAK_KW,
@@ -934,14 +925,11 @@ impl SyntaxKind {
             "break@" => BREAK_AT_KW,
             "this@" => THIS_AT_KW,
             "super@" => SUPER_AT_KW,
-            "context" if KtVersion::V1_7 <= version => CONTEXT_KW,
-            "contract" if KtVersion::V1_3 <= version => CONTRACT_KW,
-            "value" if KtVersion::V1_5 <= version => VALUE_KW,
             _ => return None,
         };
         Some(kw)
     }
-    pub fn from_contextual_keyword(ident: &str, version: KtVersion) -> Option<SyntaxKind> {
+    pub fn from_contextual_keyword(ident: &str, _version: KtVersion) -> Option<SyntaxKind> {
         let kw = match ident {
             "abstract" => ABSTRACT_KW,
             "actual" => ACTUAL_KW,
@@ -951,8 +939,8 @@ impl SyntaxKind {
             "companion" => COMPANION_KW,
             "const" => CONST_KW,
             "constructor" => CONSTRUCTOR_KW,
-            "context" if version < KtVersion::V1_7 => CONTEXT_KW,
-            "contract" if version < KtVersion::V1_3 => CONTRACT_KW,
+            "context" => CONTEXT_KW,
+            "contract" => CONTRACT_KW,
             "crossinline" => CROSSINLINE_KW,
             "data" => DATA_KW,
             "delegate" => DELEGATE_KW,
@@ -989,7 +977,7 @@ impl SyntaxKind {
             "setparam" => SETPARAM_KW,
             "suspend" => SUSPEND_KW,
             "tailrec" => TAILREC_KW,
-            "value" if version < KtVersion::V1_5 => VALUE_KW,
+            "value" => VALUE_KW,
             "vararg" => VARARG_KW,
             "where" => WHERE_KW,
             _ => return None,
@@ -1159,9 +1147,6 @@ macro_rules ! T_ {
     [value] => { $ crate :: SyntaxKind :: VALUE_KW };
     [vararg] => { $ crate :: SyntaxKind :: VARARG_KW };
     [where] => { $ crate :: SyntaxKind :: WHERE_KW };
-    [context] => { $ crate :: SyntaxKind :: CONTEXT_KW };
-    [contract] => { $ crate :: SyntaxKind :: CONTRACT_KW };
-    [value] => { $ crate :: SyntaxKind :: VALUE_KW };
     [lifetime_ident] => { $ crate :: SyntaxKind :: LIFETIME_IDENT };
     [int_number] => { $ crate :: SyntaxKind :: INT_NUMBER };
     [ident] => { $ crate :: SyntaxKind :: IDENT };
