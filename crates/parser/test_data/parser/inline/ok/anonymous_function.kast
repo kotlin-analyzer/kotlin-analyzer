@@ -1,0 +1,375 @@
+KOTLIN_FILE
+  PROPERTY_DECLARATION
+    VAL_KW "val"
+    WHITESPACE " "
+    VARIABLE_DECLARATION
+      SIMPLE_IDENTIFIER
+        IDENT "a"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    EXPRESSION
+      POSTFIX_UNARY_EXPRESSION
+        ANONYMOUS_FUNCTION
+          FUN_KW "fun"
+          PARAMETERS_WITH_OPTIONAL_TYPE
+            L_PAREN "("
+            FUNCTION_VALUE_PARAMETER_WITH_OPTIONAL_TYPE
+              PARAMETER_WITH_OPTIONAL_TYPE
+                SIMPLE_IDENTIFIER
+                  IDENT "x"
+                COLON ":"
+                WHITESPACE " "
+                TYPE
+                  TYPE_REFERENCE
+                    USER_TYPE
+                      SIMPLE_USER_TYPE
+                        SIMPLE_IDENTIFIER
+                          IDENT "Int"
+            COMMA ","
+            WHITESPACE " "
+            FUNCTION_VALUE_PARAMETER_WITH_OPTIONAL_TYPE
+              PARAMETER_WITH_OPTIONAL_TYPE
+                SIMPLE_IDENTIFIER
+                  IDENT "y"
+                COLON ":"
+                WHITESPACE " "
+                TYPE
+                  TYPE_REFERENCE
+                    USER_TYPE
+                      SIMPLE_USER_TYPE
+                        SIMPLE_IDENTIFIER
+                          IDENT "Int"
+            R_PAREN ")"
+          COLON ":"
+          WHITESPACE " "
+          TYPE
+            TYPE_REFERENCE
+              USER_TYPE
+                SIMPLE_USER_TYPE
+                  SIMPLE_IDENTIFIER
+                    IDENT "Int"
+          WHITESPACE " "
+          FUNCTION_BODY
+            BLOCK
+              L_CURL "{"
+              WHITESPACE " "
+              STATEMENTS
+                STATEMENT
+                  EXPRESSION
+                    POSTFIX_UNARY_EXPRESSION
+                      JUMP_EXPRESSION
+                        RETURN_KW "return"
+                        WHITESPACE " "
+                        EXPRESSION
+                          ADDITIVE_EXPRESSION
+                            POSTFIX_UNARY_EXPRESSION
+                              SIMPLE_IDENTIFIER
+                                IDENT "x"
+                            WHITESPACE " "
+                            ADDITIVE_OPERATOR
+                              ADD "+"
+                            WHITESPACE " "
+                            POSTFIX_UNARY_EXPRESSION
+                              SIMPLE_IDENTIFIER
+                                IDENT "y"
+                WHITESPACE " "
+                VARIABLE_DECLARATION
+                R_CURL "}"
+    NEWLINE "\n"
+    PROPERTY_DECLARATION
+      VAL_KW "val"
+      WHITESPACE " "
+      SIMPLE_IDENTIFIER
+        IDENT "b"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    EXPRESSION
+      POSTFIX_UNARY_EXPRESSION
+        ANONYMOUS_FUNCTION
+          SUSPEND_KW "suspend"
+          WHITESPACE " "
+          FUN_KW "fun"
+          PARAMETERS_WITH_OPTIONAL_TYPE
+            L_PAREN "("
+            FUNCTION_VALUE_PARAMETER_WITH_OPTIONAL_TYPE
+              PARAMETER_WITH_OPTIONAL_TYPE
+                SIMPLE_IDENTIFIER
+                  IDENT "x"
+                COLON ":"
+                WHITESPACE " "
+                TYPE
+                  TYPE_REFERENCE
+                    USER_TYPE
+                      SIMPLE_USER_TYPE
+                        SIMPLE_IDENTIFIER
+                          IDENT "Int"
+            COMMA ","
+            WHITESPACE " "
+            FUNCTION_VALUE_PARAMETER_WITH_OPTIONAL_TYPE
+              PARAMETER_WITH_OPTIONAL_TYPE
+                SIMPLE_IDENTIFIER
+                  IDENT "y"
+                COLON ":"
+                WHITESPACE " "
+                TYPE
+                  TYPE_REFERENCE
+                    USER_TYPE
+                      SIMPLE_USER_TYPE
+                        SIMPLE_IDENTIFIER
+                          IDENT "Int"
+            R_PAREN ")"
+          COLON ":"
+          WHITESPACE " "
+          TYPE
+            TYPE_REFERENCE
+              USER_TYPE
+                SIMPLE_USER_TYPE
+                  SIMPLE_IDENTIFIER
+                    IDENT "Int"
+          WHITESPACE " "
+          FUNCTION_BODY
+            BLOCK
+              L_CURL "{"
+              WHITESPACE " "
+              STATEMENTS
+                STATEMENT
+                  EXPRESSION
+                    POSTFIX_UNARY_EXPRESSION
+                      JUMP_EXPRESSION
+                        RETURN_KW "return"
+                        WHITESPACE " "
+                        EXPRESSION
+                          ADDITIVE_EXPRESSION
+                            POSTFIX_UNARY_EXPRESSION
+                              SIMPLE_IDENTIFIER
+                                IDENT "x"
+                            WHITESPACE " "
+                            ADDITIVE_OPERATOR
+                              ADD "+"
+                            WHITESPACE " "
+                            POSTFIX_UNARY_EXPRESSION
+                              SIMPLE_IDENTIFIER
+                                IDENT "y"
+              WHITESPACE " "
+              R_CURL "}"
+  NEWLINE "\n"
+  PROPERTY_DECLARATION
+    VAL_KW "val"
+    WHITESPACE " "
+    VARIABLE_DECLARATION
+      SIMPLE_IDENTIFIER
+        IDENT "c"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    EXPRESSION
+      POSTFIX_UNARY_EXPRESSION
+        ANONYMOUS_FUNCTION
+          SUSPEND_KW "suspend"
+          WHITESPACE " "
+          CONTEXT_PARAMETER_LIST
+            CONTEXT_KW "context"
+            L_PAREN "("
+            FUNCTION_VALUE_PARAMETER
+              PARAMETER
+                SIMPLE_IDENTIFIER
+                  IDENT "a"
+                COLON ":"
+                WHITESPACE " "
+                TYPE
+                  TYPE_REFERENCE
+                    USER_TYPE
+                      SIMPLE_USER_TYPE
+                        SIMPLE_IDENTIFIER
+                          IDENT "A"
+            COMMA ","
+            WHITESPACE " "
+            FUNCTION_VALUE_PARAMETER
+              PARAMETER
+                SIMPLE_IDENTIFIER
+                  IDENT "b"
+                COLON ":"
+                WHITESPACE " "
+                TYPE
+                  TYPE_REFERENCE
+                    USER_TYPE
+                      SIMPLE_USER_TYPE
+                        SIMPLE_IDENTIFIER
+                          IDENT "B"
+            R_PAREN ")"
+          WHITESPACE " "
+          FUN_KW "fun"
+          PARAMETERS_WITH_OPTIONAL_TYPE
+            L_PAREN "("
+            FUNCTION_VALUE_PARAMETER_WITH_OPTIONAL_TYPE
+              PARAMETER_WITH_OPTIONAL_TYPE
+                SIMPLE_IDENTIFIER
+                  IDENT "x"
+                COLON ":"
+                WHITESPACE " "
+                TYPE
+                  TYPE_REFERENCE
+                    USER_TYPE
+                      SIMPLE_USER_TYPE
+                        SIMPLE_IDENTIFIER
+                          IDENT "Int"
+            COMMA ","
+            WHITESPACE " "
+            FUNCTION_VALUE_PARAMETER_WITH_OPTIONAL_TYPE
+              PARAMETER_WITH_OPTIONAL_TYPE
+                SIMPLE_IDENTIFIER
+                  IDENT "y"
+                COLON ":"
+                WHITESPACE " "
+                TYPE
+                  TYPE_REFERENCE
+                    USER_TYPE
+                      SIMPLE_USER_TYPE
+                        SIMPLE_IDENTIFIER
+                          IDENT "Int"
+            R_PAREN ")"
+          COLON ":"
+          WHITESPACE " "
+          TYPE
+            TYPE_REFERENCE
+              USER_TYPE
+                SIMPLE_USER_TYPE
+                  SIMPLE_IDENTIFIER
+                    IDENT "Int"
+          WHITESPACE " "
+          FUNCTION_BODY
+            BLOCK
+              L_CURL "{"
+              WHITESPACE " "
+              VARIABLE_DECLARATION
+                STATEMENTS
+                  STATEMENT
+                    EXPRESSION
+                      POSTFIX_UNARY_EXPRESSION
+                        JUMP_EXPRESSION
+                          RETURN_KW "return"
+                          WHITESPACE " "
+                          EXPRESSION
+                            ADDITIVE_EXPRESSION
+                              POSTFIX_UNARY_EXPRESSION
+                                SIMPLE_IDENTIFIER
+                                  IDENT "x"
+                              WHITESPACE " "
+                              ADDITIVE_OPERATOR
+                                ADD "+"
+                              WHITESPACE " "
+                              POSTFIX_UNARY_EXPRESSION
+                                SIMPLE_IDENTIFIER
+                                  IDENT "y"
+                WHITESPACE " "
+                R_CURL "}"
+    NEWLINE "\n"
+    PROPERTY_DECLARATION
+      VAL_KW "val"
+      WHITESPACE " "
+      SIMPLE_IDENTIFIER
+        IDENT "d"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    EXPRESSION
+      POSTFIX_UNARY_EXPRESSION
+        ANONYMOUS_FUNCTION
+          CONTEXT_PARAMETER_LIST
+            CONTEXT_KW "context"
+            L_PAREN "("
+            FUNCTION_VALUE_PARAMETER
+              PARAMETER
+                SIMPLE_IDENTIFIER
+                  IDENT "a"
+                COLON ":"
+                WHITESPACE " "
+                TYPE
+                  TYPE_REFERENCE
+                    USER_TYPE
+                      SIMPLE_USER_TYPE
+                        SIMPLE_IDENTIFIER
+                          IDENT "A"
+            COMMA ","
+            WHITESPACE " "
+            FUNCTION_VALUE_PARAMETER
+              PARAMETER
+                SIMPLE_IDENTIFIER
+                  IDENT "_"
+                COLON ":"
+                WHITESPACE " "
+                TYPE
+                  TYPE_REFERENCE
+                    USER_TYPE
+                      SIMPLE_USER_TYPE
+                        SIMPLE_IDENTIFIER
+                          IDENT "B"
+            R_PAREN ")"
+          WHITESPACE " "
+          FUN_KW "fun"
+          PARAMETERS_WITH_OPTIONAL_TYPE
+            L_PAREN "("
+            FUNCTION_VALUE_PARAMETER_WITH_OPTIONAL_TYPE
+              PARAMETER_WITH_OPTIONAL_TYPE
+                SIMPLE_IDENTIFIER
+                  IDENT "x"
+                COLON ":"
+                WHITESPACE " "
+                TYPE
+                  TYPE_REFERENCE
+                    USER_TYPE
+                      SIMPLE_USER_TYPE
+                        SIMPLE_IDENTIFIER
+                          IDENT "Int"
+            COMMA ","
+            WHITESPACE " "
+            FUNCTION_VALUE_PARAMETER_WITH_OPTIONAL_TYPE
+              PARAMETER_WITH_OPTIONAL_TYPE
+                SIMPLE_IDENTIFIER
+                  IDENT "y"
+                COLON ":"
+                WHITESPACE " "
+                TYPE
+                  TYPE_REFERENCE
+                    USER_TYPE
+                      SIMPLE_USER_TYPE
+                        SIMPLE_IDENTIFIER
+                          IDENT "Int"
+            R_PAREN ")"
+          COLON ":"
+          WHITESPACE " "
+          TYPE
+            TYPE_REFERENCE
+              USER_TYPE
+                SIMPLE_USER_TYPE
+                  SIMPLE_IDENTIFIER
+                    IDENT "Int"
+          WHITESPACE " "
+          FUNCTION_BODY
+            BLOCK
+              L_CURL "{"
+              WHITESPACE " "
+              STATEMENTS
+                STATEMENT
+                  EXPRESSION
+                    POSTFIX_UNARY_EXPRESSION
+                      JUMP_EXPRESSION
+                        RETURN_KW "return"
+                        WHITESPACE " "
+                        EXPRESSION
+                          ADDITIVE_EXPRESSION
+                            POSTFIX_UNARY_EXPRESSION
+                              SIMPLE_IDENTIFIER
+                                IDENT "x"
+                            WHITESPACE " "
+                            ADDITIVE_OPERATOR
+                              ADD "+"
+                            WHITESPACE " "
+                            POSTFIX_UNARY_EXPRESSION
+                              SIMPLE_IDENTIFIER
+                                IDENT "y"
+              WHITESPACE " "
+              R_CURL "}"
+  NEWLINE "\n"

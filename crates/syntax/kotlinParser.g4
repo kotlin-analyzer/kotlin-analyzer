@@ -581,8 +581,12 @@ lambdaParameter
     | multiVariableDeclaration (NL* COLON NL* type)?
     ;
 
+contextParameterList
+  : CONTEXT '(' functionValueParameter (',' functionValueParameter)* ','? ')'
+  ;
+
 anonymousFunction
-    : SUSPEND?
+    : ((contextParameterList SUSPEND?) | (SUSPEND contextParameterList?))?
       NL*
       FUN
       (NL* type NL* DOT)?
@@ -750,7 +754,7 @@ safeNav
 // SECTION: modifiers
 
 modifiers
-    : (annotation | modifier)+
+    : (annotation | modifier | contextParameterList)+
     ;
 
 parameterModifiers

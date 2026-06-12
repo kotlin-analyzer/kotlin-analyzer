@@ -1,73 +1,41 @@
-use crate::{Marker, SyntaxKind::*, T};
+use crate::{DanglingMarker, SyntaxKind::*, T};
 
 use super::classes::{class_body, delegation_specifiers, type_constraints};
 use super::general::declaration;
-use super::identifiers::is_simple_identifier;
+use super::identifiers::{is_simple_ident_at, is_simple_identifier};
 use super::statements::{block, semi, semis};
 use super::types::{RecvType, UserType, receiver_type, user_type};
 use crate::{CompletedMarker, Parser, TokenSet};
 
-use super::annotations::annotation;
 use super::classes::type_parameters;
 use super::expressions::{expression, value_arguments};
 use super::identifiers::simple_identifier;
-use super::modifiers::{modifiers, parameter_modifiers};
+use super::modifiers::parameter_modifiers;
 use super::types::ty;
 
-pub(crate) fn class_member_declarations(
-    parser: &mut Parser<'_>,
-    first_entry: Option<Marker>,
-) -> Option<CompletedMarker> {
-    match class_member_declaration(parser, first_entry) {
-        Ok(cm) => {
-            let (cm, dangling) = cm.into_parts();
-            let m = cm.precede(parser);
-            let mut dangling = dangling;
+pub(crate) fn class_member_declarations(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    if let Some(cm) = class_member_declaration(parser) {
+        let m = cm.precede(parser);
+        semis(parser);
+
+        while class_member_declaration(parser).is_some() {
             semis(parser);
-
-            loop {
-                match class_member_declaration(parser, dangling) {
-                    Ok(cm) => {
-                        dangling = cm.dangling();
-                        semis(parser);
-                    }
-                    Err(m) => {
-                        m.abandon(parser);
-                        break;
-                    }
-                }
-            }
-
-            Some(m.complete(parser, CLASS_MEMBER_DECLARATIONS))
         }
-        Err(m) => {
-            m.abandon(parser);
-            None
-        }
+
+        Some(m.complete(parser, CLASS_MEMBER_DECLARATIONS))
+    } else {
+        None
     }
 }
 
-fn class_member_declaration(
-    parser: &mut Parser<'_>,
-    start: Option<Marker>,
-) -> Result<CompletedMarker, Marker> {
+fn class_member_declaration(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     if let Some(cm) = anonymous_initializer(parser) {
-        start.map(|m| m.abandon(parser));
-        return Ok(cm);
+        return Some(cm);
     }
-    let start = start.unwrap_or_else(|| {
-        let m = parser.start();
-        modifiers(parser);
-        m
-    });
 
-    if parser.at(T![companion]) {
-        companion_object(parser, start)
-    } else if parser.at(T![constructor]) {
-        secondary_constructor(parser, start)
-    } else {
-        declaration(parser, start)
-    }
+    companion_object(parser)
+        .or_else(|| secondary_constructor(parser))
+        .or_else(|| declaration(parser, false))
 }
 
 fn anonymous_initializer(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
@@ -81,12 +49,14 @@ fn anonymous_initializer(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     }
 }
 
-fn companion_object(parser: &mut Parser<'_>, start: Marker) -> Result<CompletedMarker, Marker> {
-    if !parser.at(T![companion]) {
-        return Err(start);
+fn companion_object(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    let m = parser.start_with_modifiers();
+
+    if !parser.eat(T![companion]) {
+        m.abandon(parser);
+        return None;
     }
 
-    parser.eat(T![companion]);
     parser.eat(T![data]);
 
     if !parser.eat(T![object]) {
@@ -98,8 +68,8 @@ fn companion_object(parser: &mut Parser<'_>, start: Marker) -> Result<CompletedM
     if parser.eat(T![:]) && delegation_specifiers(parser).is_none() {
         parser.error("expected delegation specifiers");
     }
-    class_body(parser, None, None);
-    Ok(start.complete(parser, COMPANION_OBJECT))
+    class_body(parser, None);
+    Some(m.complete(parser, COMPANION_OBJECT))
 }
 
 pub(crate) fn starts_fn_declaration(parser: &mut Parser<'_>) -> bool {
@@ -119,13 +89,14 @@ pub(crate) fn starts_fn_declaration(parser: &mut Parser<'_>) -> bool {
 // fun double(x: Int): Int = x * 2
 pub(super) fn function_declaration(
     parser: &mut Parser<'_>,
-    start: Marker,
-) -> Result<CompletedMarker, Marker> {
-    if !starts_fn_declaration(parser) {
-        return Err(start);
-    }
+    allow_expressions: bool,
+) -> Option<CompletedMarker> {
+    let m = parser.start_with_modifiers();
 
-    let m = start;
+    if !starts_fn_declaration(parser) {
+        m.abandon(parser);
+        return None;
+    }
 
     parser.bump(T![fun]);
     type_parameters(parser);
@@ -137,11 +108,17 @@ pub(super) fn function_declaration(
         receiver_type(parser, RecvType::Dotted(UserType::BeforeName));
 
         if simple_identifier(parser).is_none() {
-            parser.error("expected an identifier: #FN");
+            if allow_expressions {
+                // this is an anonymous function expression. This will fallback to expression parser.
+                m.map(|m| DanglingMarker::Func { marker: m, valid: true }).abandon(parser);
+                return None;
+            } else {
+                parser.error("expected a name for function: #FN");
+            }
         }
     }
     if function_value_parameters(parser).is_none() {
-        parser.error("expected (");
+        parser.error("expected '('");
     }
     parameters_with_opt_type(parser);
 
@@ -150,7 +127,7 @@ pub(super) fn function_declaration(
     }
     type_constraints(parser);
     function_body(parser);
-    Ok(m.complete(parser, FUNCTION_DECLARATION))
+    Some(m.complete(parser, FUNCTION_DECLARATION))
 }
 
 pub(super) fn function_body(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
@@ -175,25 +152,22 @@ pub(super) fn function_body(parser: &mut Parser<'_>) -> Option<CompletedMarker> 
 // object Foo : Something() {}
 // data object Foo
 // object Foo : Boo by Bae, Bar(), Baz, B.() -> Unit by A {}
-pub(super) fn object_declaration(
-    parser: &mut Parser<'_>,
-    start: Marker,
-) -> Result<CompletedMarker, Marker> {
-    if !parser.at(T![object]) {
-        return Err(start);
+pub(super) fn object_declaration(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    let m = parser.start_with_modifiers();
+
+    if !parser.at(T![object]) || !is_simple_ident_at(parser, 1) {
+        m.abandon(parser);
+        return None;
     }
-    let m = start;
 
     parser.eat(T![object]);
-    if simple_identifier(parser).is_none() {
-        parser.error("expected an identifier");
-    }
+    simple_identifier(parser);
     if parser.eat(T![:]) && delegation_specifiers(parser).is_none() {
         parser.error("expected delegation specifiers");
     }
-    class_body(parser, None, None);
+    class_body(parser, None);
 
-    Ok(m.complete(parser, OBJECT_DECLARATION))
+    Some(m.complete(parser, OBJECT_DECLARATION))
 }
 
 // can also parse userType
@@ -243,8 +217,7 @@ pub(super) fn multi_variable_declaration(parser: &mut Parser<'_>) -> Option<Comp
 }
 
 pub(super) fn variable_declaration(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    let m = parser.start();
-    annotation(parser);
+    let m = parser.start_with_annotation();
     // Optimization
     if is_simple_identifier(parser) && parser.nth_at(1, T!['(']) {
         m.abandon(parser);
@@ -256,7 +229,7 @@ pub(super) fn variable_declaration(parser: &mut Parser<'_>) -> Option<CompletedM
         }
         Some(m.complete(parser, VARIABLE_DECLARATION))
     } else {
-        m.abandon(parser);
+        m.forget(parser);
         None
     }
 }
@@ -275,14 +248,13 @@ const AFTER_PROP_NAME: TokenSet =
 // @Anno var <T> T.foo: T
 //    get() = this
 //    set(value) { this = value }
-pub(super) fn property_declaration(
-    parser: &mut Parser<'_>,
-    start: Marker,
-) -> Result<CompletedMarker, Marker> {
+pub(super) fn property_declaration(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    let m = parser.start_with_modifiers();
+
     if !parser.at_ts(PROPERTY_DECLARATION_START) {
-        return Err(start);
+        m.abandon(parser);
+        return None;
     }
-    let m = start;
 
     parser.bump_any();
     type_parameters(parser);
@@ -316,43 +288,32 @@ pub(super) fn property_declaration(
 
     let mut cm = m.complete(parser, PROPERTY_DECLARATION);
 
-    let nm = parser.start();
-    modifiers(parser);
-    if parser.at(T![get]) {
-        getter(parser, nm);
+    if getter(parser).is_some() {
         semi(parser);
 
         cm = cm.extend_right(parser);
-        let nm = parser.start();
-        modifiers(parser);
 
-        if parser.at(T![set]) {
-            setter(parser, nm);
-            return Ok(cm.extend_right(parser));
+        if setter(parser).is_some() {
+            return Some(cm.extend_right(parser));
         }
-        return Ok(cm.with_dangling(Some(nm)));
-    } else if parser.at(T![set]) {
-        setter(parser, nm);
+    } else if setter(parser).is_some() {
         semi(parser);
 
         cm = cm.extend_right(parser);
-        let nm = parser.start();
-        modifiers(parser);
 
-        if parser.at(T![get]) {
-            getter(parser, nm);
-            return Ok(cm.extend_right(parser));
+        if getter(parser).is_some() {
+            return Some(cm.extend_right(parser));
         }
-        return Ok(cm.with_dangling(Some(nm)));
     }
-    Ok(cm.with_dangling(Some(nm)))
+    Some(cm)
 }
 
-fn getter(parser: &mut Parser<'_>, start: Marker) -> Option<CompletedMarker> {
+fn getter(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    let m = parser.start_with_modifiers();
     if !parser.at(T![get]) {
+        m.abandon(parser);
         return None;
     }
-    let m = start;
 
     parser.bump(T![get]);
     if parser.eat(T!['(']) {
@@ -369,11 +330,13 @@ fn getter(parser: &mut Parser<'_>, start: Marker) -> Option<CompletedMarker> {
     Some(m.complete(parser, GETTER))
 }
 
-fn setter(parser: &mut Parser<'_>, start: Marker) -> Option<CompletedMarker> {
+fn setter(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    let m = parser.start_with_modifiers();
+
     if !parser.at(T![set]) {
+        m.abandon(parser);
         return None;
     }
-    let m = start;
 
     parser.bump(T![set]);
     if parser.eat(T!['(']) {
@@ -462,21 +425,20 @@ fn function_value_parameter_with_optional_type(parser: &mut Parser<'_>) -> Optio
     Some(m.complete(parser, FUNCTION_VALUE_PARAMETER_WITH_OPTIONAL_TYPE))
 }
 
-fn secondary_constructor(
-    parser: &mut Parser<'_>,
-    start: Marker,
-) -> Result<CompletedMarker, Marker> {
-    if !parser.at(T![constructor]) {
-        return Err(start);
+fn secondary_constructor(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    let m = parser.start_with_modifiers();
+
+    if !parser.eat(T![constructor]) {
+        m.abandon(parser);
+        return None;
     }
-    let m = start;
-    parser.eat(T![constructor]);
+
     function_value_parameters(parser);
     if parser.eat(T![:]) {
         constructor_delegation_call(parser); // maybe record an error here if none
     }
     block(parser);
-    Ok(m.complete(parser, SECONDARY_CONSTRUCTOR))
+    Some(m.complete(parser, SECONDARY_CONSTRUCTOR))
 }
 
 pub(crate) fn parameter(parser: &mut Parser<'_>) -> Option<CompletedMarker> {

@@ -6,18 +6,18 @@ use super::class_members::context_parameter_list;
 use crate::{CompletedMarker, Parser};
 
 pub(crate) fn modifiers(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    if let Some(cm) = annotation(parser).or_else(|| modifier(parser)) {
+    if let Some(cm) =
+        annotation(parser).or_else(|| modifier(parser)).or_else(|| context_parameter_list(parser))
+    {
         let m = cm.precede(parser);
-        while annotation(parser).or_else(|| modifier(parser)).is_some() {}
+        while annotation(parser)
+            .or_else(|| modifier(parser))
+            .or_else(|| context_parameter_list(parser))
+            .is_some()
+        {}
         Some(m.complete(parser, MODIFIERS))
     } else {
-        if let Some(cm) = context_parameter_list(parser) {
-            let m = cm.precede(parser);
-            while context_parameter_list(parser).is_some() {}
-            Some(m.complete(parser, MODIFIERS))
-        } else {
-            None
-        }
+        None
     }
 }
 
@@ -145,18 +145,17 @@ fn reification_modifier(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
 }
 
 fn variance_modifier(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    match parser.current() {
-        T![in] | T![out] => {
-            let m = parser.start();
-            parser.bump_any();
-            Some(m.complete(parser, VARIANCE_MODIFIER))
-        }
-        _ => None,
+    if parser.at(T![in]) || parser.at(T![out]) {
+        let m = parser.start();
+        parser.bump_any();
+        Some(m.complete(parser, VARIANCE_MODIFIER))
+    } else {
+        None
     }
 }
 
 fn platform_modifier(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    if matches!(parser.current(), T![expect] | T![actual]) {
+    if parser.at(T![expect]) || parser.at(T![actual]) {
         let m = parser.start();
         parser.bump_any();
         Some(m.complete(parser, PLATFORM_MODIFIER))

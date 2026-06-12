@@ -5,7 +5,7 @@ use super::class_members::class_member_declarations;
 use super::enum_classes::{BodyResult, enum_class_body};
 use super::expressions::{DisAllowed, expression, flex_expression, value_arguments};
 use super::identifiers::simple_identifier;
-use super::modifiers::{modifiers, type_parameter_modifiers};
+use super::modifiers::type_parameter_modifiers;
 use super::types::{TypeResult, ty, unclosed_ty};
 use crate::{CompletedMarker, Marker, Parser};
 
@@ -31,16 +31,13 @@ pub(crate) fn starts_class_declaration(parser: &mut Parser<'_>) -> bool {
 // data class Foo12<T>(val name: String, val age: Int)
 // class A
 // {}
-// abstract class AB private fun f() = 1
-pub(crate) fn class_declaration(
-    parser: &mut Parser<'_>,
-    start: Marker,
-) -> Result<CompletedMarker, Marker> {
-    if !starts_class_declaration(parser) {
-        return Err(start);
-    }
+pub(crate) fn class_declaration(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    let m = parser.start_with_modifiers();
 
-    let m = start;
+    if !starts_class_declaration(parser) {
+        m.abandon(parser);
+        return None;
+    }
 
     if parser.at(T![class]) || parser.at(T![interface]) {
         parser.bump_any();
@@ -56,8 +53,10 @@ pub(crate) fn class_declaration(
     type_parameters(parser);
     let cm = m.complete(parser, CLASS_DECLARATION);
 
-    if let Some(Err(dangling)) = primary_constructor(parser) {
-        return Ok(cm.with_dangling(Some(dangling)));
+    if let Some(Err(_)) = primary_constructor(parser) {
+        // test class_then_decl
+        // abstract class AB private fun f() = 1
+        return Some(cm);
     }
 
     if parser.eat(T![:]) && delegation_specifiers(parser).is_none() {
@@ -70,33 +69,30 @@ pub(crate) fn class_declaration(
         let m = parser.start();
 
         parser.bump(T!['{']);
-        let first_entry = parser.start();
-        modifiers(parser);
 
-        if let BodyResult::None { opening_brace, first_entry } =
-            enum_class_body(parser, m, first_entry)
-        {
-            class_body(parser, Some(opening_brace), Some(first_entry));
+        if let BodyResult::None { opening_brace } = enum_class_body(parser, m) {
+            class_body(parser, Some(opening_brace));
         }
     }
 
-    Ok(cm.extend_right(parser))
+    Some(cm.extend_right(parser))
 }
 
-fn primary_constructor(parser: &mut Parser<'_>) -> Option<Result<CompletedMarker, Marker>> {
-    let m = parser.start();
-
-    match (modifiers(parser), parser.eat(T![constructor])) {
-        (None, false) => {
+fn primary_constructor(parser: &mut Parser<'_>) -> Option<Result<CompletedMarker, ()>> {
+    let m = parser.start_with_fresh_modifiers();
+    match (m.has_modifiers(), parser.eat(T![constructor])) {
+        (true, false) => {
+            // This a new declaration
+            m.abandon(parser);
+            return Some(Err(()));
+        }
+        (false, false) => {
             if !parser.at(T!['(']) {
                 m.abandon(parser);
                 return None;
             }
         }
-        (Some(_), false) => {
-            return Some(Err(m));
-        }
-        (_, true) => {}
+        _ => {}
     }
 
     class_parameters(parser);
@@ -107,7 +103,6 @@ fn primary_constructor(parser: &mut Parser<'_>) -> Option<Result<CompletedMarker
 pub(crate) fn class_body(
     parser: &mut Parser<'_>,
     opening_brace: Option<Marker>,
-    first_entry: Option<Marker>,
 ) -> Option<CompletedMarker> {
     let m = opening_brace.or_else(|| {
         if !parser.at(T!['{']) {
@@ -119,7 +114,7 @@ pub(crate) fn class_body(
         }
     })?;
 
-    class_member_declarations(parser, first_entry);
+    class_member_declarations(parser);
 
     if !parser.eat(T!['}']) {
         parser.error("expected '}'");
@@ -150,12 +145,9 @@ fn class_parameters(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
 const CLASS_PARAMETER_RECOVERY: TokenSet = TokenSet::new(&[T![,], T![')'], T!['{']]);
 
 fn class_parameter(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    let m = parser.start();
+    let m = parser.start_with_modifiers();
     let mut seen = 0;
 
-    if modifiers(parser).is_some() {
-        seen += 1;
-    }
     if parser.at(T![val]) || parser.at(T![var]) {
         parser.bump_any();
         seen += 1;

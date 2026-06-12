@@ -2,7 +2,10 @@
 
 use crate::SyntaxKind::{self, EOF, ERROR, TOMBSTONE};
 use crate::T;
+use crate::grammar::annotations::annotation;
+use crate::grammar::modifiers::modifiers;
 use crate::version::KtVersion;
+use ::std::collections::VecDeque;
 use ::std::mem;
 use drop_bomb::DropBomb;
 use std::cell::Cell;
@@ -33,6 +36,7 @@ pub(crate) struct Parser<'t> {
     events: Vec<Event>,
     errors: Vec<String>,
     steps: Cell<u32>,
+    pub(crate) dangling: VecDeque<DanglingMarker>,
 }
 
 const PARSER_STEP_LIMIT: usize = if cfg!(debug_assertions) { 150_000 } else { 15_000_000 };
@@ -45,6 +49,7 @@ impl<'t> Parser<'t> {
             events: Vec::with_capacity(2 * inp.len()),
             errors: Vec::new(),
             steps: Cell::new(0),
+            dangling: VecDeque::new(),
         }
     }
 
@@ -123,6 +128,85 @@ impl<'t> Parser<'t> {
         let pos = self.events.len() as u32;
         self.push_event(Event::tombstone());
         Marker::new(pos)
+    }
+
+    pub(crate) fn start_with_modifiers(&mut self) -> DanglingMarker {
+        let mut m =
+            match self.dangling.pop_front_if(|e| matches!(e, DanglingMarker::Modifiers { .. })) {
+                Some(m @ DanglingMarker::Modifiers { has_modifiers: true, .. }) => m,
+                Some(m @ DanglingMarker::Modifiers { has_modifiers: false, .. }) => {
+                    m.forget(self);
+                    DanglingMarker::Modifiers { marker: self.start(), has_modifiers: false }
+                }
+                _ => DanglingMarker::Modifiers { marker: self.start(), has_modifiers: false },
+            };
+
+        let seen = modifiers(self);
+        if let DanglingMarker::Modifiers { has_modifiers, .. } = &mut m {
+            *has_modifiers |= seen.is_some();
+        }
+        m
+    }
+
+    pub(crate) fn start_with_fresh_modifiers(&mut self) -> DanglingMarker {
+        let mut m =
+            match self.dangling.pop_front_if(|e| matches!(e, DanglingMarker::Modifiers { .. })) {
+                Some(m @ DanglingMarker::Modifiers { .. }) => {
+                    m.forget(self);
+                    DanglingMarker::Modifiers { marker: self.start(), has_modifiers: false }
+                }
+                _ => DanglingMarker::Modifiers { marker: self.start(), has_modifiers: false },
+            };
+
+        let seen = modifiers(self);
+        if let DanglingMarker::Modifiers { has_modifiers, .. } = &mut m {
+            *has_modifiers |= seen.is_some();
+        }
+        m
+    }
+
+    pub(crate) fn start_with_annotation(&mut self) -> DanglingMarker {
+        // TODO: Match only annotations
+        let mut m =
+            match self.dangling.pop_front_if(|e| matches!(e, DanglingMarker::Modifiers { .. })) {
+                Some(m @ DanglingMarker::Modifiers { .. }) => m,
+                _ => DanglingMarker::Modifiers { marker: self.start(), has_modifiers: false },
+            };
+        // TODO: revise, related to the above TODO
+        let seen = annotation(self);
+        if let DanglingMarker::Modifiers { has_modifiers, .. } = &mut m {
+            *has_modifiers |= seen.is_some();
+        }
+        m
+    }
+
+    pub(crate) fn start_with_func(&mut self) -> DanglingMarker {
+        match self.dangling.pop_front_if(|e| matches!(e, DanglingMarker::Func { .. })) {
+            Some(m @ DanglingMarker::Func { valid: true, .. }) => m,
+            Some(m @ DanglingMarker::Func { valid: false, .. }) => {
+                m.forget(self);
+                DanglingMarker::Func { marker: self.start(), valid: false }
+            }
+            _ => {
+                let m = self.start();
+                DanglingMarker::Func { marker: m, valid: false }
+            }
+        }
+    }
+
+    pub(crate) fn start_with_paren(&mut self) -> DanglingMarker {
+        match self.dangling.pop_front_if(|e| matches!(e, DanglingMarker::Paren(_))) {
+            Some(m @ DanglingMarker::Paren(_)) => m,
+            _ => {
+                let m = self.start();
+                self.bump(T!['(']);
+                DanglingMarker::Paren(m)
+            }
+        }
+    }
+
+    pub(crate) fn has_dangling_parens(&self) -> bool {
+        self.dangling.iter().any(|e| matches!(e, DanglingMarker::Paren(_)))
     }
 
     /// Consume the next token. Panics if the parser isn't currently at `kind`.
@@ -264,30 +348,11 @@ pub(crate) struct CompletedMarker {
     start_pos: u32,
     end_pos: u32,
     kind: SyntaxKind,
-    dangling: Option<Marker>,
 }
 
 impl CompletedMarker {
     fn new(start_pos: u32, end_pos: u32, kind: SyntaxKind) -> Self {
-        CompletedMarker { start_pos, end_pos, kind, dangling: None }
-    }
-
-    pub(crate) fn with_dangling(mut self, dangling: Option<Marker>) -> Self {
-        self.dangling = dangling;
-        self
-    }
-
-    pub(crate) fn dangling(self) -> Option<Marker> {
-        self.dangling
-    }
-
-    pub(crate) fn has_dangling(&self) -> bool {
-        self.dangling.is_some()
-    }
-
-    pub(crate) fn into_parts(self) -> (Self, Option<Marker>) {
-        let Self { start_pos, end_pos, kind, dangling } = self;
-        (Self { start_pos, end_pos, kind, dangling: None }, dangling)
+        CompletedMarker { start_pos, end_pos, kind }
     }
 
     /// This method allows to create a new node which starts
@@ -356,57 +421,52 @@ impl CompletedMarker {
     }
 }
 
-pub(crate) struct DelimitedMarkers {
-    parent: Marker,
-    items: Vec<CompletedMarker>,
+pub(crate) enum DanglingMarker {
+    /// A marker that can work for both fn declaration and anonymous function, which can be determined only after parsing the function name.
+    Func {
+        marker: Marker,
+        valid: bool,
+    },
+    Paren(Marker),
+    Modifiers {
+        marker: Marker,
+        has_modifiers: bool,
+    },
 }
 
-impl DelimitedMarkers {
-    fn new(parent: Marker) -> Self {
-        DelimitedMarkers { parent, items: Vec::new() }
-    }
-    fn add_item(&mut self, item: CompletedMarker) {
-        self.items.push(item);
-    }
-    pub(crate) fn remap_items(self, kind: SyntaxKind) -> Self {
-        self.for_each(|it| {
-            it.kind = kind;
-        })
-    }
-    pub(crate) fn complete(
-        self,
-        parser: &mut Parser<'_>,
-        kind: SyntaxKind,
-    ) -> Option<CompletedMarker> {
-        if self.items.is_empty() {
-            self.parent.abandon(parser);
-            return None;
-        }
-        Some(self.parent.complete(parser, kind))
+impl DanglingMarker {
+    pub(crate) fn abandon(self, parser: &mut Parser<'_>) {
+        parser.dangling.push_back(self);
     }
 
-    #[inline]
-    pub(crate) fn for_each(mut self, mut f: impl FnMut(&mut CompletedMarker)) -> Self {
-        for item in &mut self.items {
-            f(item);
-        }
-        self
+    pub(crate) fn forget(self, parser: &mut Parser<'_>) {
+        self.marker().abandon(parser);
     }
-}
 
-pub(crate) fn delimited(
-    parser: &mut Parser<'_>,
-    mut item: impl FnMut(&mut Parser<'_>) -> Option<CompletedMarker>,
-    mut delim: impl FnMut(&mut Parser<'_>) -> bool,
-) -> DelimitedMarkers {
-    let mut m = DelimitedMarkers::new(parser.start());
-    if let Some(first) = item(parser) {
-        m.add_item(first);
-        while delim(parser) {
-            if let Some(next) = item(parser) {
-                m.add_item(next);
-            }
+    pub(crate) fn complete(self, parser: &mut Parser<'_>, kind: SyntaxKind) -> CompletedMarker {
+        match self {
+            DanglingMarker::Func { marker: m, .. }
+            | DanglingMarker::Paren(m)
+            | DanglingMarker::Modifiers { marker: m, .. } => m.complete(parser, kind),
         }
     }
-    m
+    pub(crate) fn has_modifiers(&self) -> bool {
+        matches!(self, DanglingMarker::Modifiers { has_modifiers: true, .. })
+    }
+
+    pub(crate) fn has_fn(&self) -> bool {
+        matches!(self, DanglingMarker::Func { valid: true, .. })
+    }
+
+    pub(crate) fn map(self, f: impl FnOnce(Marker) -> Self) -> Self {
+        f(self.marker())
+    }
+
+    pub(crate) fn marker(self) -> Marker {
+        match self {
+            DanglingMarker::Func { marker: m, .. }
+            | DanglingMarker::Paren(m)
+            | DanglingMarker::Modifiers { marker: m, .. } => m,
+        }
+    }
 }

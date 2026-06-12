@@ -47,23 +47,6 @@ impl AnnotatedLambda {
     #[inline]
     pub fn lambda_literal(&self) -> Option<LambdaLiteral> { support::child(&self.syntax) }
 }
-pub struct AnnotationOrModifier {
-    pub(crate) syntax: SyntaxNode,
-}
-impl AnnotationOrModifier {
-    #[inline]
-    pub fn annotation(&self) -> Option<Annotation> { support::child(&self.syntax) }
-    #[inline]
-    pub fn context_parameter_list(&self) -> Option<ContextParameterList> {
-        support::child(&self.syntax)
-    }
-    #[inline]
-    pub fn context_parameter_lists(&self) -> AstChildren<ContextParameterList> {
-        support::children(&self.syntax)
-    }
-    #[inline]
-    pub fn modifier(&self) -> Option<Modifier> { support::child(&self.syntax) }
-}
 pub struct AnnotationUseSiteTarget {
     pub(crate) syntax: SyntaxNode,
 }
@@ -2297,6 +2280,21 @@ pub enum Annotation {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum AnnotationOrModifier {
+    ClassModifier(ClassModifier),
+    ContextParameterList(ContextParameterList),
+    FunctionModifier(FunctionModifier),
+    InheritanceModifier(InheritanceModifier),
+    MemberModifier(MemberModifier),
+    MultiAnnotation(MultiAnnotation),
+    ParameterModifier(ParameterModifier),
+    PlatformModifier(PlatformModifier),
+    PropertyModifier(PropertyModifier),
+    SingleAnnotation(SingleAnnotation),
+    VisibilityModifier(VisibilityModifier),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum AnnotationOrParameterModifier {
     MultiAnnotation(MultiAnnotation),
     ParameterModifier(ParameterModifier),
@@ -2582,38 +2580,6 @@ impl Clone for AnnotatedLambda {
 impl fmt::Debug for AnnotatedLambda {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("AnnotatedLambda").field("syntax", &self.syntax).finish()
-    }
-}
-impl AstNode for AnnotationOrModifier {
-    #[inline]
-    fn kind() -> SyntaxKind
-    where
-        Self: Sized,
-    {
-        ANNOTATION_OR_MODIFIER
-    }
-    #[inline]
-    fn can_cast(kind: SyntaxKind) -> bool { kind == ANNOTATION_OR_MODIFIER }
-    #[inline]
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
-    }
-    #[inline]
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-impl hash::Hash for AnnotationOrModifier {
-    fn hash<H: hash::Hasher>(&self, state: &mut H) { self.syntax.hash(state); }
-}
-impl Eq for AnnotationOrModifier {}
-impl PartialEq for AnnotationOrModifier {
-    fn eq(&self, other: &Self) -> bool { self.syntax == other.syntax }
-}
-impl Clone for AnnotationOrModifier {
-    fn clone(&self) -> Self { Self { syntax: self.syntax.clone() } }
-}
-impl fmt::Debug for AnnotationOrModifier {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("AnnotationOrModifier").field("syntax", &self.syntax).finish()
     }
 }
 impl AstNode for AnnotationUseSiteTarget {
@@ -7640,6 +7606,141 @@ impl AstNode for Annotation {
         }
     }
 }
+impl From<ClassModifier> for AnnotationOrModifier {
+    #[inline]
+    fn from(node: ClassModifier) -> AnnotationOrModifier {
+        AnnotationOrModifier::ClassModifier(node)
+    }
+}
+impl From<ContextParameterList> for AnnotationOrModifier {
+    #[inline]
+    fn from(node: ContextParameterList) -> AnnotationOrModifier {
+        AnnotationOrModifier::ContextParameterList(node)
+    }
+}
+impl From<FunctionModifier> for AnnotationOrModifier {
+    #[inline]
+    fn from(node: FunctionModifier) -> AnnotationOrModifier {
+        AnnotationOrModifier::FunctionModifier(node)
+    }
+}
+impl From<InheritanceModifier> for AnnotationOrModifier {
+    #[inline]
+    fn from(node: InheritanceModifier) -> AnnotationOrModifier {
+        AnnotationOrModifier::InheritanceModifier(node)
+    }
+}
+impl From<MemberModifier> for AnnotationOrModifier {
+    #[inline]
+    fn from(node: MemberModifier) -> AnnotationOrModifier {
+        AnnotationOrModifier::MemberModifier(node)
+    }
+}
+impl From<MultiAnnotation> for AnnotationOrModifier {
+    #[inline]
+    fn from(node: MultiAnnotation) -> AnnotationOrModifier {
+        AnnotationOrModifier::MultiAnnotation(node)
+    }
+}
+impl From<ParameterModifier> for AnnotationOrModifier {
+    #[inline]
+    fn from(node: ParameterModifier) -> AnnotationOrModifier {
+        AnnotationOrModifier::ParameterModifier(node)
+    }
+}
+impl From<PlatformModifier> for AnnotationOrModifier {
+    #[inline]
+    fn from(node: PlatformModifier) -> AnnotationOrModifier {
+        AnnotationOrModifier::PlatformModifier(node)
+    }
+}
+impl From<PropertyModifier> for AnnotationOrModifier {
+    #[inline]
+    fn from(node: PropertyModifier) -> AnnotationOrModifier {
+        AnnotationOrModifier::PropertyModifier(node)
+    }
+}
+impl From<SingleAnnotation> for AnnotationOrModifier {
+    #[inline]
+    fn from(node: SingleAnnotation) -> AnnotationOrModifier {
+        AnnotationOrModifier::SingleAnnotation(node)
+    }
+}
+impl From<VisibilityModifier> for AnnotationOrModifier {
+    #[inline]
+    fn from(node: VisibilityModifier) -> AnnotationOrModifier {
+        AnnotationOrModifier::VisibilityModifier(node)
+    }
+}
+impl AstNode for AnnotationOrModifier {
+    #[inline]
+    fn can_cast(kind: SyntaxKind) -> bool {
+        matches!(
+            kind,
+            CLASS_MODIFIER
+                | CONTEXT_PARAMETER_LIST
+                | FUNCTION_MODIFIER
+                | INHERITANCE_MODIFIER
+                | MEMBER_MODIFIER
+                | MULTI_ANNOTATION
+                | PARAMETER_MODIFIER
+                | PLATFORM_MODIFIER
+                | PROPERTY_MODIFIER
+                | SINGLE_ANNOTATION
+                | VISIBILITY_MODIFIER
+        )
+    }
+    #[inline]
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        let res = match syntax.kind() {
+            CLASS_MODIFIER => AnnotationOrModifier::ClassModifier(ClassModifier { syntax }),
+            CONTEXT_PARAMETER_LIST => {
+                AnnotationOrModifier::ContextParameterList(ContextParameterList { syntax })
+            }
+            FUNCTION_MODIFIER => {
+                AnnotationOrModifier::FunctionModifier(FunctionModifier { syntax })
+            }
+            INHERITANCE_MODIFIER => {
+                AnnotationOrModifier::InheritanceModifier(InheritanceModifier { syntax })
+            }
+            MEMBER_MODIFIER => AnnotationOrModifier::MemberModifier(MemberModifier { syntax }),
+            MULTI_ANNOTATION => AnnotationOrModifier::MultiAnnotation(MultiAnnotation { syntax }),
+            PARAMETER_MODIFIER => {
+                AnnotationOrModifier::ParameterModifier(ParameterModifier { syntax })
+            }
+            PLATFORM_MODIFIER => {
+                AnnotationOrModifier::PlatformModifier(PlatformModifier { syntax })
+            }
+            PROPERTY_MODIFIER => {
+                AnnotationOrModifier::PropertyModifier(PropertyModifier { syntax })
+            }
+            SINGLE_ANNOTATION => {
+                AnnotationOrModifier::SingleAnnotation(SingleAnnotation { syntax })
+            }
+            VISIBILITY_MODIFIER => {
+                AnnotationOrModifier::VisibilityModifier(VisibilityModifier { syntax })
+            }
+            _ => return None,
+        };
+        Some(res)
+    }
+    #[inline]
+    fn syntax(&self) -> &SyntaxNode {
+        match self {
+            AnnotationOrModifier::ClassModifier(it) => &it.syntax,
+            AnnotationOrModifier::ContextParameterList(it) => &it.syntax,
+            AnnotationOrModifier::FunctionModifier(it) => &it.syntax,
+            AnnotationOrModifier::InheritanceModifier(it) => &it.syntax,
+            AnnotationOrModifier::MemberModifier(it) => &it.syntax,
+            AnnotationOrModifier::MultiAnnotation(it) => &it.syntax,
+            AnnotationOrModifier::ParameterModifier(it) => &it.syntax,
+            AnnotationOrModifier::PlatformModifier(it) => &it.syntax,
+            AnnotationOrModifier::PropertyModifier(it) => &it.syntax,
+            AnnotationOrModifier::SingleAnnotation(it) => &it.syntax,
+            AnnotationOrModifier::VisibilityModifier(it) => &it.syntax,
+        }
+    }
+}
 impl From<MultiAnnotation> for AnnotationOrParameterModifier {
     #[inline]
     fn from(node: MultiAnnotation) -> AnnotationOrParameterModifier {
@@ -8707,6 +8808,11 @@ impl std::fmt::Display for Annotation {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
+impl std::fmt::Display for AnnotationOrModifier {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
 impl std::fmt::Display for AnnotationOrParameterModifier {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
@@ -8808,11 +8914,6 @@ impl std::fmt::Display for AnnotatedDelegationSpecifier {
     }
 }
 impl std::fmt::Display for AnnotatedLambda {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
-impl std::fmt::Display for AnnotationOrModifier {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

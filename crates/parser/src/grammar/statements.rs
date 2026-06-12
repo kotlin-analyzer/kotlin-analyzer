@@ -1,12 +1,11 @@
+use crate::SyntaxKind::*;
 use crate::T;
-use crate::{Marker, SyntaxKind::*};
 
 use super::annotations::annotation;
 use super::class_members::{multi_variable_declaration, variable_declaration};
-use super::expressions::{PartialMarker, expression};
+use super::expressions::expression;
 use super::general::declaration;
 use super::identifiers::{is_simple_identifier, simple_identifier};
-use super::modifiers::modifiers;
 use crate::{CompletedMarker, Parser};
 
 pub(crate) fn semi(parser: &mut Parser<'_>) -> bool {
@@ -14,7 +13,7 @@ pub(crate) fn semi(parser: &mut Parser<'_>) -> bool {
         parser.eat(T![;]);
         true
     } else {
-        parser.has_ws_before() // TODO: check for newlines but not for other whitespace
+        parser.has_nl_before()
     }
 }
 
@@ -23,66 +22,53 @@ pub(crate) fn semis(parser: &mut Parser<'_>) -> bool {
     while parser.eat(T![;]) {
         found = true;
     }
-    if found {
-        true
-    } else {
-        parser.has_ws_before() // TODO: check for newlines but not for other whitespace
-    }
+    if found { true } else { parser.has_nl_before() }
 }
 
-pub(super) enum StmtStart {
-    Partial(PartialMarker),
-    Dangling(Marker),
-}
-
-pub(super) fn statements(
-    parser: &mut Parser<'_>,
-    start: Option<StmtStart>,
-) -> Option<CompletedMarker> {
-    if let Some(first) = statement(parser, start) {
-        let (first, mut dangling) = first.into_parts();
+pub(super) fn statements(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    if let Some(first) = statement(parser) {
         let m = first.precede(parser);
-        while let Some(cm) = statement(parser, dangling.map(StmtStart::Dangling)) {
-            dangling = cm.dangling();
-            if !semis(parser) {
-                dangling.map(|d| d.abandon(parser));
-                break;
-            }
-        }
+        while statement(parser).is_some() && semis(parser) {}
         Some(m.complete(parser, STATEMENTS))
     } else {
         None
     }
 }
 
-pub(super) fn statement(
-    parser: &mut Parser<'_>,
-    start: Option<StmtStart>,
-) -> Option<CompletedMarker> {
-    let m = match start {
-        Some(StmtStart::Partial(PartialMarker::Parens(m))) => {
-            // only this can start with a paren
-            return assignment::assignment_or_expression(parser, Some(m));
-        }
-        Some(StmtStart::Dangling(m)) => m,
-        Some(StmtStart::Partial(PartialMarker::Simple(cm))) => cm.precede(parser),
-        None => parser.start(),
-    };
+pub(super) fn statement(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    if parser.has_dangling_parens() {
+        return assignment::assignment_or_expression(parser);
+    }
 
-    while label(parser).or_else(|| annotation(parser)).is_some() {}
+    let m = parser.start_with_annotation();
+    let mut has_label = false;
 
-    if loop_statement(parser).is_some() {
-        Some(m.complete(parser, STATEMENT))
+    while label(parser)
+        .inspect(|_| {
+            has_label = true;
+        })
+        .or_else(|| annotation(parser))
+        .is_some()
+    {}
+
+    if has_label {
+        m.forget(parser);
     } else {
-        modifiers(parser);
-        // NB: we are not capturing declarations as statements
-        match declaration(parser, m) {
-            Ok(cm) => Some(cm),
-            Err(m) => {
-                if assignment::assignment_or_expression(parser, None).is_some() {
-                    Some(m.complete(parser, STATEMENT))
+        // This is hack to let the downstream parsers to pick up the annotations.
+        // We need to capture the annotations as dangling if there is no label, otherwise we will not be able to attach them to the statement.
+        m.abandon(parser);
+    }
+
+    if let Some(cm) = loop_statement(parser) {
+        Some(cm.precede(parser).complete(parser, STATEMENT))
+    } else {
+        match declaration(parser, true) {
+            // NB: we are not capturing declarations as statements
+            Some(cm) => Some(cm),
+            None => {
+                if let Some(cm) = assignment::assignment_or_expression(parser) {
+                    Some(cm.precede(parser).complete(parser, STATEMENT))
                 } else {
-                    m.abandon(parser);
                     None
                 }
             }
@@ -204,7 +190,7 @@ pub(crate) fn label(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
 }
 
 pub(crate) fn control_structure_body(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    block(parser).or_else(|| statements(parser, None))
+    block(parser).or_else(|| statements(parser))
 }
 
 pub(crate) fn block(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
@@ -212,7 +198,7 @@ pub(crate) fn block(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
         let m = parser.start();
         parser.eat(T!['{']);
 
-        while statements(parser, None).is_some() {}
+        statements(parser);
 
         if !parser.eat(T!['}']) {
             parser.error("expected '}'");
@@ -223,6 +209,7 @@ pub(crate) fn block(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     }
 }
 
+// REFACTOR: use dangling strategy
 mod assignment {
     use crate::grammar::expressions::{
         AffixedExpression, Expression, assignable_suffix, assignment_and_operator,
@@ -246,13 +233,8 @@ mod assignment {
         }
     }
 
-    pub(super) fn assignment_or_expression(
-        parser: &mut Parser<'_>,
-        opening_paren: Option<Marker>,
-    ) -> Option<CompletedMarker> {
-        let has_opening_paren = opening_paren.is_some();
-        let m = opening_paren.unwrap_or_else(|| parser.start());
-        let Some(left) = entry(parser, m, has_opening_paren) else {
+    pub(super) fn assignment_or_expression(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+        let Some(left) = entry(parser) else {
             return None;
         };
 
@@ -278,57 +260,39 @@ mod assignment {
         }
     }
 
-    fn entry(
-        p: &mut Parser<'_>,
-        start: Marker,
-        has_opening_paren: bool,
-    ) -> Option<AssignmentFragment> {
-        if p.at(T!['(']) || has_opening_paren {
-            return parenthesized(p, start, has_opening_paren);
+    fn entry(p: &mut Parser<'_>) -> Option<AssignmentFragment> {
+        if p.at(T!['(']) || p.has_dangling_parens() {
+            return parenthesized(p);
         }
 
         let Some(expr) = expression(p) else {
-            start.abandon(p);
             return None;
         };
 
         match expr {
-            // The interesting thing is that postfix expr can also be prefic expr
+            // The interesting thing is that postfix expr can also be prefix expr
             Expression::Affixed(AffixedExpression::Prefix(cm) | AffixedExpression::Postfix(cm))
                 if assignment_and_operator::is(p) =>
             {
-                start.abandon(p);
                 Some(AssignmentFragment::AssignableExpression(cm))
             }
-            Expression::Affixed(AffixedExpression::Postfix(_))
+            Expression::Affixed(AffixedExpression::Postfix(cm))
                 if assignable_suffix(p).is_some() || p.at(T![=]) =>
             {
                 Some(AssignmentFragment::DirectlyAssignableExpression(
-                    start.complete(p, DIRECTLY_ASSIGNABLE_EXPRESSION),
+                    cm.precede(p).complete(p, DIRECTLY_ASSIGNABLE_EXPRESSION),
                 ))
             }
-            e => {
-                start.abandon(p);
-                Some(AssignmentFragment::UnAssignable(e.marker()))
-            }
+            e => Some(AssignmentFragment::UnAssignable(e.marker())),
         }
     }
 
-    fn parenthesized(
-        p: &mut Parser<'_>,
-        start: Marker,
-        has_opening_paren: bool,
-    ) -> Option<AssignmentFragment> {
-        if p.at(T!['(']) || has_opening_paren {
-            if !has_opening_paren {
-                p.eat(T!['(']);
-            }
+    fn parenthesized(p: &mut Parser<'_>) -> Option<AssignmentFragment> {
+        if p.at(T!['(']) || p.has_dangling_parens() {
+            let m = p.start_with_paren();
 
-            let e_start = p.start();
-            let Some(frag) = entry(p, e_start, false) else {
-                p.error("expected an expression");
-                p.eat(T![')']); // try to eat the closing paren to avoid cascading errors
-                start.abandon(p);
+            let Some(frag) = entry(p) else {
+                m.abandon(p);
                 return None;
             };
 
@@ -339,16 +303,16 @@ mod assignment {
             match frag {
                 AssignmentFragment::DirectlyAssignableExpression(_) => {
                     Some(AssignmentFragment::DirectlyAssignableExpression(
-                        start.complete(p, PARENTHESIZED_DIRECTLY_ASSIGNABLE_EXPRESSION),
+                        m.complete(p, PARENTHESIZED_DIRECTLY_ASSIGNABLE_EXPRESSION),
                     ))
                 }
                 AssignmentFragment::AssignableExpression(_) => {
                     Some(AssignmentFragment::AssignableExpression(
-                        start.complete(p, PARENTHESIZED_ASSIGNABLE_EXPRESSION),
+                        m.complete(p, PARENTHESIZED_ASSIGNABLE_EXPRESSION),
                     ))
                 }
                 AssignmentFragment::UnAssignable(_) => Some(AssignmentFragment::UnAssignable(
-                    start.complete(p, PARENTHESIZED_EXPRESSION).precede(p).complete(p, EXPRESSION),
+                    m.complete(p, PARENTHESIZED_EXPRESSION).precede(p).complete(p, EXPRESSION),
                 )),
             }
         } else {

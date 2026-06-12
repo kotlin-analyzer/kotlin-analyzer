@@ -1,15 +1,10 @@
-// use syntax::Token;
-use crate::{Marker, SyntaxKind::*, T};
+use crate::{SyntaxKind::*, T};
 
 use super::annotations::unescaped_annotation;
-use super::class_members::PROPERTY_DECLARATION_START;
-use super::class_members::{
-    function_declaration, object_declaration, property_declaration, starts_fn_declaration,
-};
-use super::classes::starts_class_declaration;
+use super::class_members::{function_declaration, object_declaration, property_declaration};
+
 use super::classes::{class_declaration, type_parameters};
 use super::identifiers::{identifier, simple_identifier};
-use super::modifiers::modifiers;
 use super::statements::{semi, semis, statements};
 use super::types::ty;
 use crate::{CompletedMarker, Parser};
@@ -31,7 +26,7 @@ pub(crate) fn script(parser: &mut Parser<'_>) {
     package_header(parser);
     import_list(parser);
 
-    statements(parser, None);
+    statements(parser);
 
     m.complete(parser, SCRIPT);
 }
@@ -151,42 +146,23 @@ fn import_alias(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     }
 }
 fn top_level_objects(parser: &mut Parser<'_>) {
-    if let Some(first) = top_level_object(parser, None) {
-        let (_, mut dangling) = first.into_parts();
-        while let Some(cm) = top_level_object(parser, dangling) {
-            dangling = cm.dangling();
-        }
-    }
+    while top_level_object(parser).is_some() {}
 }
 
-fn top_level_object(parser: &mut Parser<'_>, start: Option<Marker>) -> Option<CompletedMarker> {
-    let m = start.unwrap_or_else(|| {
-        let s = parser.start();
-        modifiers(parser);
-        s
-    });
-
-    match declaration(parser, m) {
-        Ok(cm) => {
-            if !cm.has_dangling() {
-                // can not parse semis if we are forwarding the dangling marker to the caller
-                semis(parser);
-            }
-            Some(cm)
-            // Some(m.complete(parser, TOP_LEVEL_OBJECT)) // can not complete the marker here because we might have a dangling marker. same as in statement
-        }
-        Err(cm) => {
-            cm.abandon(parser);
-            None
-        }
-    }
+fn top_level_object(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    declaration(parser, false).inspect(|_| {
+        semis(parser);
+    })
+    // can not complete the marker here because we might have a dangling marker. same as in statement
 }
 
-fn type_alias(parser: &mut Parser<'_>, start: Marker) -> Result<CompletedMarker, Marker> {
+fn type_alias(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    let m = parser.start_with_modifiers();
+
     if !parser.at(T![typealias]) {
-        return Err(start);
+        m.abandon(parser);
+        return None;
     }
-    let m = start;
 
     parser.bump(T![typealias]);
 
@@ -200,24 +176,16 @@ fn type_alias(parser: &mut Parser<'_>, start: Marker) -> Result<CompletedMarker,
     if ty(parser).is_none() {
         parser.error("expected type");
     }
-    Ok(m.complete(parser, TYPE_ALIAS))
+    Some(m.complete(parser, TYPE_ALIAS))
 }
 
 pub(super) fn declaration(
     parser: &mut Parser<'_>,
-    start: Marker,
-) -> Result<CompletedMarker, Marker> {
-    if starts_class_declaration(parser) {
-        class_declaration(parser, start)
-    } else if starts_fn_declaration(parser) {
-        function_declaration(parser, start)
-    } else if parser.at(T![object]) {
-        object_declaration(parser, start)
-    } else if parser.at_ts(PROPERTY_DECLARATION_START) {
-        property_declaration(parser, start)
-    } else if parser.at(T![typealias]) {
-        type_alias(parser, start)
-    } else {
-        Err(start)
-    }
+    allow_expressions: bool,
+) -> Option<CompletedMarker> {
+    class_declaration(parser)
+        .or_else(|| function_declaration(parser, allow_expressions))
+        .or_else(|| object_declaration(parser))
+        .or_else(|| property_declaration(parser))
+        .or_else(|| type_alias(parser))
 }

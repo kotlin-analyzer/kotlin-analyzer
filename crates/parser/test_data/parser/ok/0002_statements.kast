@@ -1,0 +1,92 @@
+KOTLIN_FILE
+  PROPERTY_DECLARATION
+    VAL_KW "val"
+    WHITESPACE " "
+    VARIABLE_DECLARATION
+      SIMPLE_IDENTIFIER
+        IDENT "lambda"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    EXPRESSION
+      POSTFIX_UNARY_EXPRESSION
+        LAMBDA_LITERAL
+          L_CURL "{"
+          NEWLINE "\n"
+          WHITESPACE " "
+          WHITESPACE " "
+          WHITESPACE " "
+          WHITESPACE " "
+          STATEMENTS
+            PROPERTY_DECLARATION
+              SINGLE_ANNOTATION
+                AT "@"
+                USER_TYPE
+                  SIMPLE_USER_TYPE
+                    SIMPLE_IDENTIFIER
+                      IDENT "Anno1"
+              NEWLINE "\n"
+              WHITESPACE " "
+              WHITESPACE " "
+              WHITESPACE " "
+              WHITESPACE " "
+              VAL_KW "val"
+              WHITESPACE " "
+              VARIABLE_DECLARATION
+                SIMPLE_IDENTIFIER
+                  IDENT "x"
+                COLON ":"
+                WHITESPACE " "
+                TYPE
+                  TYPE_REFERENCE
+                    USER_TYPE
+                      SIMPLE_USER_TYPE
+                        SIMPLE_IDENTIFIER
+                          IDENT "Int"
+              WHITESPACE " "
+              EQ "="
+              WHITESPACE " "
+              EXPRESSION
+                POSTFIX_UNARY_EXPRESSION
+                  LITERAL_CONSTANT
+                    INT "0"
+            NEWLINE "\n"
+            WHITESPACE " "
+            WHITESPACE " "
+            WHITESPACE " "
+            WHITESPACE " "
+            PROPERTY_DECLARATION
+              MODIFIERS
+                SINGLE_ANNOTATION
+                  AT "@"
+                  USER_TYPE
+                    SIMPLE_USER_TYPE
+                      SIMPLE_IDENTIFIER
+                        IDENT "CustomAnno"
+              NEWLINE "\n"
+              WHITESPACE " "
+              WHITESPACE " "
+              WHITESPACE " "
+              WHITESPACE " "
+              VAR_KW "var"
+              WHITESPACE " "
+              VARIABLE_DECLARATION
+                SIMPLE_IDENTIFIER
+                  IDENT "y"
+                COLON ":"
+                WHITESPACE " "
+                TYPE
+                  TYPE_REFERENCE
+                    USER_TYPE
+                      SIMPLE_USER_TYPE
+                        SIMPLE_IDENTIFIER
+                          IDENT "Int"
+              WHITESPACE " "
+              EQ "="
+              WHITESPACE " "
+              EXPRESSION
+                POSTFIX_UNARY_EXPRESSION
+                  LITERAL_CONSTANT
+                    INT "2"
+          NEWLINE "\n"
+          R_CURL "}"

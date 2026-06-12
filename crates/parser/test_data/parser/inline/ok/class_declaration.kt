@@ -13,4 +13,3 @@ abstract class Foo11<T>(val name: String, val age: Int) where T: Any, T: Seriali
 data class Foo12<T>(val name: String, val age: Int)
 class A
 {}
-abstract class AB private fun f() = 1

@@ -928,32 +928,33 @@ KOTLIN_FILE
           WHITESPACE " "
           STATEMENTS
             STATEMENT
-              SINGLE_ANNOTATION
-                AT "@"
-                USER_TYPE
-                  SIMPLE_USER_TYPE
-                    SIMPLE_IDENTIFIER
-                      IDENT "Anno"
-              WHITESPACE " "
               EXPRESSION
-                POSTFIX_UNARY_EXPRESSION
-                  SIMPLE_IDENTIFIER
-                    IDENT "func"
-                  CALL_SUFFIX
-                    VALUE_ARGUMENTS
-                      L_PAREN "("
-                      VALUE_ARGUMENT
-                        EXPRESSION
-                          POSTFIX_UNARY_EXPRESSION
-                            SIMPLE_IDENTIFIER
-                              IDENT "x"
-                      COMMA ","
-                      VALUE_ARGUMENT
-                        EXPRESSION
-                          POSTFIX_UNARY_EXPRESSION
-                            SIMPLE_IDENTIFIER
-                              IDENT "y"
-                      R_PAREN ")"
+                PREFIX_UNARY_EXPRESSION
+                  SINGLE_ANNOTATION
+                    AT "@"
+                    USER_TYPE
+                      SIMPLE_USER_TYPE
+                        SIMPLE_IDENTIFIER
+                          IDENT "Anno"
+                  WHITESPACE " "
+                  POSTFIX_UNARY_EXPRESSION
+                    SIMPLE_IDENTIFIER
+                      IDENT "func"
+                    CALL_SUFFIX
+                      VALUE_ARGUMENTS
+                        L_PAREN "("
+                        VALUE_ARGUMENT
+                          EXPRESSION
+                            POSTFIX_UNARY_EXPRESSION
+                              SIMPLE_IDENTIFIER
+                                IDENT "x"
+                        COMMA ","
+                        VALUE_ARGUMENT
+                          EXPRESSION
+                            POSTFIX_UNARY_EXPRESSION
+                              SIMPLE_IDENTIFIER
+                                IDENT "y"
+                        R_PAREN ")"
           WHITESPACE " "
           R_CURL "}"
   NEWLINE "\n"
