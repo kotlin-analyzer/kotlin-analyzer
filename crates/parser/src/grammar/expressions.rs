@@ -144,6 +144,7 @@ fn comparison(parser: &mut Parser<'_>, dis_allowed: Option<DisAllowed>) -> Optio
     }
 }
 
+#[allow(clippy::nonminimal_bool)]
 fn generic_call_like_comparison(
     parser: &mut Parser<'_>,
     dis_allowed: Option<DisAllowed>,
@@ -864,10 +865,8 @@ fn lambda_literal(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     }
     let m = parser.start();
     parser.bump(T!['{']);
-    if lambda_parameters(parser).is_some() {
-        if !parser.at(T![->]) {
-            parser.error("expected `->`");
-        }
+    if lambda_parameters(parser).is_some() && !parser.at(T![->]) {
+        parser.error("expected `->`");
     }
     parser.eat(T![->]);
 
@@ -880,9 +879,7 @@ fn lambda_literal(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
 }
 
 fn lambda_parameters(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    let Some(cm) = lambda_parameter(parser) else {
-        return None;
-    };
+    let cm = lambda_parameter(parser)?;
     let m = cm.precede(parser);
     while parser.eat(T![,]) && lambda_parameter(parser).is_some() {}
     Some(m.complete(parser, LAMBDA_PARAMETERS))
@@ -983,6 +980,7 @@ fn anonymous_function(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
         // For now, we will not parse the later case,
         // as one can just write `fun A.(c, d) = ...` or `fun ((A)).(c, d) = ...` instead.
         // And both of these are rare in practice, as people usually use lambdas for these kinds of use cases.
+        #[allow(clippy::nonminimal_bool)]
         if !(parser.at(T!['(']) && !parser.nth_at(1, T!['('])) {
             receiver_type(parser, RecvType::Dotted(UserType::All));
         }

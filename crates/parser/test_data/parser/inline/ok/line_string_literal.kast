@@ -1,0 +1,118 @@
+KOTLIN_FILE
+  PROPERTY_DECLARATION
+    VAL_KW "val"
+    WHITESPACE " "
+    VARIABLE_DECLARATION
+      SIMPLE_IDENTIFIER
+        IDENT "a"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    EXPRESSION
+      POSTFIX_UNARY_EXPRESSION
+        LINE_STRING_LITERAL
+          QUOTE "\""
+          LINE_STRING_CONTENT
+            TEXT "hello world"
+          QUOTE "\""
+  NEWLINE "\n"
+  PROPERTY_DECLARATION
+    VAL_KW "val"
+    WHITESPACE " "
+    VARIABLE_DECLARATION
+      SIMPLE_IDENTIFIER
+        IDENT "b"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    EXPRESSION
+      POSTFIX_UNARY_EXPRESSION
+        LINE_STRING_LITERAL
+          QUOTE "\""
+          LINE_STRING_CONTENT
+            TEXT "hello "
+          LINE_STRING_EXPRESSION
+            STR_EXPR_START "${"
+            EXPRESSION
+              POSTFIX_UNARY_EXPRESSION
+                SIMPLE_IDENTIFIER
+                  IDENT "world"
+                NAVIGATION_SUFFIX
+                  MEMBER_ACCESS_OPERATOR
+                    DOT "."
+                  SIMPLE_IDENTIFIER
+                    IDENT "length"
+            R_CURL "}"
+          LINE_STRING_CONTENT
+            TEXT "!"
+          QUOTE "\""
+  NEWLINE "\n"
+  PROPERTY_DECLARATION
+    VAL_KW "val"
+    WHITESPACE " "
+    VARIABLE_DECLARATION
+      SIMPLE_IDENTIFIER
+        IDENT "c"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    EXPRESSION
+      POSTFIX_UNARY_EXPRESSION
+        LINE_STRING_LITERAL
+          QUOTE "\""
+          LINE_STRING_CONTENT
+            TEXT "with a quote "
+          LINE_STRING_CONTENT
+            ESCAPED_CHAR "\\\""
+          LINE_STRING_CONTENT
+            TEXT "hey"
+          LINE_STRING_CONTENT
+            ESCAPED_CHAR "\\\""
+          LINE_STRING_CONTENT
+            TEXT " and "
+          LINE_STRING_CONTENT
+            TEXT "$"
+          LINE_STRING_CONTENT
+            TEXT "$"
+          QUOTE "\""
+  NEWLINE "\n"
+  PROPERTY_DECLARATION
+    VAL_KW "val"
+    WHITESPACE " "
+    VARIABLE_DECLARATION
+      SIMPLE_IDENTIFIER
+        IDENT "d"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    EXPRESSION
+      POSTFIX_UNARY_EXPRESSION
+        LINE_STRING_LITERAL
+          QUOTE "\""
+          LINE_STRING_CONTENT
+            TEXT "with a new line"
+          LINE_STRING_CONTENT
+            ESCAPED_CHAR "\\n"
+          LINE_STRING_CONTENT
+            TEXT " in it"
+          QUOTE "\""
+  NEWLINE "\n"
+  PROPERTY_DECLARATION
+    VAL_KW "val"
+    WHITESPACE " "
+    VARIABLE_DECLARATION
+      SIMPLE_IDENTIFIER
+        IDENT "e"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    EXPRESSION
+      POSTFIX_UNARY_EXPRESSION
+        LINE_STRING_LITERAL
+          QUOTE "\""
+          LINE_STRING_CONTENT
+            TEXT "hello "
+          LINE_STRING_CONTENT
+            STR_REF "$name"
+          QUOTE "\""
+  NEWLINE "\n"

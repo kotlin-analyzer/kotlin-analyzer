@@ -131,51 +131,90 @@ impl<'t> Parser<'t> {
     }
 
     pub(crate) fn start_with_modifiers(&mut self) -> DanglingMarker {
-        let mut m =
-            match self.dangling.pop_front_if(|e| matches!(e, DanglingMarker::Modifiers { .. })) {
-                Some(m @ DanglingMarker::Modifiers { has_modifiers: true, .. }) => m,
-                Some(m @ DanglingMarker::Modifiers { has_modifiers: false, .. }) => {
-                    m.forget(self);
-                    DanglingMarker::Modifiers { marker: self.start(), has_modifiers: false }
+        let mut m = match self.dangling.pop_front_if(|e| {
+            matches!(e, DanglingMarker::Modifiers { .. } | DanglingMarker::Annotations { .. })
+        }) {
+            Some(m @ DanglingMarker::Modifiers { has_modifiers: true, .. }) => m,
+            Some(DanglingMarker::Annotations { has_annotations: true, marker }) => {
+                DanglingMarker::Modifiers {
+                    has_modifiers: true,
+                    has_only_annotations: true,
+                    marker,
                 }
-                _ => DanglingMarker::Modifiers { marker: self.start(), has_modifiers: false },
-            };
+            }
+            Some(
+                m @ DanglingMarker::Modifiers { has_modifiers: false, .. }
+                | m @ DanglingMarker::Annotations { has_annotations: false, .. },
+            ) => {
+                m.forget(self);
+                DanglingMarker::Modifiers {
+                    marker: self.start(),
+                    has_modifiers: false,
+                    has_only_annotations: false,
+                }
+            }
+            _ => DanglingMarker::Modifiers {
+                marker: self.start(),
+                has_modifiers: false,
+                has_only_annotations: false,
+            },
+        };
 
         let seen = modifiers(self);
-        if let DanglingMarker::Modifiers { has_modifiers, .. } = &mut m {
+        if let DanglingMarker::Modifiers { has_modifiers, has_only_annotations, .. } = &mut m {
             *has_modifiers |= seen.is_some();
+            *has_only_annotations &=
+                seen.map(|(_, has_only_annotations)| has_only_annotations).unwrap_or(true);
         }
         m
     }
 
     pub(crate) fn start_with_fresh_modifiers(&mut self) -> DanglingMarker {
-        let mut m =
-            match self.dangling.pop_front_if(|e| matches!(e, DanglingMarker::Modifiers { .. })) {
-                Some(m @ DanglingMarker::Modifiers { .. }) => {
-                    m.forget(self);
-                    DanglingMarker::Modifiers { marker: self.start(), has_modifiers: false }
+        let mut m = match self.dangling.pop_front_if(|e| {
+            matches!(e, DanglingMarker::Modifiers { .. } | DanglingMarker::Annotations { .. })
+        }) {
+            Some(m @ DanglingMarker::Modifiers { .. } | m @ DanglingMarker::Annotations { .. }) => {
+                m.forget(self);
+                DanglingMarker::Modifiers {
+                    marker: self.start(),
+                    has_modifiers: false,
+                    has_only_annotations: false,
                 }
-                _ => DanglingMarker::Modifiers { marker: self.start(), has_modifiers: false },
-            };
+            }
+            _ => DanglingMarker::Modifiers {
+                marker: self.start(),
+                has_modifiers: false,
+                has_only_annotations: false,
+            },
+        };
 
         let seen = modifiers(self);
-        if let DanglingMarker::Modifiers { has_modifiers, .. } = &mut m {
-            *has_modifiers |= seen.is_some();
+        if let DanglingMarker::Modifiers { has_modifiers, has_only_annotations, .. } = &mut m {
+            *has_modifiers = seen.is_some();
+            *has_only_annotations =
+                seen.map(|(_, has_only_annotations)| has_only_annotations).unwrap_or(false);
         }
         m
     }
 
     pub(crate) fn start_with_annotation(&mut self) -> DanglingMarker {
-        // TODO: Match only annotations
-        let mut m =
-            match self.dangling.pop_front_if(|e| matches!(e, DanglingMarker::Modifiers { .. })) {
-                Some(m @ DanglingMarker::Modifiers { .. }) => m,
-                _ => DanglingMarker::Modifiers { marker: self.start(), has_modifiers: false },
-            };
-        // TODO: revise, related to the above TODO
+        let mut m = match self.dangling.pop_front_if(|e| {
+            matches!(
+                e,
+                DanglingMarker::Modifiers { has_only_annotations: true, .. }
+                    | DanglingMarker::Annotations { .. }
+            )
+        }) {
+            Some(
+                DanglingMarker::Modifiers { marker, has_only_annotations: has_annotations, .. }
+                | DanglingMarker::Annotations { marker, has_annotations },
+            ) => DanglingMarker::Annotations { marker, has_annotations },
+            _ => DanglingMarker::Annotations { marker: self.start(), has_annotations: false },
+        };
+
         let seen = annotation(self);
-        if let DanglingMarker::Modifiers { has_modifiers, .. } = &mut m {
-            *has_modifiers |= seen.is_some();
+        if let DanglingMarker::Annotations { has_annotations, .. } = &mut m {
+            *has_annotations |= seen.is_some();
         }
         m
     }
@@ -431,12 +470,30 @@ pub(crate) enum DanglingMarker {
     Modifiers {
         marker: Marker,
         has_modifiers: bool,
+        has_only_annotations: bool,
+    },
+    Annotations {
+        marker: Marker,
+        has_annotations: bool,
     },
 }
 
 impl DanglingMarker {
     pub(crate) fn abandon(self, parser: &mut Parser<'_>) {
-        parser.dangling.push_back(self);
+        match &self {
+            DanglingMarker::Func { valid: is_valid, .. }
+            | DanglingMarker::Modifiers { has_modifiers: is_valid, .. }
+            | DanglingMarker::Annotations { has_annotations: is_valid, .. } => {
+                if *is_valid {
+                    parser.dangling.push_back(self);
+                } else {
+                    self.forget(parser);
+                }
+            }
+            DanglingMarker::Paren(_) => {
+                parser.dangling.push_back(self);
+            }
+        }
     }
 
     pub(crate) fn forget(self, parser: &mut Parser<'_>) {
@@ -447,11 +504,16 @@ impl DanglingMarker {
         match self {
             DanglingMarker::Func { marker: m, .. }
             | DanglingMarker::Paren(m)
-            | DanglingMarker::Modifiers { marker: m, .. } => m.complete(parser, kind),
+            | DanglingMarker::Modifiers { marker: m, .. }
+            | DanglingMarker::Annotations { marker: m, .. } => m.complete(parser, kind),
         }
     }
     pub(crate) fn has_modifiers(&self) -> bool {
-        matches!(self, DanglingMarker::Modifiers { has_modifiers: true, .. })
+        matches!(
+            self,
+            DanglingMarker::Modifiers { has_modifiers: true, .. }
+                | DanglingMarker::Annotations { has_annotations: true, .. }
+        )
     }
 
     pub(crate) fn has_fn(&self) -> bool {
@@ -466,7 +528,8 @@ impl DanglingMarker {
         match self {
             DanglingMarker::Func { marker: m, .. }
             | DanglingMarker::Paren(m)
-            | DanglingMarker::Modifiers { marker: m, .. } => m,
+            | DanglingMarker::Modifiers { marker: m, .. }
+            | DanglingMarker::Annotations { marker: m, .. } => m,
         }
     }
 }

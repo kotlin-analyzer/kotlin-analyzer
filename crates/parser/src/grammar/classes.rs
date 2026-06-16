@@ -86,11 +86,9 @@ fn primary_constructor(parser: &mut Parser<'_>) -> Option<Result<CompletedMarker
             m.abandon(parser);
             return Some(Err(()));
         }
-        (false, false) => {
-            if !parser.at(T!['(']) {
-                m.abandon(parser);
-                return None;
-            }
+        (false, false) if !parser.at(T!['(']) => {
+            m.abandon(parser);
+            return None;
         }
         _ => {}
     }

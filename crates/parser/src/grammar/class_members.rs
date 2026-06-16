@@ -160,7 +160,7 @@ pub(super) fn object_declaration(parser: &mut Parser<'_>) -> Option<CompletedMar
         return None;
     }
 
-    parser.eat(T![object]);
+    parser.bump(T![object]);
     simple_identifier(parser);
     if parser.eat(T![:]) && delegation_specifiers(parser).is_none() {
         parser.error("expected delegation specifiers");
@@ -479,10 +479,8 @@ fn parameter_with_opt_type(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     if is_simple_identifier(parser) {
         let m = parser.start();
         simple_identifier(parser);
-        if parser.eat(T![:]) {
-            if ty(parser).is_none() {
-                parser.error("expected a type");
-            }
+        if parser.eat(T![:]) && ty(parser).is_none() {
+            parser.error("expected a type");
         }
         Some(m.complete(parser, PARAMETER_WITH_OPTIONAL_TYPE))
     } else {

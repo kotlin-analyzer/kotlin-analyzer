@@ -641,6 +641,7 @@ impl SyntaxKind {
     }
     #[doc = r" Checks whether this syntax kind is a strict keyword for the given version."]
     #[doc = r" Strict keywords are identifiers that are always considered keywords."]
+    #[allow(clippy::match_single_binding)]
     pub fn is_strict_keyword(self, _version: KtVersion) -> bool {
         matches!(
             self,
@@ -686,6 +687,7 @@ impl SyntaxKind {
     }
     #[doc = r" Checks whether this syntax kind is a soft keyword for the given version."]
     #[doc = r" Soft keywords are identifiers that are considered keywords only in certain contexts."]
+    #[allow(clippy::match_like_matches_macro)]
     pub fn is_soft_keyword(self, _version: KtVersion) -> bool {
         match self {
             ABSTRACT_KW => true,
@@ -741,6 +743,7 @@ impl SyntaxKind {
         }
     }
     #[doc = r" Checks whether this syntax kind is a strict or soft keyword for the given version."]
+    #[allow(clippy::match_like_matches_macro)]
     pub fn is_keyword(self, _version: KtVersion) -> bool {
         matches!(
             self,

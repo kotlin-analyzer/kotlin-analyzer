@@ -483,13 +483,19 @@ fn or<'a>(p1: impl ParseFn<'a>, p2: impl ParseFn<'a>) -> impl ParseFn<'a> {
     }
 }
 
+/// This matches when a parser fails, and returns the original step, but advances the position by 1
 #[inline]
 fn not<'a>(p: impl ParseFn<'a>) -> impl ParseFn<'a> {
+    not_ad(p, 1)
+}
+
+#[inline]
+fn not_ad<'a>(p: impl ParseFn<'a>, advance_by: usize) -> impl ParseFn<'a> {
     move |step| {
         if step.pos >= step.input.len() {
             return None;
         }
-        if p(step.clone()).is_some() { None } else { Some(step.advance(1)) }
+        if p(step.clone()).is_some() { None } else { Some(step.advance(advance_by)) }
     }
 }
 
@@ -748,16 +754,17 @@ fn quote_open(step: Step<'_>) -> Option<Step<'_>> {
 
 fn multi_line_string_quote(step: Step<'_>) -> Option<Step<'_>> {
     let origin = step.clone();
-    if let Some(step) = tag(r#"""""#).and(many(tag("\"")))(step) {
-        let (det, incr) = step
-            .pos
-            .checked_sub(origin.pos)
-            .and_then(|det| det.checked_sub(3).map(|incr| (det, incr)))?;
-        if det >= 6 {
-            return Some(origin.advance_with(incr, MULTI_LINE_STRING_QUOTE));
-        }
-    }
-    None
+    tag(r#"""""#)
+        .and(many(tag("\"")))
+        .and(|step| {
+            let (det, incr) = step
+                .pos
+                .checked_sub(origin.pos)
+                .and_then(|det| det.checked_sub(3).map(|incr| (det, incr)))?;
+            if det >= 6 { Some(origin.advance_with(incr, MULTI_LINE_STRING_QUOTE)) } else { None }
+        })
+        .or(tag("\"").and(not_ad(tag(r#""""#), 0)))
+        .with(MULTI_LINE_STRING_QUOTE)(step)
 }
 
 fn triple_quote_close(step: Step<'_>) -> Option<Step<'_>> {
@@ -770,13 +777,28 @@ fn triple_quote_close(step: Step<'_>) -> Option<Step<'_>> {
 }
 
 fn line_str_escaped_char(step: Step<'_>) -> Option<Step<'_>> {
-    escaped_identifier.or(unicode_char_lit)(step)
+    escaped_identifier.or(unicode_char_lit).with(LINE_STR_ESCAPED_CHAR)(step)
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
     use crate::{assert_failure, assert_success};
+
+    #[test]
+    fn line_str_escaped_char_test() {
+        assert_success!(line_str_escaped_char, "\\n", 2, LINE_STR_ESCAPED_CHAR);
+        assert_success!(line_str_escaped_char, "\\t", 2, LINE_STR_ESCAPED_CHAR);
+        assert_success!(line_str_escaped_char, "\\\\", 2, LINE_STR_ESCAPED_CHAR);
+        assert_success!(line_str_escaped_char, "\\'", 2, LINE_STR_ESCAPED_CHAR);
+        assert_success!(line_str_escaped_char, "\\\"", 2, LINE_STR_ESCAPED_CHAR);
+        assert_success!(line_str_escaped_char, "\\$", 2, LINE_STR_ESCAPED_CHAR);
+        assert_success!(line_str_escaped_char, "\\r", 2, LINE_STR_ESCAPED_CHAR);
+        assert_success!(line_str_escaped_char, "\\b", 2, LINE_STR_ESCAPED_CHAR);
+
+        assert_failure!(line_str_escaped_char, "\\a");
+        assert_failure!(line_str_escaped_char, "\\1");
+    }
 
     #[test]
     fn delimited_comment_test() {

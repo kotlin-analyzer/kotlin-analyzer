@@ -5,17 +5,29 @@ use super::annotations::annotation;
 use super::class_members::context_parameter_list;
 use crate::{CompletedMarker, Parser};
 
-pub(crate) fn modifiers(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    if let Some(cm) =
-        annotation(parser).or_else(|| modifier(parser)).or_else(|| context_parameter_list(parser))
+pub(crate) fn modifiers(parser: &mut Parser<'_>) -> Option<(CompletedMarker, bool)> {
+    let mut has_only_annotations = false;
+    if let Some(cm) = annotation(parser)
+        .inspect(|_| {
+            has_only_annotations = true;
+        })
+        .or_else(|| modifier(parser))
+        .or_else(|| context_parameter_list(parser))
     {
         let m = cm.precede(parser);
+        let mut seen = 0;
+        let mut seen_annotations = 0;
         while annotation(parser)
+            .inspect(|_| {
+                seen_annotations += 1;
+            })
             .or_else(|| modifier(parser))
             .or_else(|| context_parameter_list(parser))
             .is_some()
-        {}
-        Some(m.complete(parser, MODIFIERS))
+        {
+            seen += 1;
+        }
+        Some((m.complete(parser, MODIFIERS), has_only_annotations && seen == seen_annotations))
     } else {
         None
     }

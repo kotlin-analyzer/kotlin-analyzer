@@ -1,0 +1,16 @@
+---
+source: crates/lexer/tests/lexer.rs
+expression: entries
+---
+[
+    QUOTE_OPEN@0..1 => "\"",
+    LINE_STR_TEXT@1..14 => "with a quote ",
+    LINE_STR_ESCAPED_CHAR@14..16 => "\\\"",
+    LINE_STR_TEXT@16..19 => "hey",
+    LINE_STR_ESCAPED_CHAR@19..21 => "\\\"",
+    LINE_STR_TEXT@21..26 => " and ",
+    LINE_STR_TEXT@26..27 => "$",
+    LINE_STR_TEXT@27..28 => "$",
+    QUOTE_CLOSE@28..29 => "\"",
+    EOF@29..29 => "",
+]

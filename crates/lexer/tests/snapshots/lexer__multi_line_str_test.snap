@@ -1,6 +1,5 @@
 ---
 source: crates/lexer/tests/lexer.rs
-assertion_line: 21
 expression: entries
 ---
 [
@@ -14,9 +13,9 @@ expression: entries
     IDENTIFIER_TOKEN@29..32 => "ref",
     R_CURL@32..33 => "}",
     MULTI_LINE_STR_TEXT@33..34 => "\n",
-    QUOTE_OPEN@34..35 => "\"",
-    LINE_STR_TEXT@35..59 => "line string inside multi",
-    QUOTE_CLOSE@59..60 => "\"",
+    MULTI_LINE_STRING_QUOTE@34..35 => "\"",
+    MULTI_LINE_STR_TEXT@35..59 => "line string inside multi",
+    MULTI_LINE_STRING_QUOTE@59..60 => "\"",
     MULTI_LINE_STR_TEXT@60..61 => "\n",
     MULTI_LINE_STRING_QUOTE@61..64 => "\"\"\"",
     TRIPLE_QUOTE_CLOSE@64..67 => "\"\"\"",

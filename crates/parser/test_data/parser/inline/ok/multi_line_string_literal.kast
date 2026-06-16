@@ -1,0 +1,99 @@
+KOTLIN_FILE
+  PROPERTY_DECLARATION
+    VAL_KW "val"
+    WHITESPACE " "
+    VARIABLE_DECLARATION
+      SIMPLE_IDENTIFIER
+        IDENT "a"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    EXPRESSION
+      POSTFIX_UNARY_EXPRESSION
+        MULTI_LINE_STRING_LITERAL
+          TRIPLE_QUOTE "\"\"\""
+          MULTI_LINE_STRING_CONTENT
+            TEXT "hello\nworld"
+          TRIPLE_QUOTE "\"\"\""
+  NEWLINE "\n"
+  PROPERTY_DECLARATION
+    VAL_KW "val"
+    WHITESPACE " "
+    VARIABLE_DECLARATION
+      SIMPLE_IDENTIFIER
+        IDENT "b"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    EXPRESSION
+      POSTFIX_UNARY_EXPRESSION
+        MULTI_LINE_STRING_LITERAL
+          TRIPLE_QUOTE "\"\"\""
+          MULTI_LINE_STRING_CONTENT
+            TEXT "hello "
+          MULTI_LINE_STRING_EXPRESSION
+            STR_EXPR_START "${"
+            EXPRESSION
+              POSTFIX_UNARY_EXPRESSION
+                SIMPLE_IDENTIFIER
+                  IDENT "world"
+                NAVIGATION_SUFFIX
+                  MEMBER_ACCESS_OPERATOR
+                    DOT "."
+                  SIMPLE_IDENTIFIER
+                    IDENT "length"
+            R_CURL "}"
+          TRIPLE_QUOTE "\"\"\""
+  NEWLINE "\n"
+  PROPERTY_DECLARATION
+    VAL_KW "val"
+    WHITESPACE " "
+    VARIABLE_DECLARATION
+      SIMPLE_IDENTIFIER
+        IDENT "c"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    EXPRESSION
+      POSTFIX_UNARY_EXPRESSION
+        MULTI_LINE_STRING_LITERAL
+          TRIPLE_QUOTE "\"\"\""
+          MULTI_LINE_STRING_CONTENT
+            TEXT "with a quote "
+          MULTI_LINE_STRING_CONTENT
+            MULTI_LINE_STRING_QUOTE "\""
+          MULTI_LINE_STRING_CONTENT
+            TEXT "hey"
+          MULTI_LINE_STRING_CONTENT
+            MULTI_LINE_STRING_QUOTE "\""
+          MULTI_LINE_STRING_CONTENT
+            TEXT " and "
+          MULTI_LINE_STRING_CONTENT
+            TEXT "$"
+          MULTI_LINE_STRING_CONTENT
+            TEXT "$"
+          MULTI_LINE_STRING_CONTENT
+            TEXT " and a multi line quote "
+          MULTI_LINE_STRING_CONTENT
+            MULTI_LINE_STRING_QUOTE "\"\"\"\"\""
+          TRIPLE_QUOTE "\"\"\""
+  NEWLINE "\n"
+  PROPERTY_DECLARATION
+    VAL_KW "val"
+    WHITESPACE " "
+    VARIABLE_DECLARATION
+      SIMPLE_IDENTIFIER
+        IDENT "d"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    EXPRESSION
+      POSTFIX_UNARY_EXPRESSION
+        MULTI_LINE_STRING_LITERAL
+          TRIPLE_QUOTE "\"\"\""
+          MULTI_LINE_STRING_CONTENT
+            TEXT "hello "
+          MULTI_LINE_STRING_CONTENT
+            STR_REF "$name"
+          TRIPLE_QUOTE "\"\"\""
+  NEWLINE "\n"

@@ -73,13 +73,13 @@ KOTLIN_FILE
                             POSTFIX_UNARY_EXPRESSION
                               SIMPLE_IDENTIFIER
                                 IDENT "y"
-                WHITESPACE " "
-                VARIABLE_DECLARATION
-                R_CURL "}"
-    NEWLINE "\n"
-    PROPERTY_DECLARATION
-      VAL_KW "val"
-      WHITESPACE " "
+              WHITESPACE " "
+              R_CURL "}"
+  NEWLINE "\n"
+  PROPERTY_DECLARATION
+    VAL_KW "val"
+    WHITESPACE " "
+    VARIABLE_DECLARATION
       SIMPLE_IDENTIFIER
         IDENT "b"
     WHITESPACE " "
@@ -243,32 +243,32 @@ KOTLIN_FILE
             BLOCK
               L_CURL "{"
               WHITESPACE " "
-              VARIABLE_DECLARATION
-                STATEMENTS
-                  STATEMENT
-                    EXPRESSION
-                      POSTFIX_UNARY_EXPRESSION
-                        JUMP_EXPRESSION
-                          RETURN_KW "return"
-                          WHITESPACE " "
-                          EXPRESSION
-                            ADDITIVE_EXPRESSION
-                              POSTFIX_UNARY_EXPRESSION
-                                SIMPLE_IDENTIFIER
-                                  IDENT "x"
-                              WHITESPACE " "
-                              ADDITIVE_OPERATOR
-                                ADD "+"
-                              WHITESPACE " "
-                              POSTFIX_UNARY_EXPRESSION
-                                SIMPLE_IDENTIFIER
-                                  IDENT "y"
-                WHITESPACE " "
-                R_CURL "}"
-    NEWLINE "\n"
-    PROPERTY_DECLARATION
-      VAL_KW "val"
-      WHITESPACE " "
+              STATEMENTS
+                STATEMENT
+                  EXPRESSION
+                    POSTFIX_UNARY_EXPRESSION
+                      JUMP_EXPRESSION
+                        RETURN_KW "return"
+                        WHITESPACE " "
+                        EXPRESSION
+                          ADDITIVE_EXPRESSION
+                            POSTFIX_UNARY_EXPRESSION
+                              SIMPLE_IDENTIFIER
+                                IDENT "x"
+                            WHITESPACE " "
+                            ADDITIVE_OPERATOR
+                              ADD "+"
+                            WHITESPACE " "
+                            POSTFIX_UNARY_EXPRESSION
+                              SIMPLE_IDENTIFIER
+                                IDENT "y"
+              WHITESPACE " "
+              R_CURL "}"
+  NEWLINE "\n"
+  PROPERTY_DECLARATION
+    VAL_KW "val"
+    WHITESPACE " "
+    VARIABLE_DECLARATION
       SIMPLE_IDENTIFIER
         IDENT "d"
     WHITESPACE " "

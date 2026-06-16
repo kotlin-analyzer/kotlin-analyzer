@@ -616,6 +616,7 @@ fn generate_syntax_kinds(grammar: KindsSrc) -> String {
 
             /// Checks whether this syntax kind is a strict keyword for the given version.
             /// Strict keywords are identifiers that are always considered keywords.
+            #[allow(clippy::match_single_binding)]
             pub fn is_strict_keyword(self, _version: KtVersion) -> bool {
                 matches!(self, #(#strict_keywords_variants)|*)
                 || match self {
@@ -626,6 +627,7 @@ fn generate_syntax_kinds(grammar: KindsSrc) -> String {
 
             /// Checks whether this syntax kind is a soft keyword for the given version.
             /// Soft keywords are identifiers that are considered keywords only in certain contexts.
+            #[allow(clippy::match_like_matches_macro)]
             pub fn is_soft_keyword(self, _version: KtVersion) -> bool {
                 match self {
                     #(#soft_keywords_variants_match_arm => true,)*
@@ -634,6 +636,7 @@ fn generate_syntax_kinds(grammar: KindsSrc) -> String {
             }
 
             /// Checks whether this syntax kind is a strict or soft keyword for the given version.
+            #[allow(clippy::match_like_matches_macro)]
             pub fn is_keyword(self, _version: KtVersion) -> bool {
                 matches!(self, #(#strict_keywords_variants)|*)
                 || match self {
@@ -787,7 +790,6 @@ fn to_pascal_case(s: &str) -> String {
     }
     buf
 }
-
 fn pluralize(s: &str) -> String {
     format!("{s}s")
 }

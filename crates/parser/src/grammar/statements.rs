@@ -65,13 +65,8 @@ pub(super) fn statement(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
         match declaration(parser, true) {
             // NB: we are not capturing declarations as statements
             Some(cm) => Some(cm),
-            None => {
-                if let Some(cm) = assignment::assignment_or_expression(parser) {
-                    Some(cm.precede(parser).complete(parser, STATEMENT))
-                } else {
-                    None
-                }
-            }
+            None => assignment::assignment_or_expression(parser)
+                .map(|cm| cm.precede(parser).complete(parser, STATEMENT)),
         }
     }
 }
@@ -234,9 +229,7 @@ mod assignment {
     }
 
     pub(super) fn assignment_or_expression(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-        let Some(left) = entry(parser) else {
-            return None;
-        };
+        let left = entry(parser)?;
 
         match left {
             AssignmentFragment::DirectlyAssignableExpression(cm) => {
@@ -265,9 +258,7 @@ mod assignment {
             return parenthesized(p);
         }
 
-        let Some(expr) = expression(p) else {
-            return None;
-        };
+        let expr = expression(p)?;
 
         match expr {
             // The interesting thing is that postfix expr can also be prefix expr

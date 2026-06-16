@@ -1,0 +1,5 @@
+val a = "hello world"
+val b = "hello ${world.length}!"
+val c = "with a quote \"hey\" and $$"
+val d = "with a new line\n in it"
+val e = "hello $name"

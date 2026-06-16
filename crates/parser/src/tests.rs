@@ -96,10 +96,12 @@ pub fn parse(entry: TopEntryPoint, text: &str, version: KtVersion) -> (String, b
     let mut indent = String::new();
     let mut depth = 0;
     let mut len = 0;
+    let mut token_consumed = 0;
     lexed.intersperse_trivia(&output, &mut |step| match step {
         StrStep::Token { kind, text } => {
             assert!(depth > 0);
             len += text.len();
+            token_consumed += 1;
             writeln!(buf, "{indent}{kind:?} {text:?}").unwrap();
         }
         StrStep::Enter { kind } => {
@@ -132,10 +134,11 @@ pub fn parse(entry: TopEntryPoint, text: &str, version: KtVersion) -> (String, b
     assert_eq!(
         len,
         text.len(),
-        "didn't parse all text.\nParsed:\n{}\n\nAll:\n{}\nTree:\n{}\n",
+        "didn't parse all text.\nParsed:\n{}\n\nAll:\n{}\nTree:\n{}\nNext:\n{:?}\n",
         &text[..len],
         text,
         buf,
+        input.kind(token_consumed),
     );
 
     (buf, has_errors)
