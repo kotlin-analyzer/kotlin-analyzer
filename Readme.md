@@ -8,17 +8,17 @@ check pull requests or non-main branches.
 
 ## Progress
 
-- [] Kotlin
+- [ ] Kotlin
     - [x] Lexer
-    - [-] Parser
+    - [ ] Parser
         - [x] All Language constructs
-        - [-] Tests
-            - [-] Unit Tests
-            - [] Conformance Tests 
-    - [-] AST (In progress)
-    - [] AST Traversal API
-- [] Java (Not started, but a lot easier to parse than Kotlin)
-- [] LSP client (Requires at least AST Traversal API for .kt files)
+        - [ ] Tests
+            - [ ] Unit Tests
+            - [ ] Conformance Tests 
+    - [ ] AST (In progress)
+    - [ ] AST Traversal API
+- [ ] Java (Not started, but a lot easier to parse than Kotlin)
+- [ ] LSP client (Requires at least AST Traversal API for .kt files)
 
 ## Why
 I want a Kotlin experience that is decoupled from IntelliJ. It should matter if I am developing in Emacs, Helix, Vs Code or Zed.
