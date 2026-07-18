@@ -1,0 +1,67 @@
+KOTLIN_FILE
+  FILE_ANNOTATION
+    AT "@"
+    FILE_KW "file"
+    COLON ":"
+    L_SQUARE "["
+    CONSTRUCTOR_INVOCATION
+      USER_TYPE
+        SIMPLE_USER_TYPE
+          SIMPLE_IDENTIFIER
+            IDENT "JvmName"
+      VALUE_ARGUMENTS
+        L_PAREN "("
+        VALUE_ARGUMENT
+          EXPRESSION
+            POSTFIX_UNARY_EXPRESSION
+              LINE_STRING_LITERAL
+                QUOTE "\""
+                LINE_STRING_CONTENT
+                  TEXT "Foo"
+                QUOTE "\""
+        R_PAREN ")"
+    COMMA ","
+    WHITESPACE " "
+    USER_TYPE
+      SIMPLE_USER_TYPE
+        SIMPLE_IDENTIFIER
+          IDENT "JvmMultifileClass"
+    R_SQUARE "]"
+  NEWLINE "\n"
+  FILE_ANNOTATION
+    AT "@"
+    FILE_KW "file"
+    COLON ":"
+    L_SQUARE "["
+    CONSTRUCTOR_INVOCATION
+      USER_TYPE
+        SIMPLE_USER_TYPE
+          SIMPLE_IDENTIFIER
+            IDENT "JvmName"
+      VALUE_ARGUMENTS
+        L_PAREN "("
+        VALUE_ARGUMENT
+          EXPRESSION
+            POSTFIX_UNARY_EXPRESSION
+              LINE_STRING_LITERAL
+                QUOTE "\""
+                LINE_STRING_CONTENT
+                  TEXT "Foo"
+                QUOTE "\""
+        R_PAREN ")"
+    COMMA ","
+    WHITESPACE " "
+    USER_TYPE
+      SIMPLE_USER_TYPE
+        SIMPLE_IDENTIFIER
+          IDENT "JvmMultifileClass"
+  NEWLINE "\n"
+  FILE_ANNOTATION
+    AT "@"
+    FILE_KW "file"
+    COLON ":"
+  NEWLINE "\n"
+error 22: file annotations should not be separated by ','
+error 64: file annotations should not be separated by ','
+error 82: expected ']'
+error 89: expected annotation

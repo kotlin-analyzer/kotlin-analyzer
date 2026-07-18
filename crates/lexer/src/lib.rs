@@ -1,5 +1,7 @@
 mod lexer;
+mod token;
 pub use lexer::*;
+pub use token::Token;
 
 /// asserts that a tokenizer successfully to tokenize the next characters
 /// NB: can only be used within lexer crate

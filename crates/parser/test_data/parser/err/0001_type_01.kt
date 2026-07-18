@@ -1,4 +1,4 @@
-@Decorated 
+typealias FooType = @Decorated 
 Foo.(
     @Serializable List<out Bar?, 
     @NonNllable () -> Baz, 

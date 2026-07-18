@@ -7,23 +7,19 @@ description = "TBD"
 license.workspace = true
 
 [dependencies]
-ast.workspace = true
 casey.workspace = true
 drop_bomb.workspace = true
-# todo: remove dependency on lexer: move to dev dependencies
 lexer.workspace = true
 syntax.workspace = true
 tracing.workspace = true
 
 [dev-dependencies]
-ast.workspace = true
 expect-test.workspace = true
 insta.workspace = true
 itertools.workspace = true
-panic-context.workspace = true
 pretty_assertions.workspace = true
-rowan.workspace = true
 rstest.workspace = true
+stdx.workspace = true
 
 [features]
 verbose = []

@@ -1,0 +1,502 @@
+KOTLIN_FILE
+  CLASS_DECLARATION
+    CLASS_KW "class"
+    WHITESPACE " "
+    SIMPLE_IDENTIFIER
+      IDENT "Foo1"
+  NEWLINE "\n"
+  CLASS_DECLARATION
+    CLASS_KW "class"
+    WHITESPACE " "
+    SIMPLE_IDENTIFIER
+      IDENT "Foo2"
+    PRIMARY_CONSTRUCTOR
+      CLASS_PARAMETERS
+        L_PAREN "("
+        R_PAREN ")"
+  NEWLINE "\n"
+  CLASS_DECLARATION
+    CLASS_KW "class"
+    WHITESPACE " "
+    SIMPLE_IDENTIFIER
+      IDENT "Foo22"
+    PRIMARY_CONSTRUCTOR
+      CLASS_PARAMETERS
+        L_PAREN "("
+        CLASS_PARAMETER
+          SIMPLE_IDENTIFIER
+            IDENT "name"
+          COLON ":"
+          WHITESPACE " "
+          TYPE
+            TYPE_REFERENCE
+              USER_TYPE
+                SIMPLE_USER_TYPE
+                  SIMPLE_IDENTIFIER
+                    IDENT "String"
+        COMMA ","
+        WHITESPACE " "
+        CLASS_PARAMETER
+          SIMPLE_IDENTIFIER
+            IDENT "age"
+          COLON ":"
+          WHITESPACE " "
+          TYPE
+            TYPE_REFERENCE
+              USER_TYPE
+                SIMPLE_USER_TYPE
+                  SIMPLE_IDENTIFIER
+                    IDENT "Int"
+        R_PAREN ")"
+  NEWLINE "\n"
+  CLASS_DECLARATION
+    CLASS_KW "class"
+    WHITESPACE " "
+    SIMPLE_IDENTIFIER
+      IDENT "Foo23"
+    TYPE_PARAMETERS
+      L_ANGLE "<"
+      TYPE_PARAMETER
+        SIMPLE_IDENTIFIER
+          IDENT "T"
+      R_ANGLE ">"
+    PRIMARY_CONSTRUCTOR
+      CLASS_PARAMETERS
+        L_PAREN "("
+        CLASS_PARAMETER
+          SIMPLE_IDENTIFIER
+            IDENT "name"
+          COLON ":"
+          WHITESPACE " "
+          TYPE
+            TYPE_REFERENCE
+              USER_TYPE
+                SIMPLE_USER_TYPE
+                  SIMPLE_IDENTIFIER
+                    IDENT "T"
+        COMMA ","
+        WHITESPACE " "
+        CLASS_PARAMETER
+          VAL_KW "val"
+          WHITESPACE " "
+          SIMPLE_IDENTIFIER
+            IDENT "age"
+          COLON ":"
+          WHITESPACE " "
+          TYPE
+            TYPE_REFERENCE
+              USER_TYPE
+                SIMPLE_USER_TYPE
+                  SIMPLE_IDENTIFIER
+                    IDENT "Int"
+        R_PAREN ")"
+  NEWLINE "\n"
+  CLASS_DECLARATION
+    CLASS_KW "class"
+    WHITESPACE " "
+    SIMPLE_IDENTIFIER
+      IDENT "Foo3"
+    TYPE_PARAMETERS
+      L_ANGLE "<"
+      TYPE_PARAMETER
+        SIMPLE_IDENTIFIER
+          IDENT "T"
+      R_ANGLE ">"
+    WHITESPACE " "
+    COLON ":"
+    WHITESPACE " "
+    DELEGATION_SPECIFIERS
+      ANNOTATED_DELEGATION_SPECIFIER
+        DELEGATION_SPECIFIER
+          EXPLICIT_DELEGATION
+            USER_TYPE
+              SIMPLE_USER_TYPE
+                SIMPLE_IDENTIFIER
+                  IDENT "Bar"
+            WHITESPACE " "
+            BY_KW "by"
+            WHITESPACE " "
+            EXPRESSION
+              POSTFIX_UNARY_EXPRESSION
+                SIMPLE_IDENTIFIER
+                  IDENT "baz"
+  NEWLINE "\n"
+  CLASS_DECLARATION
+    CLASS_KW "class"
+    WHITESPACE " "
+    SIMPLE_IDENTIFIER
+      IDENT "Foo4"
+    TYPE_PARAMETERS
+      L_ANGLE "<"
+      TYPE_PARAMETER
+        SIMPLE_IDENTIFIER
+          IDENT "T"
+      R_ANGLE ">"
+    WHITESPACE " "
+    TYPE_CONSTRAINTS
+      WHERE_KW "where"
+      WHITESPACE " "
+      TYPE_CONSTRAINT
+        SIMPLE_IDENTIFIER
+          IDENT "T"
+        COLON ":"
+        WHITESPACE " "
+        TYPE
+          TYPE_REFERENCE
+            USER_TYPE
+              SIMPLE_USER_TYPE
+                SIMPLE_IDENTIFIER
+                  IDENT "Any"
+  NEWLINE "\n"
+  CLASS_DECLARATION
+    CLASS_KW "class"
+    WHITESPACE " "
+    SIMPLE_IDENTIFIER
+      IDENT "Foo5"
+    TYPE_PARAMETERS
+      L_ANGLE "<"
+      TYPE_PARAMETER
+        SIMPLE_IDENTIFIER
+          IDENT "T"
+      R_ANGLE ">"
+    WHITESPACE " "
+    TYPE_CONSTRAINTS
+      WHERE_KW "where"
+      WHITESPACE " "
+      TYPE_CONSTRAINT
+        SIMPLE_IDENTIFIER
+          IDENT "T"
+        COLON ":"
+        WHITESPACE " "
+        TYPE
+          TYPE_REFERENCE
+            USER_TYPE
+              SIMPLE_USER_TYPE
+                SIMPLE_IDENTIFIER
+                  IDENT "Any"
+      COMMA ","
+      WHITESPACE " "
+      TYPE_CONSTRAINT
+        SIMPLE_IDENTIFIER
+          IDENT "T"
+        COLON ":"
+        WHITESPACE " "
+        TYPE
+          TYPE_REFERENCE
+            USER_TYPE
+              SIMPLE_USER_TYPE
+                SIMPLE_IDENTIFIER
+                  IDENT "Serializable"
+  NEWLINE "\n"
+  CLASS_DECLARATION
+    CLASS_KW "class"
+    WHITESPACE " "
+    SIMPLE_IDENTIFIER
+      IDENT "Foo7"
+    TYPE_PARAMETERS
+      L_ANGLE "<"
+      TYPE_PARAMETER
+        SIMPLE_IDENTIFIER
+          IDENT "T"
+      R_ANGLE ">"
+    WHITESPACE " "
+    TYPE_CONSTRAINTS
+      WHERE_KW "where"
+      WHITESPACE " "
+      TYPE_CONSTRAINT
+        SIMPLE_IDENTIFIER
+          IDENT "T"
+        COLON ":"
+        WHITESPACE " "
+        TYPE
+          TYPE_REFERENCE
+            USER_TYPE
+              SIMPLE_USER_TYPE
+                SIMPLE_IDENTIFIER
+                  IDENT "Any"
+      COMMA ","
+      WHITESPACE " "
+      TYPE_CONSTRAINT
+        SIMPLE_IDENTIFIER
+          IDENT "T"
+        COLON ":"
+        WHITESPACE " "
+        TYPE
+          TYPE_REFERENCE
+            USER_TYPE
+              SIMPLE_USER_TYPE
+                SIMPLE_IDENTIFIER
+                  IDENT "Serializable"
+    WHITESPACE " "
+    CLASS_BODY
+      L_CURL "{"
+      R_CURL "}"
+  NEWLINE "\n"
+  CLASS_DECLARATION
+    CLASS_KW "class"
+    WHITESPACE " "
+    SIMPLE_IDENTIFIER
+      IDENT "Foo8"
+    WHITESPACE " "
+    PRIMARY_CONSTRUCTOR
+      MODIFIERS
+        VISIBILITY_MODIFIER
+          PRIVATE_KW "private"
+      WHITESPACE " "
+      CONSTRUCTOR_KW "constructor"
+      CLASS_PARAMETERS
+        L_PAREN "("
+        CLASS_PARAMETER
+          VAL_KW "val"
+          WHITESPACE " "
+          SIMPLE_IDENTIFIER
+            IDENT "name"
+          COLON ":"
+          WHITESPACE " "
+          TYPE
+            TYPE_REFERENCE
+              USER_TYPE
+                SIMPLE_USER_TYPE
+                  SIMPLE_IDENTIFIER
+                    IDENT "String"
+        COMMA ","
+        WHITESPACE " "
+        CLASS_PARAMETER
+          VAR_KW "var"
+          WHITESPACE " "
+          SIMPLE_IDENTIFIER
+            IDENT "age"
+          COLON ":"
+          WHITESPACE " "
+          TYPE
+            TYPE_REFERENCE
+              USER_TYPE
+                SIMPLE_USER_TYPE
+                  SIMPLE_IDENTIFIER
+                    IDENT "Int"
+        R_PAREN ")"
+  NEWLINE "\n"
+  CLASS_DECLARATION
+    FUN_KW "fun"
+    WHITESPACE " "
+    INTERFACE_KW "interface"
+    WHITESPACE " "
+    SIMPLE_IDENTIFIER
+      IDENT "Foo9"
+    TYPE_PARAMETERS
+      L_ANGLE "<"
+      TYPE_PARAMETER
+        SIMPLE_IDENTIFIER
+          IDENT "T"
+      R_ANGLE ">"
+    WHITESPACE " "
+    TYPE_CONSTRAINTS
+      WHERE_KW "where"
+      WHITESPACE " "
+      TYPE_CONSTRAINT
+        SIMPLE_IDENTIFIER
+          IDENT "T"
+        COLON ":"
+        WHITESPACE " "
+        TYPE
+          TYPE_REFERENCE
+            USER_TYPE
+              SIMPLE_USER_TYPE
+                SIMPLE_IDENTIFIER
+                  IDENT "Any"
+      COMMA ","
+      WHITESPACE " "
+      TYPE_CONSTRAINT
+        SIMPLE_IDENTIFIER
+          IDENT "T"
+        COLON ":"
+        WHITESPACE " "
+        TYPE
+          TYPE_REFERENCE
+            USER_TYPE
+              SIMPLE_USER_TYPE
+                SIMPLE_IDENTIFIER
+                  IDENT "Serializable"
+  NEWLINE "\n"
+  CLASS_DECLARATION
+    MODIFIERS
+      CLASS_MODIFIER
+        ENUM_KW "enum"
+    WHITESPACE " "
+    CLASS_KW "class"
+    WHITESPACE " "
+    SIMPLE_IDENTIFIER
+      IDENT "Foo10"
+    TYPE_PARAMETERS
+      L_ANGLE "<"
+      TYPE_PARAMETER
+        SIMPLE_IDENTIFIER
+          IDENT "T"
+      R_ANGLE ">"
+    WHITESPACE " "
+    TYPE_CONSTRAINTS
+      WHERE_KW "where"
+      WHITESPACE " "
+      TYPE_CONSTRAINT
+        SIMPLE_IDENTIFIER
+          IDENT "T"
+        COLON ":"
+        WHITESPACE " "
+        TYPE
+          TYPE_REFERENCE
+            USER_TYPE
+              SIMPLE_USER_TYPE
+                SIMPLE_IDENTIFIER
+                  IDENT "Any"
+      COMMA ","
+      WHITESPACE " "
+      TYPE_CONSTRAINT
+        SIMPLE_IDENTIFIER
+          IDENT "T"
+        COLON ":"
+        WHITESPACE " "
+        TYPE
+          TYPE_REFERENCE
+            USER_TYPE
+              SIMPLE_USER_TYPE
+                SIMPLE_IDENTIFIER
+                  IDENT "Serializable"
+    WHITESPACE " "
+    CLASS_BODY
+      L_CURL "{"
+      R_CURL "}"
+  NEWLINE "\n"
+  CLASS_DECLARATION
+    MODIFIERS
+      INHERITANCE_MODIFIER
+        ABSTRACT_KW "abstract"
+    WHITESPACE " "
+    CLASS_KW "class"
+    WHITESPACE " "
+    SIMPLE_IDENTIFIER
+      IDENT "Foo11"
+    TYPE_PARAMETERS
+      L_ANGLE "<"
+      TYPE_PARAMETER
+        SIMPLE_IDENTIFIER
+          IDENT "T"
+      R_ANGLE ">"
+    PRIMARY_CONSTRUCTOR
+      CLASS_PARAMETERS
+        L_PAREN "("
+        CLASS_PARAMETER
+          VAL_KW "val"
+          WHITESPACE " "
+          SIMPLE_IDENTIFIER
+            IDENT "name"
+          COLON ":"
+          WHITESPACE " "
+          TYPE
+            TYPE_REFERENCE
+              USER_TYPE
+                SIMPLE_USER_TYPE
+                  SIMPLE_IDENTIFIER
+                    IDENT "String"
+        COMMA ","
+        WHITESPACE " "
+        CLASS_PARAMETER
+          VAL_KW "val"
+          WHITESPACE " "
+          SIMPLE_IDENTIFIER
+            IDENT "age"
+          COLON ":"
+          WHITESPACE " "
+          TYPE
+            TYPE_REFERENCE
+              USER_TYPE
+                SIMPLE_USER_TYPE
+                  SIMPLE_IDENTIFIER
+                    IDENT "Int"
+        R_PAREN ")"
+    WHITESPACE " "
+    TYPE_CONSTRAINTS
+      WHERE_KW "where"
+      WHITESPACE " "
+      TYPE_CONSTRAINT
+        SIMPLE_IDENTIFIER
+          IDENT "T"
+        COLON ":"
+        WHITESPACE " "
+        TYPE
+          TYPE_REFERENCE
+            USER_TYPE
+              SIMPLE_USER_TYPE
+                SIMPLE_IDENTIFIER
+                  IDENT "Any"
+      COMMA ","
+      WHITESPACE " "
+      TYPE_CONSTRAINT
+        SIMPLE_IDENTIFIER
+          IDENT "T"
+        COLON ":"
+        WHITESPACE " "
+        TYPE
+          TYPE_REFERENCE
+            USER_TYPE
+              SIMPLE_USER_TYPE
+                SIMPLE_IDENTIFIER
+                  IDENT "Serializable"
+  NEWLINE "\n"
+  CLASS_DECLARATION
+    MODIFIERS
+      CLASS_MODIFIER
+        DATA_KW "data"
+    WHITESPACE " "
+    CLASS_KW "class"
+    WHITESPACE " "
+    SIMPLE_IDENTIFIER
+      IDENT "Foo12"
+    TYPE_PARAMETERS
+      L_ANGLE "<"
+      TYPE_PARAMETER
+        SIMPLE_IDENTIFIER
+          IDENT "T"
+      R_ANGLE ">"
+    PRIMARY_CONSTRUCTOR
+      CLASS_PARAMETERS
+        L_PAREN "("
+        CLASS_PARAMETER
+          VAL_KW "val"
+          WHITESPACE " "
+          SIMPLE_IDENTIFIER
+            IDENT "name"
+          COLON ":"
+          WHITESPACE " "
+          TYPE
+            TYPE_REFERENCE
+              USER_TYPE
+                SIMPLE_USER_TYPE
+                  SIMPLE_IDENTIFIER
+                    IDENT "String"
+        COMMA ","
+        WHITESPACE " "
+        CLASS_PARAMETER
+          VAL_KW "val"
+          WHITESPACE " "
+          SIMPLE_IDENTIFIER
+            IDENT "age"
+          COLON ":"
+          WHITESPACE " "
+          TYPE
+            TYPE_REFERENCE
+              USER_TYPE
+                SIMPLE_USER_TYPE
+                  SIMPLE_IDENTIFIER
+                    IDENT "Int"
+        R_PAREN ")"
+  NEWLINE "\n"
+  CLASS_DECLARATION
+    CLASS_KW "class"
+    WHITESPACE " "
+    SIMPLE_IDENTIFIER
+      IDENT "A"
+    NEWLINE "\n"
+    CLASS_BODY
+      L_CURL "{"
+      R_CURL "}"
+  NEWLINE "\n"

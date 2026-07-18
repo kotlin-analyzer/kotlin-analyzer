@@ -87,10 +87,8 @@ impl JClass {
         }
 
         if !self.implements.is_empty() {
-            syntax.push_str(&format!(
-                "implements {} ",
-                self.implements.join(", ").replace("/", ".")
-            ));
+            syntax
+                .push_str(&format!("implements {} ", self.implements.join(", ").replace("/", ".")));
         }
 
         syntax.push_str("{\n");
@@ -248,12 +246,7 @@ impl JMethod {
 
         syntax.push_str(&format!("{} {}(", self.return_type, self.method_name));
 
-        let arguments = self
-            .args
-            .iter()
-            .map(JArg::syntax)
-            .collect::<Vec<String>>()
-            .join(", ");
+        let arguments = self.args.iter().map(JArg::syntax).collect::<Vec<String>>().join(", ");
 
         syntax.push_str(&arguments);
 
@@ -322,20 +315,14 @@ pub fn decompile_class(class_file: ClassFile) -> DecompilationResult<JClass> {
 
     let mut name: Option<String> = None;
     if let Constant::ClassInfo { name_index } = this_class_info {
-        name = class_file
-            .get_constant_utf8(name_index)
-            .ok()
-            .map(String::from);
+        name = class_file.get_constant_utf8(name_index).ok().map(String::from);
     }
 
     let mut parent_name: Option<String> = None;
     if let Some(Constant::ClassInfo { name_index }) = super_class_info
         && name_index != 0
     {
-        parent_name = class_file
-            .get_constant_utf8(name_index)
-            .ok()
-            .map(String::from);
+        parent_name = class_file.get_constant_utf8(name_index).ok().map(String::from);
     }
 
     let mut interfaces: Vec<String> = vec![];
@@ -363,12 +350,7 @@ pub fn decompile_class(class_file: ClassFile) -> DecompilationResult<JClass> {
         let is_transient = matches_mask(field.access_flags, ACC_TRANSIENT);
         let is_synthetic = matches_mask(field.access_flags, ACC_SYNTHETIC);
 
-        let FieldInfo {
-            name_index,
-            descriptor_index,
-            attributes,
-            ..
-        } = field;
+        let FieldInfo { name_index, descriptor_index, attributes, .. } = field;
 
         let initial_value = attributes
             .iter()
@@ -414,10 +396,9 @@ pub fn decompile_class(class_file: ClassFile) -> DecompilationResult<JClass> {
             is_volatile,
             initial_value: match initial_value {
                 Some(value) => match value {
-                    Constant::String { string_index } => class_file
-                        .get_constant_utf8(string_index)
-                        .ok()
-                        .map(|v| format!("\"{v}\"")),
+                    Constant::String { string_index } => {
+                        class_file.get_constant_utf8(string_index).ok().map(|v| format!("\"{v}\""))
+                    }
                     Constant::Integer(v) => Some(v.to_string()),
                     Constant::Float(v) => Some(f32::from_bits(v).to_string()),
                     Constant::Long(high, low) => {
@@ -447,11 +428,7 @@ pub fn decompile_class(class_file: ClassFile) -> DecompilationResult<JClass> {
         let is_bridge = matches_mask(method.access_flags, ACC_BRIDGE);
         let has_varargs = matches_mask(method.access_flags, ACC_VARARGS);
 
-        let MethodInfo {
-            name_index,
-            descriptor_index,
-            ..
-        } = method;
+        let MethodInfo { name_index, descriptor_index, .. } = method;
 
         let mut visibility = JVisibility::Public;
 
@@ -475,10 +452,7 @@ pub fn decompile_class(class_file: ClassFile) -> DecompilationResult<JClass> {
             .map(String::from)
             .ok_or(DecompilationError::MissingMethodDescriptor)?;
 
-        let MethodDescriptor {
-            return_type,
-            parameters,
-        } = parse_method_descriptor(&descriptor)?;
+        let MethodDescriptor { return_type, parameters } = parse_method_descriptor(&descriptor)?;
 
         let mut arguments: Vec<JArg> = vec![];
 
@@ -491,10 +465,7 @@ pub fn decompile_class(class_file: ClassFile) -> DecompilationResult<JClass> {
 
                     let arg_name = match *name_index {
                         0 => None,
-                        _ => class_file
-                            .get_constant_utf8(*name_index)
-                            .ok()
-                            .map(String::from),
+                        _ => class_file.get_constant_utf8(*name_index).ok().map(String::from),
                     };
 
                     arguments.push(JArg {
@@ -588,10 +559,7 @@ fn parse_method_descriptor(descriptor: &str) -> Result<MethodDescriptor, Decompi
                 let (java_type, offset) = parse_type_from(descriptor, i)?;
                 i = offset;
                 if processed_args {
-                    return Ok(MethodDescriptor {
-                        parameters: arguments,
-                        return_type: java_type,
-                    });
+                    return Ok(MethodDescriptor { parameters: arguments, return_type: java_type });
                 } else {
                     arguments.push(java_type);
                 }
@@ -635,9 +603,9 @@ mod tests {
 
         assert_eq!(
             result,
-            Ok(JType::Array(Box::new(JType::Array(Box::new(
-                JType::Array(Box::new(JType::Object("java.lang.Object".to_string())))
-            )))))
+            Ok(JType::Array(Box::new(JType::Array(Box::new(JType::Array(Box::new(
+                JType::Object("java.lang.Object".to_string())
+            )))))))
         );
     }
     #[test]
@@ -645,13 +613,7 @@ mod tests {
         let desc = "()V".to_string();
         let result = parse_method_descriptor(&desc);
 
-        assert_eq!(
-            result,
-            Ok(MethodDescriptor {
-                parameters: vec![],
-                return_type: JType::Void
-            })
-        );
+        assert_eq!(result, Ok(MethodDescriptor { parameters: vec![], return_type: JType::Void }));
     }
     #[test]
     fn test_parse_method_descriptor_with_params() {
@@ -661,11 +623,7 @@ mod tests {
         assert_eq!(
             result,
             Ok(MethodDescriptor {
-                parameters: vec![
-                    JType::Byte,
-                    JType::Char,
-                    JType::Array(Box::new(JType::Bool))
-                ],
+                parameters: vec![JType::Byte, JType::Char, JType::Array(Box::new(JType::Bool))],
                 return_type: JType::Int
             })
         );

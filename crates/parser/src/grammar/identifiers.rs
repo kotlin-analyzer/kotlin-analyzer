@@ -1,6 +1,6 @@
-use syntax::{SyntaxKind::*, T};
+use crate::{SyntaxKind::*, T};
 
-use crate::ra::{CompletedMarker, Parser};
+use crate::{CompletedMarker, Parser};
 
 pub(crate) fn simple_identifier(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     if is_simple_identifier(parser) {
@@ -19,10 +19,8 @@ pub(crate) fn is_simple_identifier(parser: &mut Parser<'_>) -> bool {
 
 pub(crate) fn is_simple_ident_at(parser: &mut Parser<'_>, n: usize) -> bool {
     let current = parser.nth(n);
-    matches!(
-        (current.is_soft_keyword(), current),
-        (true, _) | (_, IDENTIFIER_TOKEN)
-    )
+    // FIXME: this function should receive version as argument
+    matches!((current.is_soft_keyword(crate::KtVersion::LATEST), current), (true, _) | (_, IDENT))
 }
 
 pub(crate) fn identifier(parser: &mut Parser<'_>) -> Option<CompletedMarker> {

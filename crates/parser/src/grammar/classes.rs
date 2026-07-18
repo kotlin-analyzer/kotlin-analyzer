@@ -1,13 +1,13 @@
-use syntax::{SyntaxKind::*, T};
+use crate::{SyntaxKind::*, T, TokenSet};
 
 use super::annotations::annotation;
 use super::class_members::class_member_declarations;
 use super::enum_classes::{BodyResult, enum_class_body};
-use super::expressions::{expression, value_arguments};
+use super::expressions::{DisAllowed, expression, flex_expression, value_arguments};
 use super::identifiers::simple_identifier;
-use super::modifiers::{modifiers, type_parameter_modifiers};
-use super::types::ty;
-use crate::ra::{CompletedMarker, Marker, Parser};
+use super::modifiers::type_parameter_modifiers;
+use super::types::{TypeResult, ty, unclosed_ty};
+use crate::{CompletedMarker, Marker, Parser};
 
 pub(crate) fn starts_class_declaration(parser: &mut Parser<'_>) -> bool {
     parser.at(T![class])
@@ -15,17 +15,29 @@ pub(crate) fn starts_class_declaration(parser: &mut Parser<'_>) -> bool {
         || (parser.at(T![fun]) && parser.nth_at(1, T![interface]))
 }
 
-pub(crate) fn class_declaration(
-    parser: &mut Parser<'_>,
-    modifiers_marker: Option<CompletedMarker>,
-) -> Option<CompletedMarker> {
+// test class_declaration
+// class Foo1
+// class Foo2()
+// class Foo22(name: String, age: Int)
+// class Foo23<T>(name: T, val age: Int)
+// class Foo3<T> : Bar by baz
+// class Foo4<T> where T: Any
+// class Foo5<T> where T: Any, T: Serializable
+// class Foo7<T> where T: Any, T: Serializable {}
+// class Foo8 private constructor(val name: String, var age: Int)
+// fun interface Foo9<T> where T: Any, T: Serializable
+// enum class Foo10<T> where T: Any, T: Serializable {}
+// abstract class Foo11<T>(val name: String, val age: Int) where T: Any, T: Serializable
+// data class Foo12<T>(val name: String, val age: Int)
+// class A
+// {}
+pub(crate) fn class_declaration(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    let m = parser.start_with_modifiers();
+
     if !starts_class_declaration(parser) {
+        m.abandon(parser);
         return None;
     }
-
-    let m = modifiers_marker
-        .map(|cm| cm.precede(parser))
-        .unwrap_or_else(|| parser.start());
 
     if parser.at(T![class]) || parser.at(T![interface]) {
         parser.bump_any();
@@ -39,7 +51,13 @@ pub(crate) fn class_declaration(
     }
 
     type_parameters(parser);
-    primary_constructor(parser);
+    let cm = m.complete(parser, CLASS_DECLARATION);
+
+    if let Some(Err(_)) = primary_constructor(parser) {
+        // test class_then_decl
+        // abstract class AB private fun f() = 1
+        return Some(cm);
+    }
 
     if parser.eat(T![:]) && delegation_specifiers(parser).is_none() {
         parser.error("expected delegation specifiers");
@@ -51,34 +69,38 @@ pub(crate) fn class_declaration(
         let m = parser.start();
 
         parser.bump(T!['{']);
-        let first_modifiers = modifiers(parser);
 
-        if let BodyResult::None(m) = enum_class_body(parser, m, first_modifiers.clone()) {
-            class_body(parser, Some(m), first_modifiers);
+        if let BodyResult::None { opening_brace } = enum_class_body(parser, m) {
+            class_body(parser, Some(opening_brace));
         }
     }
 
-    Some(m.complete(parser, CLASS_DECLARATION))
+    Some(cm.extend_right(parser))
 }
 
-fn primary_constructor(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    let m = parser.start();
-
-    modifiers(parser);
-    parser.eat(T![constructor]);
-
-    if class_parameters(parser).is_none() {
-        m.abandon(parser);
-        return None;
+fn primary_constructor(parser: &mut Parser<'_>) -> Option<Result<CompletedMarker, ()>> {
+    let m = parser.start_with_fresh_modifiers();
+    match (m.has_modifiers(), parser.eat(T![constructor])) {
+        (true, false) => {
+            // This a new declaration
+            m.abandon(parser);
+            return Some(Err(()));
+        }
+        (false, false) if !parser.at(T!['(']) => {
+            m.abandon(parser);
+            return None;
+        }
+        _ => {}
     }
 
-    Some(m.complete(parser, PRIMARY_CONSTRUCTOR))
+    class_parameters(parser);
+
+    Some(Ok(m.complete(parser, PRIMARY_CONSTRUCTOR)))
 }
 
 pub(crate) fn class_body(
     parser: &mut Parser<'_>,
     opening_brace: Option<Marker>,
-    modifier_marker: Option<CompletedMarker>,
 ) -> Option<CompletedMarker> {
     let m = opening_brace.or_else(|| {
         if !parser.at(T!['{']) {
@@ -90,7 +112,7 @@ pub(crate) fn class_body(
         }
     })?;
 
-    class_member_declarations(parser, modifier_marker);
+    class_member_declarations(parser);
 
     if !parser.eat(T!['}']) {
         parser.error("expected '}'");
@@ -110,7 +132,7 @@ fn class_parameters(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     if class_parameter(parser).is_some() {
         while parser.eat(T![,]) && class_parameter(parser).is_some() {}
     }
-
+    // TODO: we can error if no parameter is parsed, asking to remove the parentheses, but this should really be a warning, not an error, so we can just ignore this case for now.
     if !parser.eat(T![')']) {
         parser.error("expected ')'");
     }
@@ -118,28 +140,35 @@ fn class_parameters(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     Some(m.complete(parser, CLASS_PARAMETERS))
 }
 
-fn class_parameter(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    let m = parser.start();
+const CLASS_PARAMETER_RECOVERY: TokenSet = TokenSet::new(&[T![,], T![')'], T!['{']]);
 
-    modifiers(parser);
+fn class_parameter(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    let m = parser.start_with_modifiers();
+    let mut seen = 0;
+
     if parser.at(T![val]) || parser.at(T![var]) {
         parser.bump_any();
+        seen += 1;
     }
 
     if simple_identifier(parser).is_none() {
-        parser.error("expected an identifier");
-    }
+        if seen == 0 {
+            m.abandon(parser);
+            return None;
+        }
+        parser.err_recover("expected an identifier", CLASS_PARAMETER_RECOVERY);
+    } else {
+        if !parser.eat(T![:]) {
+            parser.error("expected ':'");
+        }
 
-    if !parser.eat(T![:]) {
-        parser.error("expected ':'");
-    }
+        if ty(parser).is_none() {
+            parser.error("expected a type");
+        }
 
-    if ty(parser).is_none() {
-        parser.error("expected a type");
-    }
-
-    if parser.eat(T![=]) && expression(parser).is_none() {
-        parser.error("expected an expression");
+        if parser.eat(T![=]) && expression(parser).is_none() {
+            parser.error("expected an expression :#7");
+        }
     }
 
     Some(m.complete(parser, CLASS_PARAMETER))
@@ -165,26 +194,25 @@ pub(crate) fn delegation_specifiers(parser: &mut Parser<'_>) -> Option<Completed
 fn delegation_specifier(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     let m = parser.start();
 
-    // NB: ty, in this function, matches more things than function | user types,
-    // if this happens to be the case, we should report an error later.
-    // Not in parsing phase
-    if parser.eat(T![suspend]) {
-        if ty(parser).is_none() {
-            parser.error("expected a function type");
-        }
-        return Some(m.complete(parser, DELEGATION_SPECIFIER));
-    }
+    let Some(types) = unclosed_ty(parser) else {
+        m.abandon(parser);
+        return None;
+    };
 
-    if let Some(ty_marker) = ty(parser) {
-        if parser.at(T![by]) {
-            explicit_delegation(parser, ty_marker);
-        } else {
-            constructor_invocation(parser, ty_marker, false);
+    match types {
+        TypeResult::User(cm) | TypeResult::Fn(cm) if parser.at(T![by]) => {
+            explicit_delegation(parser, cm);
         }
-        Some(m.complete(parser, DELEGATION_SPECIFIER))
-    } else {
-        None
+        TypeResult::User(cm) if parser.at(T!['(']) => {
+            let _ = constructor_invocation(parser, cm, false);
+        }
+        TypeResult::User(_) | TypeResult::Fn(_) => {}
+        _ => {
+            // maybe move this error linting phase
+            parser.error("expected delegation specifier");
+        }
     }
+    Some(m.complete(parser, DELEGATION_SPECIFIER))
 }
 
 fn annotated_delegation_specifier(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
@@ -207,8 +235,8 @@ fn explicit_delegation(
         let m = ty_marker.precede(parser);
         parser.eat(T![by]);
 
-        if expression(parser).is_none() {
-            parser.error("expected an expression");
+        if flex_expression(parser, Some(DisAllowed::CallSuffix)).is_none() {
+            parser.error("expected an expression :#6");
         }
         Some(m.complete(parser, EXPLICIT_DELEGATION))
     } else {
@@ -236,13 +264,13 @@ pub(crate) fn constructor_invocation(
     parser: &mut Parser<'_>,
     user_type_marker: CompletedMarker,
     in_fn_type_position: bool,
-) -> Option<CompletedMarker> {
+) -> Result<CompletedMarker, CompletedMarker> {
     if !parser.at(T!['(']) || (in_fn_type_position && parser.at_lparen_after_ws()) {
-        return None;
+        return Err(user_type_marker);
     }
     let m = user_type_marker.precede(parser);
     value_arguments(parser);
-    Some(m.complete(parser, CONSTRUCTOR_INVOCATION))
+    Ok(m.complete(parser, CONSTRUCTOR_INVOCATION))
 }
 
 fn type_parameter(parser: &mut Parser<'_>) -> Option<CompletedMarker> {

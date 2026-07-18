@@ -8,7 +8,7 @@ use std::{
     ops::{Range, RangeInclusive},
 };
 
-use syntax::Token::{self, *};
+use crate::Token::{self, *};
 use unicode_categories::UnicodeCategories;
 
 trait ParseFn<'a>: Fn(Step<'a>) -> Option<Step<'a>> {
@@ -125,12 +125,7 @@ impl<'a> Step<'a> {
     #[cfg(test)]
     fn new(input: &'a str, token: Option<Token>) -> Self {
         match token {
-            Some(token) => Self {
-                pos: 0,
-                res: token,
-                mode: Mode::default(),
-                input,
-            },
+            Some(token) => Self { pos: 0, res: token, mode: Mode::default(), input },
             None => Self {
                 pos: 0,
                 // fine to start with Err here, since we won't use it
@@ -155,15 +150,11 @@ impl<'a> Step<'a> {
     }
 
     fn get_till_end(&self, incr: usize) -> Option<&'a str> {
-        self.pos
-            .checked_add(incr)
-            .and_then(|start| self.input.get(start..))
+        self.pos.checked_add(incr).and_then(|start| self.input.get(start..))
     }
 
     fn get_until(&self, incr: usize) -> Option<&'a str> {
-        self.pos
-            .checked_add(incr)
-            .and_then(|end| self.input.get(self.pos..end))
+        self.pos.checked_add(incr).and_then(|end| self.input.get(self.pos..end))
     }
 
     fn find(&self, incr: usize, pat: impl Fn(char) -> bool) -> usize {
@@ -181,11 +172,9 @@ impl<'a> Step<'a> {
     }
 
     fn prev_char(&self) -> Option<char> {
-        self.pos.checked_sub(1).and_then(|start| {
-            self.input
-                .get(start..self.pos)
-                .and_then(|s| s.chars().next())
-        })
+        self.pos
+            .checked_sub(1)
+            .and_then(|start| self.input.get(start..self.pos).and_then(|s| s.chars().next()))
     }
 }
 
@@ -224,13 +213,7 @@ impl SpannedWithSource<'_> {
 
 impl Display for SpannedWithSource<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{:?}@{:?} => {:?}",
-            self.token(),
-            self.span(),
-            self.substring()
-        )
+        write!(f, "{:?}@{:?} => {:?}", self.token(), self.span(), self.substring())
     }
 }
 
@@ -261,10 +244,7 @@ impl<'a> Lexer<'a> {
     /// alongside their spans
     pub fn spanned(self) -> impl Iterator<Item = TokenInfo> + 'a {
         self.scan(0, |start, step| {
-            let next = TokenInfo {
-                token: step.0,
-                span: (*start)..step.1,
-            };
+            let next = TokenInfo { token: step.0, span: (*start)..step.1 };
             *start = step.1;
             Some(next)
         })
@@ -272,12 +252,11 @@ impl<'a> Lexer<'a> {
 
     pub fn spanned_with_src(self) -> impl Iterator<Item = SpannedWithSource<'a>> + 'a {
         let input = self.step.input;
-        self.spanned()
-            .map(|TokenInfo { token, span }| SpannedWithSource {
-                token,
-                span: span.clone(),
-                substring: input.get(span).unwrap_or_default(),
-            })
+        self.spanned().map(|TokenInfo { token, span }| SpannedWithSource {
+            token,
+            span: span.clone(),
+            substring: input.get(span).unwrap_or_default(),
+        })
     }
 
     fn tokenize_next(&self) -> Option<Step<'a>> {
@@ -371,16 +350,7 @@ fn wrap_with_err<'a>(parser: impl ParseFn<'a>) -> impl ParseFn<'a> {
 }
 
 fn parse_comment(step: Step<'_>) -> Option<Step<'_>> {
-    if let Some(step) = shebang.or(line_comment).or(delimited_comment)(step) {
-        match step.res {
-            DELIMITED_COMMENT | LINE_COMMENT => {
-                opt(opt(hidden.or(nl)).and(tag("@")).with(AT_PRE_WS))(step)
-            }
-            _ => Some(step),
-        }
-    } else {
-        None
-    }
+    shebang.or(line_comment).or(delimited_comment)(step)
 }
 
 fn parse_operator(step: Step<'_>) -> Option<Step<'_>> {
@@ -399,11 +369,10 @@ fn parse_operator(step: Step<'_>) -> Option<Step<'_>> {
 }
 
 fn unicode_char_lit(step: Step<'_>) -> Option<Step<'_>> {
-    tag("\\u").and(repeat::<4>(
-        char_range('0'..='9')
-            .or(char_range('a'..='f'))
-            .or(char_range('A'..='F')),
-    ))(step)
+    tag("\\u")
+        .and(repeat::<4>(char_range('0'..='9').or(char_range('a'..='f')).or(char_range('A'..='F'))))(
+        step,
+    )
 }
 
 fn escaped_identifier(step: Step<'_>) -> Option<Step<'_>> {
@@ -423,9 +392,7 @@ fn handle_operator<'a>(mut step: Step<'a>, token: &Token) -> Option<Step<'a>> {
     match token {
         SINGLE_QUOTE => unicode_char_lit
             .or(escaped_identifier)
-            .or(not(
-                tag("'").or(tag("\u{000A}").or(tag("\u{000D}")).or(tag("\\")))
-            ))
+            .or(not(tag("'").or(tag("\u{000A}").or(tag("\u{000D}")).or(tag("\\")))))
             .and(tag("'"))
             .with(CHARACTER_LITERAL)(step),
         QUOTE_OPEN => {
@@ -437,12 +404,6 @@ fn handle_operator<'a>(mut step: Step<'a>, token: &Token) -> Option<Step<'a>> {
             Some(step)
         }
         EXCL_NO_WS => opt(hidden.with(EXCL_WS))(step),
-        AT_NO_WS => opt(hidden.or(nl).with(AT_POST_WS))(step),
-        QUEST_NO_WS => opt(hidden.or(nl).with(QUEST_WS))(step),
-        NL | WS => {
-            // TODO: handle multiple hidden | nl before
-            opt(tag("@").with(AT_PRE_WS).and(opt(hidden.with(AT_BOTH_WS))))(step)
-        }
         R_CURL => {
             // special case for string interpolation:
             // whenever we see a }, we pop lexer mode queue
@@ -454,11 +415,7 @@ fn handle_operator<'a>(mut step: Step<'a>, token: &Token) -> Option<Step<'a>> {
 }
 
 fn parse_keyword(step: Step<'_>) -> Option<Step<'_>> {
-    if step
-        .prev_char()
-        .map(|ch| ch.can_be_in_ident())
-        .unwrap_or_default()
-    {
+    if step.prev_char().map(|ch| ch.can_be_in_ident()).unwrap_or_default() {
         return None;
     }
 
@@ -497,16 +454,7 @@ fn handle_keyword<'a>(step: Step<'a>, token: &Token) -> Option<Step<'a>> {
 }
 
 fn ws(step: Step<'_>) -> Option<Step<'_>> {
-    tag("\u{0020}")
-        .or(tag("\u{0009}"))
-        .or(tag("\u{000C}"))
-        .with(WS)(step)
-}
-
-fn nl(step: Step<'_>) -> Option<Step<'_>> {
-    tag("\u{000A}")
-        .or(tag("\u{000D}").and(opt(tag("\u{000A}"))))
-        .with(WS)(step)
+    tag("\u{0020}").or(tag("\u{0009}")).or(tag("\u{000C}")).with(WHITESPACE)(step)
 }
 
 fn hidden(step: Step<'_>) -> Option<Step<'_>> {
@@ -514,15 +462,11 @@ fn hidden(step: Step<'_>) -> Option<Step<'_>> {
 }
 
 fn shebang(step: Step<'_>) -> Option<Step<'_>> {
-    tag("#!")
-        .and(many0(not(tag("\u{000A}").or(tag("\u{000D}")))))
-        .with(SHEBANG_LINE_TOKEN)(step)
+    tag("#!").and(many0(not(tag("\u{000A}").or(tag("\u{000D}"))))).with(SHEBANG_LINE)(step)
 }
 
 fn line_comment(step: Step<'_>) -> Option<Step<'_>> {
-    tag("//")
-        .and(many0(not(tag("\u{000A}").or(tag("\u{000D}")))))
-        .with(LINE_COMMENT)(step)
+    tag("//").and(many0(not(tag("\u{000A}").or(tag("\u{000D}"))))).with(LINE_COMMENT)(step)
 }
 
 fn delimited_comment(step: Step<'_>) -> Option<Step<'_>> {
@@ -535,25 +479,23 @@ fn delimited_comment(step: Step<'_>) -> Option<Step<'_>> {
 #[inline]
 fn or<'a>(p1: impl ParseFn<'a>, p2: impl ParseFn<'a>) -> impl ParseFn<'a> {
     move |step| {
-        if let Some(step) = p1(step.clone()) {
-            Some(step)
-        } else {
-            p2(step)
-        }
+        if let Some(step) = p1(step.clone()) { Some(step) } else { p2(step) }
     }
 }
 
+/// This matches when a parser fails, and returns the original step, but advances the position by 1
 #[inline]
 fn not<'a>(p: impl ParseFn<'a>) -> impl ParseFn<'a> {
+    not_ad(p, 1)
+}
+
+#[inline]
+fn not_ad<'a>(p: impl ParseFn<'a>, advance_by: usize) -> impl ParseFn<'a> {
     move |step| {
         if step.pos >= step.input.len() {
             return None;
         }
-        if p(step.clone()).is_some() {
-            None
-        } else {
-            Some(step.advance(1))
-        }
+        if p(step.clone()).is_some() { None } else { Some(step.advance(advance_by)) }
     }
 }
 
@@ -571,17 +513,12 @@ fn bin_or_hex_lit(step: Step<'_>) -> Option<Step<'_>> {
                 return None;
             }
             if entry.ends_with('_') {
-                return index
-                    .checked_sub(1)
-                    .map(|incr| step.advance_with(incr, BIN_LITERAL));
+                return index.checked_sub(1).map(|incr| step.advance_with(incr, BIN_LITERAL));
             }
             Some(step.advance_with(index, BIN_LITERAL))
         }
         Some("0x" | "0X") => {
-            let index = step.find(
-                2,
-                |ch| !matches!(ch, '0'..='9' | 'a'..='f' | 'A'..='F' | '_'),
-            );
+            let index = step.find(2, |ch| !matches!(ch, '0'..='9' | 'a'..='f' | 'A'..='F' | '_'));
 
             let entry = step
                 .pos
@@ -593,9 +530,7 @@ fn bin_or_hex_lit(step: Step<'_>) -> Option<Step<'_>> {
                 return None;
             }
             if entry.ends_with('_') {
-                return index
-                    .checked_sub(1)
-                    .map(|incr| step.advance_with(incr, HEX_LITERAL));
+                return index.checked_sub(1).map(|incr| step.advance_with(incr, HEX_LITERAL));
             }
             Some(step.advance_with(index, HEX_LITERAL))
         }
@@ -611,9 +546,7 @@ fn int_lit(step: Step<'_>) -> Option<Step<'_>> {
             let entry = &step.get_until(index)?;
 
             if entry.ends_with('_') {
-                return index
-                    .checked_sub(1)
-                    .map(|incr| step.advance_with(incr, INTEGER_LITERAL));
+                return index.checked_sub(1).map(|incr| step.advance_with(incr, INTEGER_LITERAL));
             }
 
             if entry.contains('_') && !('1'..'9').contains(&fc) {
@@ -638,9 +571,7 @@ fn dec_digits(step: Step<'_>) -> Option<Step<'_>> {
             let entry = &step.get_until(index)?;
 
             if entry.ends_with('_') {
-                return index
-                    .checked_sub(1)
-                    .map(|incr| step.advance_with(incr, INTEGER_LITERAL));
+                return index.checked_sub(1).map(|incr| step.advance_with(incr, INTEGER_LITERAL));
             }
 
             Some(step.advance_with(index, INTEGER_LITERAL))
@@ -652,11 +583,7 @@ fn dec_digits(step: Step<'_>) -> Option<Step<'_>> {
 #[inline]
 fn tag<'a>(pattern: &'static str) -> impl ParseFn<'a> {
     move |step| {
-        if step
-            .get_until(pattern.len())
-            .map(|t| t == pattern)
-            .unwrap_or_default()
-        {
+        if step.get_until(pattern.len()).map(|t| t == pattern).unwrap_or_default() {
             Some(step.advance_with(pattern.len(), IDENTIFIER_TOKEN))
         } else {
             None
@@ -688,11 +615,7 @@ fn many<'a>(p: impl ParseFn<'a>) -> impl ParseFn<'a> {
                 break;
             }
         }
-        if start == next_step.pos {
-            None
-        } else {
-            Some(next_step)
-        }
+        if start == next_step.pos { None } else { Some(next_step) }
     }
 }
 
@@ -725,18 +648,12 @@ fn repeat<'a, const N: usize>(p1: impl ParseFn<'a>) -> impl ParseFn<'a> {
 fn long_lit(step: Step<'_>) -> Option<Step<'_>> {
     or(bin_or_hex_lit, int_lit).and(or(
         tag("l").or(tag("L")).with(LONG_LITERAL),
-        tag("u")
-            .or(tag("U"))
-            .and(opt(or(tag("l"), tag("L"))))
-            .with(UNSIGNED_LITERAL),
+        tag("u").or(tag("U")).and(opt(or(tag("l"), tag("L")))).with(UNSIGNED_LITERAL),
     ))(step)
 }
 
 fn exponent_lit(step: Step<'_>) -> Option<Step<'_>> {
-    and(
-        and(tag("e").or(tag("E")), opt(or(tag("+"), tag("-")))),
-        dec_digits,
-    )(step)
+    and(and(tag("e").or(tag("E")), opt(or(tag("+"), tag("-")))), dec_digits)(step)
 }
 
 fn letter(step: Step<'_>) -> Option<Step<'_>> {
@@ -744,33 +661,24 @@ fn letter(step: Step<'_>) -> Option<Step<'_>> {
 }
 
 fn quoted_symbol(step: Step<'_>) -> Option<Step<'_>> {
-    tag("`")
-        .and(many0(not(tag("\u{000A}").or(tag("\u{000D}").or(tag("`"))))))
-        .and(tag("`"))(step)
+    tag("`").and(many0(not(tag("\u{000A}").or(tag("\u{000D}").or(tag("`")))))).and(tag("`"))(step)
 }
 
 fn parse_identifier(step: Step<'_>) -> Option<Step<'_>> {
-    quoted_symbol
-        .or(letter.and(many0(when(|ch| ch.can_be_in_ident()))))
-        .with(IDENTIFIER_TOKEN)(step)
+    quoted_symbol.or(letter.and(many0(when(|ch| ch.can_be_in_ident())))).with(IDENTIFIER_TOKEN)(
+        step,
+    )
 }
 
 fn double_lit(step: Step<'_>) -> Option<Step<'_>> {
     or(
-        and(
-            and(opt(dec_digits), and(tag("."), dec_digits)),
-            opt(exponent_lit),
-        ),
+        and(and(opt(dec_digits), and(tag("."), dec_digits)), opt(exponent_lit)),
         and(dec_digits, exponent_lit),
     )(step)
 }
 
 fn real_lit(step: Step<'_>) -> Option<Step<'_>> {
-    or(
-        and(or(double_lit, dec_digits), or(tag("f"), tag("F"))),
-        double_lit,
-    )
-    .with(REAL_LITERAL)(step)
+    or(and(or(double_lit, dec_digits), or(tag("f"), tag("F"))), double_lit).with(REAL_LITERAL)(step)
 }
 
 fn parse_literals(step: Step<'_>) -> Option<Step<'_>> {
@@ -783,11 +691,7 @@ where
     F: ParseFn<'a>,
 {
     move |step| {
-        if let Some(step) = p(step.clone()) {
-            Some(step)
-        } else {
-            Some(step)
-        }
+        if let Some(step) = p(step.clone()) { Some(step) } else { Some(step) }
     }
 }
 
@@ -798,11 +702,7 @@ where
     F2: ParseFn<'a>,
 {
     move |step| {
-        if let Some(step1) = p1(step) {
-            p2(step1)
-        } else {
-            None
-        }
+        if let Some(step1) = p1(step) { p2(step1) } else { None }
     }
 }
 
@@ -829,15 +729,11 @@ fn str_expr_start(mut step: Step<'_>) -> Option<Step<'_>> {
 }
 
 fn line_str_text(step: Step<'_>) -> Option<Step<'_>> {
-    many(not(tag("\\").or(tag("\"")).or(tag("$"))))
-        .or(tag("$"))
-        .with(LINE_STR_TEXT)(step)
+    many(not(tag("\\").or(tag("\"")).or(tag("$")))).or(tag("$")).with(LINE_STR_TEXT)(step)
 }
 
 fn multi_line_str_text(step: Step<'_>) -> Option<Step<'_>> {
-    many(not(tag("\"").or(tag("$"))))
-        .or(tag("$"))
-        .with(MULTI_LINE_STR_TEXT)(step)
+    many(not(tag("\"").or(tag("$")))).or(tag("$")).with(MULTI_LINE_STR_TEXT)(step)
 }
 
 fn quote_close(step: Step<'_>) -> Option<Step<'_>> {
@@ -858,16 +754,17 @@ fn quote_open(step: Step<'_>) -> Option<Step<'_>> {
 
 fn multi_line_string_quote(step: Step<'_>) -> Option<Step<'_>> {
     let origin = step.clone();
-    if let Some(step) = tag(r#"""""#).and(many(tag("\"")))(step) {
-        let (det, incr) = step
-            .pos
-            .checked_sub(origin.pos)
-            .and_then(|det| det.checked_sub(3).map(|incr| (det, incr)))?;
-        if det >= 6 {
-            return Some(origin.advance_with(incr, MULTI_LINE_STRING_QUOTE));
-        }
-    }
-    None
+    tag(r#"""""#)
+        .and(many(tag("\"")))
+        .and(|step| {
+            let (det, incr) = step
+                .pos
+                .checked_sub(origin.pos)
+                .and_then(|det| det.checked_sub(3).map(|incr| (det, incr)))?;
+            if det >= 6 { Some(origin.advance_with(incr, MULTI_LINE_STRING_QUOTE)) } else { None }
+        })
+        .or(tag("\"").and(not_ad(tag(r#""""#), 0)))
+        .with(MULTI_LINE_STRING_QUOTE)(step)
 }
 
 fn triple_quote_close(step: Step<'_>) -> Option<Step<'_>> {
@@ -880,13 +777,28 @@ fn triple_quote_close(step: Step<'_>) -> Option<Step<'_>> {
 }
 
 fn line_str_escaped_char(step: Step<'_>) -> Option<Step<'_>> {
-    escaped_identifier.or(unicode_char_lit)(step)
+    escaped_identifier.or(unicode_char_lit).with(LINE_STR_ESCAPED_CHAR)(step)
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
     use crate::{assert_failure, assert_success};
+
+    #[test]
+    fn line_str_escaped_char_test() {
+        assert_success!(line_str_escaped_char, "\\n", 2, LINE_STR_ESCAPED_CHAR);
+        assert_success!(line_str_escaped_char, "\\t", 2, LINE_STR_ESCAPED_CHAR);
+        assert_success!(line_str_escaped_char, "\\\\", 2, LINE_STR_ESCAPED_CHAR);
+        assert_success!(line_str_escaped_char, "\\'", 2, LINE_STR_ESCAPED_CHAR);
+        assert_success!(line_str_escaped_char, "\\\"", 2, LINE_STR_ESCAPED_CHAR);
+        assert_success!(line_str_escaped_char, "\\$", 2, LINE_STR_ESCAPED_CHAR);
+        assert_success!(line_str_escaped_char, "\\r", 2, LINE_STR_ESCAPED_CHAR);
+        assert_success!(line_str_escaped_char, "\\b", 2, LINE_STR_ESCAPED_CHAR);
+
+        assert_failure!(line_str_escaped_char, "\\a");
+        assert_failure!(line_str_escaped_char, "\\1");
+    }
 
     #[test]
     fn delimited_comment_test() {
@@ -913,16 +825,11 @@ mod test {
 
     #[test]
     fn shebang_test() {
-        assert_success!(shebang, "#!", 2, SHEBANG_LINE_TOKEN);
-        assert_success!(shebang, "#!\n", 2, SHEBANG_LINE_TOKEN);
-        assert_success!(shebang, "#! sh echo", 10, SHEBANG_LINE_TOKEN);
-        assert_success!(shebang, "#! comment // nested", 20, SHEBANG_LINE_TOKEN);
-        assert_success!(
-            shebang,
-            "#! comment // nested #! deep /* more */",
-            39,
-            SHEBANG_LINE_TOKEN
-        );
+        assert_success!(shebang, "#!", 2, SHEBANG_LINE);
+        assert_success!(shebang, "#!\n", 2, SHEBANG_LINE);
+        assert_success!(shebang, "#! sh echo", 10, SHEBANG_LINE);
+        assert_success!(shebang, "#! comment // nested", 20, SHEBANG_LINE);
+        assert_success!(shebang, "#! comment // nested #! deep /* more */", 39, SHEBANG_LINE);
 
         assert_failure!(shebang, "// comment");
         assert_failure!(shebang, "/* comment */");
@@ -934,12 +841,7 @@ mod test {
         assert_success!(line_comment, "//\n", 2, LINE_COMMENT);
         assert_success!(line_comment, "// line comment", 15, LINE_COMMENT);
         assert_success!(line_comment, "// comment // nested", 20, LINE_COMMENT);
-        assert_success!(
-            line_comment,
-            "// comment // nested /* delimited */",
-            36,
-            LINE_COMMENT
-        );
+        assert_success!(line_comment, "// comment // nested /* delimited */", 36, LINE_COMMENT);
 
         assert_failure!(line_comment, "/* comment");
         assert_failure!(line_comment, "#! shebang");

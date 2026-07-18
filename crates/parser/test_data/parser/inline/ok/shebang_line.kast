@@ -1,0 +1,4 @@
+KOTLIN_FILE
+  SHEBANG_LINE
+    SHEBANG "#!/usr/bin/env kotlinc"
+  NEWLINE "\n"

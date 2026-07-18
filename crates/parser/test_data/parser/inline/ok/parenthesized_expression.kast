@@ -1,0 +1,124 @@
+KOTLIN_FILE
+  PROPERTY_DECLARATION
+    VAL_KW "val"
+    WHITESPACE " "
+    VARIABLE_DECLARATION
+      SIMPLE_IDENTIFIER
+        IDENT "a"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    EXPRESSION
+      MULTIPLICATIVE_EXPRESSION
+        POSTFIX_UNARY_EXPRESSION
+          PARENTHESIZED_EXPRESSION
+            L_PAREN "("
+            EXPRESSION
+              ADDITIVE_EXPRESSION
+                POSTFIX_UNARY_EXPRESSION
+                  LITERAL_CONSTANT
+                    INT "1"
+                WHITESPACE " "
+                ADDITIVE_OPERATOR
+                  ADD "+"
+                WHITESPACE " "
+                POSTFIX_UNARY_EXPRESSION
+                  LITERAL_CONSTANT
+                    INT "2"
+            R_PAREN ")"
+        WHITESPACE " "
+        MULTIPLICATIVE_OPERATOR
+          MULT "*"
+        WHITESPACE " "
+        POSTFIX_UNARY_EXPRESSION
+          LITERAL_CONSTANT
+            INT "3"
+  NEWLINE "\n"
+  PROPERTY_DECLARATION
+    VAL_KW "val"
+    WHITESPACE " "
+    VARIABLE_DECLARATION
+      SIMPLE_IDENTIFIER
+        IDENT "b"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    EXPRESSION
+      POSTFIX_UNARY_EXPRESSION
+        PARENTHESIZED_EXPRESSION
+          L_PAREN "("
+          EXPRESSION
+            POSTFIX_UNARY_EXPRESSION
+              SIMPLE_IDENTIFIER
+                IDENT "listOf"
+              CALL_SUFFIX
+                VALUE_ARGUMENTS
+                  L_PAREN "("
+                  VALUE_ARGUMENT
+                    EXPRESSION
+                      POSTFIX_UNARY_EXPRESSION
+                        LITERAL_CONSTANT
+                          INT "1"
+                  COMMA ","
+                  WHITESPACE " "
+                  VALUE_ARGUMENT
+                    EXPRESSION
+                      POSTFIX_UNARY_EXPRESSION
+                        LITERAL_CONSTANT
+                          INT "2"
+                  COMMA ","
+                  WHITESPACE " "
+                  VALUE_ARGUMENT
+                    EXPRESSION
+                      POSTFIX_UNARY_EXPRESSION
+                        LITERAL_CONSTANT
+                          INT "3"
+                  R_PAREN ")"
+          R_PAREN ")"
+        NAVIGATION_SUFFIX
+          MEMBER_ACCESS_OPERATOR
+            DOT "."
+          SIMPLE_IDENTIFIER
+            IDENT "size"
+  NEWLINE "\n"
+  PROPERTY_DECLARATION
+    VAL_KW "val"
+    WHITESPACE " "
+    VARIABLE_DECLARATION
+      SIMPLE_IDENTIFIER
+        IDENT "c"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    EXPRESSION
+      POSTFIX_UNARY_EXPRESSION
+        PARENTHESIZED_EXPRESSION
+          L_PAREN "("
+          EXPRESSION
+            POSTFIX_UNARY_EXPRESSION
+              LINE_STRING_LITERAL
+                QUOTE "\""
+                LINE_STRING_CONTENT
+                  TEXT "hello "
+                LINE_STRING_EXPRESSION
+                  STR_EXPR_START "${"
+                  EXPRESSION
+                    POSTFIX_UNARY_EXPRESSION
+                      SIMPLE_IDENTIFIER
+                        IDENT "world"
+                      NAVIGATION_SUFFIX
+                        MEMBER_ACCESS_OPERATOR
+                          DOT "."
+                        SIMPLE_IDENTIFIER
+                          IDENT "length"
+                  R_CURL "}"
+                LINE_STRING_CONTENT
+                  TEXT "!"
+                QUOTE "\""
+          R_PAREN ")"
+        NAVIGATION_SUFFIX
+          MEMBER_ACCESS_OPERATOR
+            DOT "."
+          SIMPLE_IDENTIFIER
+            IDENT "length"
+  NEWLINE "\n"

@@ -30,11 +30,7 @@ impl<'a> ClasspathResolver<'a> {
             None => Ok(vec![]),
         };
 
-        ClasspathResolver {
-            workspace_type,
-            workspace_root,
-            classpath: classpath.unwrap_or(vec![]),
-        }
+        ClasspathResolver { workspace_type, workspace_root, classpath: classpath.unwrap_or(vec![]) }
     }
 
     pub fn new(workspace_root: &Path) -> ClasspathResolver<'_> {
@@ -62,9 +58,8 @@ fn resolve_maven_classpath(workspace_root: &Path) -> Result<Vec<PathBuf>> {
     let output = run_shell(maven_command(), &args, workspace_root)?;
 
     let output_buffer = output.lines().collect::<Vec<&str>>();
-    let classpath_header = output_buffer
-        .iter()
-        .position(|line| line.starts_with("[INFO] Dependencies classpath:"));
+    let classpath_header =
+        output_buffer.iter().position(|line| line.starts_with("[INFO] Dependencies classpath:"));
 
     if let Some(index) = classpath_header {
         // The classpath is on the next line
@@ -122,11 +117,7 @@ enum Error {
 }
 
 fn run_shell(command: &str, args: &[&str], cwd: &Path) -> Result<String> {
-    let output = Command::new(command)
-        .args(args)
-        .current_dir(cwd)
-        .output()
-        .map_err(Error::Io)?;
+    let output = Command::new(command).args(args).current_dir(cwd).output().map_err(Error::Io)?;
 
     if !output.status.success() {
         return Err(Error::CommandFailed);
@@ -136,11 +127,7 @@ fn run_shell(command: &str, args: &[&str], cwd: &Path) -> Result<String> {
 }
 
 fn gradle_command() -> &'static str {
-    if cfg!(windows) {
-        "gradlew.bat"
-    } else {
-        "./gradlew"
-    }
+    if cfg!(windows) { "gradlew.bat" } else { "./gradlew" }
 }
 
 fn maven_command() -> &'static str {

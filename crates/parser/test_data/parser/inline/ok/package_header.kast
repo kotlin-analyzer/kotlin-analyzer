@@ -1,0 +1,11 @@
+KOTLIN_FILE
+  PACKAGE_HEADER
+    PACKAGE_KW "package"
+    WHITESPACE " "
+    IDENTIFIER
+      SIMPLE_IDENTIFIER
+        IDENT "foo"
+      DOT "."
+      SIMPLE_IDENTIFIER
+        IDENT "bar"
+  NEWLINE "\n"

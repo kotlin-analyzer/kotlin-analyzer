@@ -1,81 +1,78 @@
-use syntax::{SyntaxKind::*, T};
+use crate::SyntaxKind::*;
+use crate::T;
 
 use super::annotations::annotation;
 use super::class_members::{multi_variable_declaration, variable_declaration};
 use super::expressions::expression;
 use super::general::declaration;
 use super::identifiers::{is_simple_identifier, simple_identifier};
-use super::modifiers::modifiers;
-use crate::ra::{CompletedMarker, Parser};
+use crate::{CompletedMarker, Parser};
 
 pub(crate) fn semi(parser: &mut Parser<'_>) -> bool {
     if parser.at(T![;]) {
-        let m = parser.start();
         parser.eat(T![;]);
-        m.complete(parser, SEMI);
         true
     } else {
-        parser.has_ws_before() // TODO: check for newlines but not for other whitespace
+        parser.has_nl_before()
     }
 }
 
 pub(crate) fn semis(parser: &mut Parser<'_>) -> bool {
-    let m = parser.start();
     let mut found = false;
     while parser.eat(T![;]) {
         found = true;
     }
-    if found {
-        m.complete(parser, SEMIS);
-        true
-    } else {
-        m.abandon(parser);
-        parser.has_ws_before() // TODO: check for newlines but not for other whitespace
-    }
+    if found { true } else { parser.has_nl_before() }
 }
 
-pub(crate) fn statements(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+pub(super) fn statements(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     if let Some(first) = statement(parser) {
         let m = first.precede(parser);
-        loop {
-            if !semis(parser) {
-                break;
-            }
-            if statement(parser).is_none() {
-                break;
-            }
-        }
-        semis(parser);
+        while statement(parser).is_some() && semis(parser) {}
         Some(m.complete(parser, STATEMENTS))
     } else {
         None
     }
 }
 
-pub(crate) fn statement(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    let m = parser.start();
-    while label(parser).or_else(|| annotation(parser)).is_some() {}
+pub(super) fn statement(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    if parser.has_dangling_parens() {
+        return assignment::assignment_or_expression(parser);
+    }
 
-    if loop_statement(parser)
-        .or_else(|| {
-            let modifiers = modifiers(parser);
-            declaration(parser, modifiers)
+    let m = parser.start_with_annotation();
+    let mut has_label = false;
+
+    while label(parser)
+        .inspect(|_| {
+            has_label = true;
         })
-        .or_else(|| assignment::assignment_or_expression(parser))
-        .is_none()
-    {
-        m.abandon(parser);
-        None
+        .or_else(|| annotation(parser))
+        .is_some()
+    {}
+
+    if has_label {
+        m.forget(parser);
     } else {
-        Some(m.complete(parser, STATEMENT))
+        // This is hack to let the downstream parsers to pick up the annotations.
+        // We need to capture the annotations as dangling if there is no label, otherwise we will not be able to attach them to the statement.
+        m.abandon(parser);
+    }
+
+    if let Some(cm) = loop_statement(parser) {
+        Some(cm.precede(parser).complete(parser, STATEMENT))
+    } else {
+        match declaration(parser, true) {
+            // NB: we are not capturing declarations as statements
+            Some(cm) => Some(cm),
+            None => assignment::assignment_or_expression(parser)
+                .map(|cm| cm.precede(parser).complete(parser, STATEMENT)),
+        }
     }
 }
 
 fn loop_statement(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    for_statement(parser)
-        .or_else(|| while_statement(parser))
-        .or_else(|| do_while_statement(parser))
-        .map(|cm| cm.precede(parser).complete(parser, LOOP_STATEMENT))
+    for_statement(parser).or_else(|| while_statement(parser)).or_else(|| do_while_statement(parser))
 }
 
 fn for_statement(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
@@ -90,10 +87,7 @@ fn for_statement(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
 
         while annotation(parser).is_some() {}
         let mut has_variable_declaration = true;
-        if variable_declaration(parser)
-            .or_else(|| multi_variable_declaration(parser))
-            .is_none()
-        {
+        if variable_declaration(parser).or_else(|| multi_variable_declaration(parser)).is_none() {
             has_variable_declaration = false;
             parser.error("expected variable declaration");
         }
@@ -180,10 +174,10 @@ fn do_while_statement(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
 }
 
 pub(crate) fn label(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    if is_simple_identifier(parser) && (parser.nth_at(1, T![@]) || parser.nth_at(1, AT_POST_WS)) {
+    if is_simple_identifier(parser) && parser.nth_at(1, T![@]) {
         let m = parser.start();
         simple_identifier(parser);
-        parser.bump_any(); // either T![@] or AT_POST_WS
+        parser.bump_any();
         Some(m.complete(parser, LABEL))
     } else {
         None
@@ -191,9 +185,7 @@ pub(crate) fn label(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
 }
 
 pub(crate) fn control_structure_body(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    block(parser)
-        .or_else(|| statements(parser))
-        .map(|cm| cm.precede(parser).complete(parser, CONTROL_STRUCTURE_BODY))
+    block(parser).or_else(|| statements(parser))
 }
 
 pub(crate) fn block(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
@@ -201,7 +193,7 @@ pub(crate) fn block(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
         let m = parser.start();
         parser.eat(T!['{']);
 
-        while statements(parser).is_some() {}
+        statements(parser);
 
         if !parser.eat(T!['}']) {
             parser.error("expected '}'");
@@ -212,6 +204,7 @@ pub(crate) fn block(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     }
 }
 
+// REFACTOR: use dangling strategy
 mod assignment {
     use crate::grammar::expressions::{
         AffixedExpression, Expression, assignable_suffix, assignment_and_operator,
@@ -236,11 +229,7 @@ mod assignment {
     }
 
     pub(super) fn assignment_or_expression(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-        let m = parser.start();
-        let Some(left) = entry(parser) else {
-            m.abandon(parser);
-            return None;
-        };
+        let left = entry(parser)?;
 
         match left {
             AssignmentFragment::DirectlyAssignableExpression(cm) => {
@@ -265,46 +254,35 @@ mod assignment {
     }
 
     fn entry(p: &mut Parser<'_>) -> Option<AssignmentFragment> {
-        if p.at(T!['(']) {
+        if p.at(T!['(']) || p.has_dangling_parens() {
             return parenthesized(p);
         }
-        let m = p.start();
-        let Some(expr) = expression(p) else {
-            m.abandon(p);
-            return None;
-        };
+
+        let expr = expression(p)?;
 
         match expr {
-            // The interesting thing is that postfix expr can also be prefic expr
-            Expression::Affixed(AffixedExpression::Prefix(_) | AffixedExpression::Postfix(_))
+            // The interesting thing is that postfix expr can also be prefix expr
+            Expression::Affixed(AffixedExpression::Prefix(cm) | AffixedExpression::Postfix(cm))
                 if assignment_and_operator::is(p) =>
             {
-                Some(AssignmentFragment::AssignableExpression(
-                    m.complete(p, ASSIGNABLE_EXPRESSION),
-                ))
+                Some(AssignmentFragment::AssignableExpression(cm))
             }
-            Expression::Affixed(AffixedExpression::Postfix(_))
+            Expression::Affixed(AffixedExpression::Postfix(cm))
                 if assignable_suffix(p).is_some() || p.at(T![=]) =>
             {
                 Some(AssignmentFragment::DirectlyAssignableExpression(
-                    m.complete(p, DIRECTLY_ASSIGNABLE_EXPRESSION),
+                    cm.precede(p).complete(p, DIRECTLY_ASSIGNABLE_EXPRESSION),
                 ))
             }
-            e => {
-                m.abandon(p);
-                Some(AssignmentFragment::UnAssignable(e.marker()))
-            }
+            e => Some(AssignmentFragment::UnAssignable(e.marker())),
         }
     }
 
     fn parenthesized(p: &mut Parser<'_>) -> Option<AssignmentFragment> {
-        if p.at(T!['(']) {
-            let m = p.start();
-            p.eat(T!['(']);
+        if p.at(T!['(']) || p.has_dangling_parens() {
+            let m = p.start_with_paren();
 
             let Some(frag) = entry(p) else {
-                p.error("expected an expression");
-                p.eat(T![')']); // try to eat the closing paren to avoid cascading errors
                 m.abandon(p);
                 return None;
             };
@@ -314,23 +292,18 @@ mod assignment {
             }
 
             match frag {
-                AssignmentFragment::DirectlyAssignableExpression(cm) => {
+                AssignmentFragment::DirectlyAssignableExpression(_) => {
                     Some(AssignmentFragment::DirectlyAssignableExpression(
-                        cm.precede(p)
-                            .complete(p, PARENTHESIZED_DIRECTLY_ASSIGNABLE_EXPRESSION),
+                        m.complete(p, PARENTHESIZED_DIRECTLY_ASSIGNABLE_EXPRESSION),
                     ))
                 }
-                AssignmentFragment::AssignableExpression(cm) => {
+                AssignmentFragment::AssignableExpression(_) => {
                     Some(AssignmentFragment::AssignableExpression(
-                        cm.precede(p)
-                            .complete(p, PARENTHESIZED_ASSIGNABLE_EXPRESSION),
+                        m.complete(p, PARENTHESIZED_ASSIGNABLE_EXPRESSION),
                     ))
                 }
-                AssignmentFragment::UnAssignable(cm) => Some(AssignmentFragment::UnAssignable(
-                    cm.precede(p)
-                        .complete(p, PARENTHESIZED_EXPRESSION)
-                        .precede(p)
-                        .complete(p, EXPRESSION),
+                AssignmentFragment::UnAssignable(_) => Some(AssignmentFragment::UnAssignable(
+                    m.complete(p, PARENTHESIZED_EXPRESSION).precede(p).complete(p, EXPRESSION),
                 )),
             }
         } else {

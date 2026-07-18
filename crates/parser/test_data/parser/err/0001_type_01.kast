@@ -1,255 +1,255 @@
-TYPE
-  TYPE_MODIFIERS
-    TYPE_MODIFIER
-      ANNOTATION
-        SINGLE_ANNOTATION
-          AT_NO_WS "@"
-          UNESCAPED_ANNOTATION
+KOTLIN_FILE
+  TYPE_ALIAS
+    TYPEALIAS_KW "typealias"
+    WHITESPACE " "
+    SIMPLE_IDENTIFIER
+      IDENT "FooType"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    TYPE
+      TYPE_MODIFIERS
+        TYPE_MODIFIER
+          SINGLE_ANNOTATION
+            AT "@"
             USER_TYPE
               SIMPLE_USER_TYPE
                 SIMPLE_IDENTIFIER
-                  IDENTIFIER_TOKEN "Decorated"
-  WS " "
-  NL "\n"
-  FUNCTION_TYPE
-    RECEIVER_TYPE
-      TYPE_REFERENCE
-        USER_TYPE
-          SIMPLE_USER_TYPE
-            SIMPLE_IDENTIFIER
-              IDENTIFIER_TOKEN "Foo"
-    DOT "."
-    FUNCTION_TYPE_PARAMETERS
-      L_PAREN "("
-      NL "\n"
-      WS " "
-      WS " "
-      WS " "
-      TYPE
-        TYPE_MODIFIERS
-          TYPE_MODIFIER
-            ANNOTATION
-              SINGLE_ANNOTATION
-                AT_PRE_WS " @"
-                UNESCAPED_ANNOTATION
+                  IDENT "Decorated"
+      WHITESPACE " "
+      NEWLINE "\n"
+      FUNCTION_TYPE
+        RECEIVER_TYPE
+          TYPE_REFERENCE
+            USER_TYPE
+              SIMPLE_USER_TYPE
+                SIMPLE_IDENTIFIER
+                  IDENT "Foo"
+        DOT "."
+        FUNCTION_TYPE_PARAMETERS
+          L_PAREN "("
+          NEWLINE "\n"
+          WHITESPACE " "
+          WHITESPACE " "
+          WHITESPACE " "
+          WHITESPACE " "
+          TYPE
+            TYPE_MODIFIERS
+              TYPE_MODIFIER
+                SINGLE_ANNOTATION
+                  AT "@"
                   USER_TYPE
                     SIMPLE_USER_TYPE
                       SIMPLE_IDENTIFIER
-                        IDENTIFIER_TOKEN "Serializable"
-        WS " "
-        TYPE_REFERENCE
-          USER_TYPE
-            SIMPLE_USER_TYPE
-              SIMPLE_IDENTIFIER
-                IDENTIFIER_TOKEN "List"
-              TYPE_ARGUMENTS
-                L_ANGLE "<"
-                TYPE_PROJECTION
-                  TYPE_PROJECTION_MODIFIERS
-                    TYPE_PROJECTION_MODIFIER
-                      VARIANCE_MODIFIER
-                        OUT "out"
-                  WS " "
-                  TYPE
-                    NULLABLE_TYPE
-                      TYPE_REFERENCE
-                        USER_TYPE
-                          SIMPLE_USER_TYPE
-                            SIMPLE_IDENTIFIER
-                              IDENTIFIER_TOKEN "Bar"
-                      QUEST
-                        QUEST_NO_WS "?"
-                COMMA ","
-                WS " "
-                NL "\n"
-                WS " "
-                WS " "
-                WS " "
-                TYPE_PROJECTION
-                  TYPE_PROJECTION_MODIFIERS
-                    TYPE_PROJECTION_MODIFIER
-                      ANNOTATION
-                        SINGLE_ANNOTATION
-                          AT_PRE_WS " @"
-                          UNESCAPED_ANNOTATION
+                        IDENT "Serializable"
+            WHITESPACE " "
+            TYPE_REFERENCE
+              USER_TYPE
+                SIMPLE_USER_TYPE
+                  SIMPLE_IDENTIFIER
+                    IDENT "List"
+                  TYPE_ARGUMENTS
+                    L_ANGLE "<"
+                    TYPE_PROJECTION
+                      TYPE_PROJECTION_MODIFIERS
+                        VARIANCE_MODIFIER
+                          OUT_KW "out"
+                      WHITESPACE " "
+                      TYPE
+                        NULLABLE_TYPE
+                          TYPE_REFERENCE
                             USER_TYPE
                               SIMPLE_USER_TYPE
                                 SIMPLE_IDENTIFIER
-                                  IDENTIFIER_TOKEN "NonNllable"
-                  WS " "
-                  TYPE
-                    FUNCTION_TYPE
-                      FUNCTION_TYPE_PARAMETERS
-                        L_PAREN "("
-                        R_PAREN ")"
-                      WS " "
-                      ARROW "->"
-                      WS " "
+                                  IDENT "Bar"
+                          QUEST
+                            QUEST "?"
+                    COMMA ","
+                    WHITESPACE " "
+                    NEWLINE "\n"
+                    WHITESPACE " "
+                    WHITESPACE " "
+                    WHITESPACE " "
+                    WHITESPACE " "
+                    TYPE_PROJECTION
+                      TYPE_PROJECTION_MODIFIERS
+                        SINGLE_ANNOTATION
+                          AT "@"
+                          USER_TYPE
+                            SIMPLE_USER_TYPE
+                              SIMPLE_IDENTIFIER
+                                IDENT "NonNllable"
+                      WHITESPACE " "
+                      TYPE
+                        FUNCTION_TYPE
+                          FUNCTION_TYPE_PARAMETERS
+                            L_PAREN "("
+                            R_PAREN ")"
+                          WHITESPACE " "
+                          ARROW "->"
+                          WHITESPACE " "
+                          TYPE
+                            TYPE_REFERENCE
+                              USER_TYPE
+                                SIMPLE_USER_TYPE
+                                  SIMPLE_IDENTIFIER
+                                    IDENT "Baz"
+                    COMMA ","
+                    WHITESPACE " "
+                    NEWLINE "\n"
+                    WHITESPACE " "
+                    WHITESPACE " "
+                    WHITESPACE " "
+                    WHITESPACE " "
+                    TYPE_PROJECTION
+                      TYPE
+                        TYPE_REFERENCE
+                          DYNAMIC_KW "dynamic"
+                    COMMA ","
+                    WHITESPACE " "
+                    NEWLINE "\n"
+                    WHITESPACE " "
+                    WHITESPACE " "
+                    WHITESPACE " "
+                    WHITESPACE " "
+                    TYPE_PROJECTION
+                      TYPE
+                        DEFINITELY_NON_NULLABLE_TYPE
+                          TYPE_REFERENCE
+                            USER_TYPE
+                              SIMPLE_USER_TYPE
+                                SIMPLE_IDENTIFIER
+                                  IDENT "String"
+                          WHITESPACE " "
+                          AMP "&"
+                          WHITESPACE " "
+                          PARENTHESIZED_USER_TYPE
+                            L_PAREN "("
+                            USER_TYPE
+                              SIMPLE_USER_TYPE
+                                SIMPLE_IDENTIFIER
+                                  IDENT "Generic"
+                                TYPE_ARGUMENTS
+                                  L_ANGLE "<"
+                                  TYPE_PROJECTION
+                                    TYPE_PROJECTION_MODIFIERS
+                                      VARIANCE_MODIFIER
+                                        IN_KW "in"
+                                    WHITESPACE " "
+                                    TYPE
+                                      TYPE_REFERENCE
+                                        USER_TYPE
+                                          SIMPLE_USER_TYPE
+                                            SIMPLE_IDENTIFIER
+                                              IDENT "T"
+                                  R_ANGLE ">"
+                            R_PAREN ")"
+                    COMMA ","
+                    NEWLINE "\n"
+                    WHITESPACE " "
+                    WHITESPACE " "
+                    WHITESPACE " "
+                    WHITESPACE " "
+                    TYPE_PROJECTION
+                      TYPE
+                        NULLABLE_TYPE
+                          PARENTHESIZED_TYPE
+                            L_PAREN "("
+                            TYPE
+                              FUNCTION_TYPE
+                                FUNCTION_TYPE_PARAMETERS
+                                  L_PAREN "("
+                                  PARAMETER
+                                    SIMPLE_IDENTIFIER
+                                      IDENT "a"
+                                    COLON ":"
+                                    WHITESPACE " "
+                                    TYPE
+                                      TYPE_REFERENCE
+                                        USER_TYPE
+                                          SIMPLE_USER_TYPE
+                                            SIMPLE_IDENTIFIER
+                                              IDENT "A"
+                                  COMMA ","
+                                  WHITESPACE " "
+                                  PARAMETER
+                                    SIMPLE_IDENTIFIER
+                                      IDENT "b"
+                                    COLON ":"
+                                    WHITESPACE " "
+                                    TYPE
+                                      TYPE_REFERENCE
+                                        USER_TYPE
+                                          SIMPLE_USER_TYPE
+                                            SIMPLE_IDENTIFIER
+                                              IDENT "B"
+                                  R_PAREN ")"
+                                WHITESPACE " "
+                                ARROW "->"
+                                WHITESPACE " "
+                                TYPE
+                                  TYPE_REFERENCE
+                                    USER_TYPE
+                                      SIMPLE_USER_TYPE
+                                        SIMPLE_IDENTIFIER
+                                          IDENT "C"
+                            R_PAREN ")"
+                          QUEST
+                            QUEST "?"
+          NEWLINE "\n"
+          R_PAREN ")"
+        WHITESPACE " "
+        ARROW "->"
+        WHITESPACE " "
+        TYPE
+          TYPE_MODIFIERS
+            TYPE_MODIFIER
+              MULTI_ANNOTATION
+                AT "@"
+                L_SQUARE "["
+                USER_TYPE
+                  SIMPLE_USER_TYPE
+                    SIMPLE_IDENTIFIER
+                      IDENT "Ret"
+                WHITESPACE " "
+                USER_TYPE
+                  SIMPLE_USER_TYPE
+                    SIMPLE_IDENTIFIER
+                      IDENT "Res"
+                R_SQUARE "]"
+          WHITESPACE " "
+          NULLABLE_TYPE
+            TYPE_REFERENCE
+              USER_TYPE
+                SIMPLE_USER_TYPE
+                  SIMPLE_IDENTIFIER
+                    IDENT "Map"
+                  TYPE_ARGUMENTS
+                    L_ANGLE "<"
+                    TYPE_PROJECTION
+                      TYPE_PROJECTION_MODIFIERS
+                        VARIANCE_MODIFIER
+                          IN_KW "in"
+                      WHITESPACE " "
                       TYPE
                         TYPE_REFERENCE
                           USER_TYPE
                             SIMPLE_USER_TYPE
                               SIMPLE_IDENTIFIER
-                                IDENTIFIER_TOKEN "Baz"
-                COMMA ","
-                WS " "
-                NL "\n"
-                WS " "
-                WS " "
-                WS " "
-                WS " "
-                TYPE_PROJECTION
-                  TYPE
-                    TYPE_REFERENCE
-                      DYNAMIC "dynamic"
-                COMMA ","
-                WS " "
-                NL "\n"
-                WS " "
-                WS " "
-                WS " "
-                WS " "
-                TYPE_PROJECTION
-                  TYPE
-                    DEFINITELY_NON_NULLABLE_TYPE
-                      TYPE_REFERENCE
-                        USER_TYPE
-                          SIMPLE_USER_TYPE
-                            SIMPLE_IDENTIFIER
-                              IDENTIFIER_TOKEN "String"
-                      WS " "
-                      AMP "&"
-                      WS " "
-                      PARENTHESIZED_USER_TYPE
-                        L_PAREN "("
-                        USER_TYPE
-                          SIMPLE_USER_TYPE
-                            SIMPLE_IDENTIFIER
-                              IDENTIFIER_TOKEN "Generic"
-                            TYPE_ARGUMENTS
-                              L_ANGLE "<"
-                              TYPE_PROJECTION
-                                TYPE_PROJECTION_MODIFIERS
-                                  TYPE_PROJECTION_MODIFIER
-                                    VARIANCE_MODIFIER
-                                      IN "in"
-                                WS " "
-                                TYPE
-                                  TYPE_REFERENCE
-                                    USER_TYPE
-                                      SIMPLE_USER_TYPE
-                                        SIMPLE_IDENTIFIER
-                                          IDENTIFIER_TOKEN "T"
-                              R_ANGLE ">"
-                        R_PAREN ")"
-                COMMA ","
-                NL "\n"
-                WS " "
-                WS " "
-                WS " "
-                WS " "
-                TYPE_PROJECTION
-                  TYPE
-                    NULLABLE_TYPE
-                      PARENTHESIZED_TYPE
-                        L_PAREN "("
-                        TYPE
-                          FUNCTION_TYPE
-                            FUNCTION_TYPE_PARAMETERS
-                              L_PAREN "("
-                              PARAMETER
+                                IDENT "Key"
+                    COMMA ","
+                    WHITESPACE " "
+                    TYPE_PROJECTION
+                      TYPE
+                        NULLABLE_TYPE
+                          TYPE_REFERENCE
+                            USER_TYPE
+                              SIMPLE_USER_TYPE
                                 SIMPLE_IDENTIFIER
-                                  IDENTIFIER_TOKEN "a"
-                                COLON ":"
-                                WS " "
-                                TYPE
-                                  TYPE_REFERENCE
-                                    USER_TYPE
-                                      SIMPLE_USER_TYPE
-                                        SIMPLE_IDENTIFIER
-                                          IDENTIFIER_TOKEN "A"
-                              COMMA ","
-                              WS " "
-                              PARAMETER
-                                SIMPLE_IDENTIFIER
-                                  IDENTIFIER_TOKEN "b"
-                                COLON ":"
-                                WS " "
-                                TYPE
-                                  TYPE_REFERENCE
-                                    USER_TYPE
-                                      SIMPLE_USER_TYPE
-                                        SIMPLE_IDENTIFIER
-                                          IDENTIFIER_TOKEN "B"
-                              R_PAREN ")"
-                            WS " "
-                            ARROW "->"
-                            WS " "
-                            TYPE
-                              TYPE_REFERENCE
-                                USER_TYPE
-                                  SIMPLE_USER_TYPE
-                                    SIMPLE_IDENTIFIER
-                                      IDENTIFIER_TOKEN "C"
-                        R_PAREN ")"
-                      QUEST
-                        QUEST_WS "?\n"
-      R_PAREN ")"
-    WS " "
-    ARROW "->"
-    TYPE
-      TYPE_MODIFIERS
-        TYPE_MODIFIER
-          ANNOTATION
-            MULTI_ANNOTATION
-              AT_PRE_WS " @"
-              L_SQUARE "["
-              UNESCAPED_ANNOTATION
-                USER_TYPE
-                  SIMPLE_USER_TYPE
-                    SIMPLE_IDENTIFIER
-                      IDENTIFIER_TOKEN "Ret"
-              WS " "
-              UNESCAPED_ANNOTATION
-                USER_TYPE
-                  SIMPLE_USER_TYPE
-                    SIMPLE_IDENTIFIER
-                      IDENTIFIER_TOKEN "Res"
-              R_SQUARE "]"
-      WS " "
-      NULLABLE_TYPE
-        TYPE_REFERENCE
-          USER_TYPE
-            SIMPLE_USER_TYPE
-              SIMPLE_IDENTIFIER
-                IDENTIFIER_TOKEN "Map"
-              TYPE_ARGUMENTS
-                L_ANGLE "<"
-                TYPE_PROJECTION
-                  TYPE_PROJECTION_MODIFIERS
-                    TYPE_PROJECTION_MODIFIER
-                      VARIANCE_MODIFIER
-                        IN "in"
-                  WS " "
-                  TYPE
-                    TYPE_REFERENCE
-                      USER_TYPE
-                        SIMPLE_USER_TYPE
-                          SIMPLE_IDENTIFIER
-                            IDENTIFIER_TOKEN "Key"
-                COMMA ","
-                WS " "
-                TYPE_PROJECTION
-                  TYPE
-                    NULLABLE_TYPE
-                      TYPE_REFERENCE
-                        USER_TYPE
-                          SIMPLE_USER_TYPE
-                            SIMPLE_IDENTIFIER
-                              IDENTIFIER_TOKEN "Value"
-                      QUEST
-                        QUEST_NO_WS "?"
-                R_ANGLE ">"
-        QUEST
-          QUEST_NO_WS "?"
-error 149: expected `>`
+                                  IDENT "Value"
+                          QUEST
+                            QUEST "?"
+                    R_ANGLE ">"
+            QUEST
+              QUEST "?"
+error 168: expected `>`

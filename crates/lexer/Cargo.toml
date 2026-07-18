@@ -12,6 +12,5 @@ unicode_categories = "0.1.1"
 
 [dev-dependencies]
 insta.workspace = true
-macros = { workspace = true }
 pretty_assertions.workspace = true
 rstest.workspace = true

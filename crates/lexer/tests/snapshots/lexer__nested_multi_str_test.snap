@@ -1,9 +1,10 @@
 ---
 source: crates/lexer/tests/lexer.rs
+assertion_line: 50
 expression: entries
 ---
 [
-    NL@0..1 => "\n",
+    NEWLINE@0..1 => "\n",
     TRIPLE_QUOTE_OPEN@1..4 => "\"\"\"",
     MULTI_LINE_STR_TEXT@4..32 => "\nCan multiline strings\nhave ",
     MULTI_STR_EXPR_START@32..34 => "${",
@@ -17,6 +18,6 @@ expression: entries
     R_CURL@78..79 => "}",
     MULTI_LINE_STR_TEXT@79..92 => "\nI think yes\n",
     TRIPLE_QUOTE_CLOSE@92..95 => "\"\"\"",
-    NL@95..96 => "\n",
+    NEWLINE@95..96 => "\n",
     EOF@96..96 => "",
 ]

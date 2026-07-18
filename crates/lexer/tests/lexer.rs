@@ -2,6 +2,15 @@
 mod utils;
 
 #[test]
+fn line_str_test() {
+    let source = r#""with a quote \"hey\" and $$""#;
+    let lexer = lexer::Lexer::new(source).spanned_with_src();
+    let entries: Vec<_> = lexer.collect();
+
+    insta::assert_debug_snapshot!(entries);
+}
+
+#[test]
 fn multi_line_str_test() {
     let source = trim_idents!(
         r#""""
