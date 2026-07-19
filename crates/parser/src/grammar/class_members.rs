@@ -155,6 +155,7 @@ pub(super) fn function_body(parser: &mut Parser<'_>) -> Option<CompletedMarker> 
 pub(super) fn object_declaration(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     let m = parser.start_with_modifiers();
 
+    // if it starts with `object` but not followed by a simple identifier, then it is not an object declaration, but an expression.
     if !parser.at(T![object]) || !is_simple_ident_at(parser, 1) {
         m.abandon(parser);
         return None;

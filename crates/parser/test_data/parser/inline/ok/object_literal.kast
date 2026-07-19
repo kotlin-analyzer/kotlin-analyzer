@@ -1,0 +1,217 @@
+KOTLIN_FILE
+  PROPERTY_DECLARATION
+    VAL_KW "val"
+    WHITESPACE " "
+    VARIABLE_DECLARATION
+      SIMPLE_IDENTIFIER
+        IDENT "user"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    EXPRESSION
+      POSTFIX_UNARY_EXPRESSION
+        OBJECT_LITERAL
+          OBJECT_KW "object"
+          WHITESPACE " "
+          CLASS_BODY
+            L_CURL "{"
+            NEWLINE "\n"
+            WHITESPACE " "
+            WHITESPACE " "
+            WHITESPACE " "
+            WHITESPACE " "
+            CLASS_MEMBER_DECLARATIONS
+              PROPERTY_DECLARATION
+                VAL_KW "val"
+                WHITESPACE " "
+                VARIABLE_DECLARATION
+                  SIMPLE_IDENTIFIER
+                    IDENT "name"
+                WHITESPACE " "
+                EQ "="
+                WHITESPACE " "
+                EXPRESSION
+                  POSTFIX_UNARY_EXPRESSION
+                    LINE_STRING_LITERAL
+                      QUOTE "\""
+                      LINE_STRING_CONTENT
+                        TEXT "Alice"
+                      QUOTE "\""
+              NEWLINE "\n"
+              WHITESPACE " "
+              WHITESPACE " "
+              WHITESPACE " "
+              WHITESPACE " "
+              PROPERTY_DECLARATION
+                VAL_KW "val"
+                WHITESPACE " "
+                VARIABLE_DECLARATION
+                  SIMPLE_IDENTIFIER
+                    IDENT "age"
+                WHITESPACE " "
+                EQ "="
+                WHITESPACE " "
+                EXPRESSION
+                  POSTFIX_UNARY_EXPRESSION
+                    LITERAL_CONSTANT
+                      INT "28"
+            NEWLINE "\n"
+            R_CURL "}"
+  NEWLINE "\n"
+  PROPERTY_DECLARATION
+    VAL_KW "val"
+    WHITESPACE " "
+    VARIABLE_DECLARATION
+      SIMPLE_IDENTIFIER
+        IDENT "customListener"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    EXPRESSION
+      POSTFIX_UNARY_EXPRESSION
+        OBJECT_LITERAL
+          OBJECT_KW "object"
+          WHITESPACE " "
+          COLON ":"
+          WHITESPACE " "
+          DELEGATION_SPECIFIERS
+            ANNOTATED_DELEGATION_SPECIFIER
+              DELEGATION_SPECIFIER
+                USER_TYPE
+                  SIMPLE_USER_TYPE
+                    SIMPLE_IDENTIFIER
+                      IDENT "ClickListener"
+          WHITESPACE " "
+          CLASS_BODY
+            L_CURL "{"
+            NEWLINE "\n"
+            WHITESPACE " "
+            WHITESPACE " "
+            WHITESPACE " "
+            WHITESPACE " "
+            CLASS_MEMBER_DECLARATIONS
+              FUNCTION_DECLARATION
+                MODIFIERS
+                  MEMBER_MODIFIER
+                    OVERRIDE_KW "override"
+                WHITESPACE " "
+                FUN_KW "fun"
+                WHITESPACE " "
+                SIMPLE_IDENTIFIER
+                  IDENT "onClick"
+                FUNCTION_VALUE_PARAMETERS
+                  L_PAREN "("
+                  R_PAREN ")"
+                WHITESPACE " "
+                FUNCTION_BODY
+                  BLOCK
+                    L_CURL "{"
+                    NEWLINE "\n"
+                    WHITESPACE " "
+                    WHITESPACE " "
+                    WHITESPACE " "
+                    WHITESPACE " "
+                    WHITESPACE " "
+                    WHITESPACE " "
+                    WHITESPACE " "
+                    WHITESPACE " "
+                    STATEMENTS
+                      STATEMENT
+                        EXPRESSION
+                          POSTFIX_UNARY_EXPRESSION
+                            SIMPLE_IDENTIFIER
+                              IDENT "println"
+                            CALL_SUFFIX
+                              VALUE_ARGUMENTS
+                                L_PAREN "("
+                                VALUE_ARGUMENT
+                                  EXPRESSION
+                                    POSTFIX_UNARY_EXPRESSION
+                                      LINE_STRING_LITERAL
+                                        QUOTE "\""
+                                        LINE_STRING_CONTENT
+                                          TEXT "Button clicked!"
+                                        QUOTE "\""
+                                R_PAREN ")"
+                    NEWLINE "\n"
+                    WHITESPACE " "
+                    WHITESPACE " "
+                    WHITESPACE " "
+                    WHITESPACE " "
+                    R_CURL "}"
+            NEWLINE "\n"
+            R_CURL "}"
+  NEWLINE "\n"
+  PROPERTY_DECLARATION
+    VAL_KW "val"
+    WHITESPACE " "
+    VARIABLE_DECLARATION
+      SIMPLE_IDENTIFIER
+        IDENT "dataObject"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    EXPRESSION
+      POSTFIX_UNARY_EXPRESSION
+        OBJECT_LITERAL
+          DATA_KW "data"
+          WHITESPACE " "
+          OBJECT_KW "object"
+          WHITESPACE " "
+          COLON ":"
+          WHITESPACE " "
+          DELEGATION_SPECIFIERS
+            ANNOTATED_DELEGATION_SPECIFIER
+              DELEGATION_SPECIFIER
+                EXPLICIT_DELEGATION
+                  USER_TYPE
+                    SIMPLE_USER_TYPE
+                      SIMPLE_IDENTIFIER
+                        IDENT "DataInterface"
+                  WHITESPACE " "
+                  BY_KW "by"
+                  WHITESPACE " "
+                  EXPRESSION
+                    POSTFIX_UNARY_EXPRESSION
+                      SIMPLE_IDENTIFIER
+                        IDENT "DataImplementation"
+                      CALL_SUFFIX
+                        VALUE_ARGUMENTS
+                          L_PAREN "("
+                          R_PAREN ")"
+            COMMA ","
+            WHITESPACE " "
+            ANNOTATED_DELEGATION_SPECIFIER
+              DELEGATION_SPECIFIER
+                USER_TYPE
+                  SIMPLE_USER_TYPE
+                    SIMPLE_IDENTIFIER
+                      IDENT "DataMarker"
+          WHITESPACE " "
+          CLASS_BODY
+            L_CURL "{"
+            NEWLINE "\n"
+            WHITESPACE " "
+            WHITESPACE " "
+            WHITESPACE " "
+            WHITESPACE " "
+            CLASS_MEMBER_DECLARATIONS
+              PROPERTY_DECLARATION
+                VAL_KW "val"
+                WHITESPACE " "
+                VARIABLE_DECLARATION
+                  SIMPLE_IDENTIFIER
+                    DATA_KW "data"
+                WHITESPACE " "
+                EQ "="
+                WHITESPACE " "
+                EXPRESSION
+                  POSTFIX_UNARY_EXPRESSION
+                    LINE_STRING_LITERAL
+                      QUOTE "\""
+                      LINE_STRING_CONTENT
+                        TEXT "Some data"
+                      QUOTE "\""
+            NEWLINE "\n"
+            R_CURL "}"
+  NEWLINE "\n"
