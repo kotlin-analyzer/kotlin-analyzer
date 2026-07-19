@@ -25,6 +25,8 @@ mod ok {
         run_and_expect_no_errors("test_data/parser/inline/ok/fn_declaration.kt");
     }
     #[test]
+    fn if_expression() { run_and_expect_no_errors("test_data/parser/inline/ok/if_expression.kt"); }
+    #[test]
     fn import_list() { run_and_expect_no_errors("test_data/parser/inline/ok/import_list.kt"); }
     #[test]
     fn lambda_literal() {
@@ -51,6 +53,10 @@ mod ok {
         run_and_expect_no_errors("test_data/parser/inline/ok/object_declaration.kt");
     }
     #[test]
+    fn object_literal() {
+        run_and_expect_no_errors("test_data/parser/inline/ok/object_literal.kt");
+    }
+    #[test]
     fn package_header() {
         run_and_expect_no_errors("test_data/parser/inline/ok/package_header.kt");
     }
@@ -71,6 +77,10 @@ mod ok {
     #[test]
     fn single_annotation() {
         run_and_expect_no_errors("test_data/parser/inline/ok/single_annotation.kt");
+    }
+    #[test]
+    fn when_expression() {
+        run_and_expect_no_errors("test_data/parser/inline/ok/when_expression.kt");
     }
 }
 mod err {

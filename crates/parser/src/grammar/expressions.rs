@@ -11,7 +11,7 @@ use super::class_members::{
 };
 use super::classes::{class_body, delegation_specifiers, type_constraints};
 use super::identifiers::{is_simple_identifier, simple_identifier};
-use super::statements::{block, control_structure_body, label, semi, statements};
+use super::statements::{block, control_structure_body, label, semi, statement, statements};
 use super::types::{RecvType, UserType, receiver_type, ty, type_projection};
 use crate::{CompletedMarker, Parser};
 
@@ -137,7 +137,7 @@ fn generic_call_like_comparison(parser: &mut Parser<'_>) -> Option<Expression> {
     let m = parser.start();
     if let Some(ex) = infix_operation(parser) {
         let mut index = 1;
-        while !parser.is_call_suffix_disallowed()
+        while parser.is_lambda_in_call_suffix_allowed()
             && !(parser.has_nl_before() && index % 2 == 1)
             && call_suffix(parser, CallSuffix::Full).is_some()
         {
@@ -157,7 +157,7 @@ fn generic_call_like_comparison(parser: &mut Parser<'_>) -> Option<Expression> {
 
 fn infix_operation(parser: &mut Parser<'_>) -> Option<Expression> {
     if let Some(cm) = elvis_expression(parser) {
-        if is_operator::is(parser) || in_operator::is(parser) {
+        if !parser.has_nl_before() && (is_operator::is(parser) || in_operator::is(parser)) {
             let m = cm.marker().precede(parser);
             while is_or_in_operator_expr(parser) {}
             Some(Expression::Other(m.complete(parser, INFIX_OPERATION)))
@@ -171,12 +171,14 @@ fn infix_operation(parser: &mut Parser<'_>) -> Option<Expression> {
 
 fn is_or_in_operator_expr(parser: &mut Parser<'_>) -> bool {
     if is_operator::is(parser) {
+        is_operator::parse(parser);
         if ty(parser).is_none() {
             parser.error("expected a type");
         } else {
             return true;
         }
     } else if in_operator::is(parser) {
+        in_operator::parse(parser);
         if elvis_expression(parser).is_none() {
             parser.error("expected an expression :#IOE");
         } else {
@@ -526,7 +528,7 @@ fn call_suffix(parser: &mut Parser<'_>, res: CallSuffix) -> Option<CompletedMark
     let ta = type_arguments(parser);
     let va = value_arguments(parser);
 
-    if !parser.is_call_suffix_disallowed() {
+    if parser.is_lambda_in_call_suffix_allowed() {
         let lambda = annotated_lambda(parser);
         match (va.is_none(), lambda.is_none(), res) {
             (true, true, CallSuffix::AcceptTypeArguments) => {
@@ -1128,14 +1130,16 @@ fn when_entry(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     let m = parser.start();
     if parser.at(T![else]) {
         parser.bump(T![else]);
-        if parser.eat(T![->]) {
-            control_structure_body(parser);
+        // HKGIC: This is supposed to be control_structure_body(parser);
+        // but it would parse multiple statements, which is not allowed in a when entry.
+        if parser.eat(T![->]) && block(parser).or_else(|| statement(parser)).is_none() {
+            parser.error("expected a statement or block");
         }
         semi(parser);
     } else if when_condition(parser).is_some() {
         while parser.eat(T![,]) && when_condition(parser).is_some() {}
-        if parser.eat(T![->]) {
-            control_structure_body(parser);
+        if parser.eat(T![->]) && block(parser).or_else(|| statement(parser)).is_none() {
+            parser.error("expected a statement or block");
         }
         semi(parser);
     } else {
@@ -1167,7 +1171,7 @@ fn type_test(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     if let Some(cm) = is_operator::parse(parser) {
         let m = cm.precede(parser);
         if ty(parser).is_none() {
-            parser.error("expected a type");
+            parser.error("expected a type: #TTE");
         }
         Some(m.complete(parser, TYPE_TEST))
     } else {

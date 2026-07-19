@@ -37,18 +37,13 @@ pub(crate) struct Parser<'t> {
     errors: Vec<String>,
     steps: Cell<u32>,
     pub(crate) dangling: VecDeque<DanglingMarker>,
-    disallowed: HashSet<DisAllowed>,
     allowed: HashSet<Allowed>,
 }
 
 #[derive(PartialEq, Eq, Hash)]
-enum DisAllowed {
-    CallSuffix,
-}
-
-#[derive(PartialEq, Eq, Hash)]
-enum Allowed {
+pub(crate) enum Allowed {
     LinesBtwExpr,
+    LambdaInCallSuffix,
 }
 
 const PARSER_STEP_LIMIT: usize = if cfg!(debug_assertions) { 150_000 } else { 15_000_000 };
@@ -62,8 +57,7 @@ impl<'t> Parser<'t> {
             errors: Vec::new(),
             steps: Cell::new(0),
             dangling: VecDeque::new(),
-            disallowed: HashSet::new(),
-            allowed: HashSet::new(),
+            allowed: HashSet::from([Allowed::LambdaInCallSuffix]),
         }
     }
 
@@ -355,28 +349,20 @@ impl<'t> Parser<'t> {
 }
 
 impl<'t> Parser<'t> {
-    pub(crate) fn allow_lines_btw_expr(&mut self) {
-        self.allowed.insert(Allowed::LinesBtwExpr);
+    pub(crate) fn allow(&mut self, allowed: Allowed) {
+        self.allowed.insert(allowed);
     }
 
-    pub(crate) fn reset_allow_lines_btw_expr(&mut self) {
-        self.allowed.remove(&Allowed::LinesBtwExpr);
+    pub(crate) fn disallow(&mut self, allowed: Allowed) {
+        self.allowed.remove(&allowed);
     }
 
     pub(crate) fn is_lines_btw_expr_allowed(&self) -> bool {
         self.allowed.contains(&Allowed::LinesBtwExpr)
     }
 
-    pub(crate) fn disallow_call_suffix(&mut self) {
-        self.disallowed.insert(DisAllowed::CallSuffix);
-    }
-
-    pub(crate) fn is_call_suffix_disallowed(&self) -> bool {
-        self.disallowed.contains(&DisAllowed::CallSuffix)
-    }
-
-    pub(crate) fn reset_disallow_call_suffix(&mut self) {
-        self.disallowed.remove(&DisAllowed::CallSuffix);
+    pub(crate) fn is_lambda_in_call_suffix_allowed(&self) -> bool {
+        self.allowed.contains(&Allowed::LambdaInCallSuffix)
     }
 }
 

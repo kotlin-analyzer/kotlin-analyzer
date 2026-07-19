@@ -1,4 +1,4 @@
-use crate::{SyntaxKind::*, T, TokenSet};
+use crate::{Allowed, SyntaxKind::*, T, TokenSet};
 
 use super::annotations::annotation;
 use super::class_members::class_member_declarations;
@@ -235,11 +235,11 @@ fn explicit_delegation(
         let m = ty_marker.precede(parser);
         parser.eat(T![by]);
 
-        parser.disallow_call_suffix();
+        parser.disallow(Allowed::LambdaInCallSuffix);
         if expression(parser).is_none() {
             parser.error("expected an expression :#6");
         }
-        parser.reset_disallow_call_suffix();
+        parser.allow(Allowed::LambdaInCallSuffix);
         Some(m.complete(parser, EXPLICIT_DELEGATION))
     } else {
         None
