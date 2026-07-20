@@ -5,7 +5,7 @@ use crate::T;
 use crate::grammar::annotations::annotation;
 use crate::grammar::modifiers::modifiers;
 use crate::version::KtVersion;
-use ::std::collections::VecDeque;
+use ::std::collections::{HashSet, VecDeque};
 use ::std::mem;
 use drop_bomb::DropBomb;
 use std::cell::Cell;
@@ -37,6 +37,18 @@ pub(crate) struct Parser<'t> {
     errors: Vec<String>,
     steps: Cell<u32>,
     pub(crate) dangling: VecDeque<DanglingMarker>,
+    disallowed: HashSet<DisAllowed>,
+    allowed: HashSet<Allowed>,
+}
+
+#[derive(PartialEq, Eq, Hash)]
+enum DisAllowed {
+    CallSuffix,
+}
+
+#[derive(PartialEq, Eq, Hash)]
+enum Allowed {
+    LinesBtwExpr,
 }
 
 const PARSER_STEP_LIMIT: usize = if cfg!(debug_assertions) { 150_000 } else { 15_000_000 };
@@ -50,6 +62,8 @@ impl<'t> Parser<'t> {
             errors: Vec::new(),
             steps: Cell::new(0),
             dangling: VecDeque::new(),
+            disallowed: HashSet::new(),
+            allowed: HashSet::new(),
         }
     }
 
@@ -337,6 +351,32 @@ impl<'t> Parser<'t> {
 
     pub(crate) fn current_version(&self) -> KtVersion {
         self.inp.version(self.pos)
+    }
+}
+
+impl<'t> Parser<'t> {
+    pub(crate) fn allow_lines_btw_expr(&mut self) {
+        self.allowed.insert(Allowed::LinesBtwExpr);
+    }
+
+    pub(crate) fn reset_allow_lines_btw_expr(&mut self) {
+        self.allowed.remove(&Allowed::LinesBtwExpr);
+    }
+
+    pub(crate) fn is_lines_btw_expr_allowed(&self) -> bool {
+        self.allowed.contains(&Allowed::LinesBtwExpr)
+    }
+
+    pub(crate) fn disallow_call_suffix(&mut self) {
+        self.disallowed.insert(DisAllowed::CallSuffix);
+    }
+
+    pub(crate) fn is_call_suffix_disallowed(&self) -> bool {
+        self.disallowed.contains(&DisAllowed::CallSuffix)
+    }
+
+    pub(crate) fn reset_disallow_call_suffix(&mut self) {
+        self.disallowed.remove(&DisAllowed::CallSuffix);
     }
 }
 
