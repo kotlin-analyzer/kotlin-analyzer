@@ -1084,9 +1084,16 @@ fn if_expression(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
 // }
 // fun processData(obj: Any): String = when (obj) {
 //     is String -> "String of length ${obj.length}"
-//     is Int -> "Integer multiplied: ${obj * 2}"
+//     is Int if obj > 0 -> "Integer multiplied: ${obj * 2}"
+//     is Int -> "Integer addition: ${obj + 2}"
 //     else -> "Unknown type"
 // }
+// val c = when (val input = "yes") {
+//     "yes" -> "You said yes"
+//     "no" -> "You said no"
+//     else -> "Unrecognized input: $input"
+// }
+
 fn when_expression(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     if !parser.at(T![when]) {
         return None;
@@ -1140,6 +1147,7 @@ fn when_entry(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
         semi(parser);
     } else if when_condition(parser).is_some() {
         while parser.eat(T![,]) && when_condition(parser).is_some() {}
+        when_guard(parser);
         if parser.eat(T![->]) && single_stmt_control_structure_body(parser).is_none() {
             parser.error("expected a statement or block");
         }
@@ -1149,6 +1157,20 @@ fn when_entry(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
         return None;
     }
     Some(m.complete(parser, WHEN_ENTRY))
+}
+
+fn when_guard(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    if !parser.at(T![if]) {
+        return None;
+    }
+    let m = parser.start();
+
+    parser.bump(T![if]);
+    if expression(parser).is_none() {
+        parser.error("expected an expression :#WG");
+    }
+
+    Some(m.complete(parser, WHEN_GUARD))
 }
 
 fn when_condition(parser: &mut Parser<'_>) -> Option<CompletedMarker> {

@@ -316,6 +316,7 @@ pub enum SyntaxKind {
     VISIBILITY_MODIFIER,
     WHEN_ENTRY,
     WHEN_EXPRESSION,
+    WHEN_GUARD,
     WHEN_SUBJECT,
     WHILE_STATEMENT,
     #[doc(hidden)]
@@ -495,6 +496,7 @@ impl SyntaxKind {
             | VISIBILITY_MODIFIER
             | WHEN_ENTRY
             | WHEN_EXPRESSION
+            | WHEN_GUARD
             | WHEN_SUBJECT
             | WHILE_STATEMENT
             | DELIMITED_COMMENT

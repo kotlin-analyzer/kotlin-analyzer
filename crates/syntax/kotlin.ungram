@@ -538,8 +538,11 @@ WhenExpression =
   'when' WhenSubject? '{' WhenEntry* '}'
 
 WhenEntry =
-  (WhenCondition (',' WhenCondition)* ','?) '->' ControlStructureBody
+  (WhenCondition (',' WhenCondition)* ','?) WhenGuard? '->' ControlStructureBody
 | 'else' '->' ControlStructureBody
+
+WhenGuard = 
+  'if' Expression
 
 WhenCondition =
   Expression

@@ -2218,6 +2218,8 @@ impl WhenEntry {
     #[inline]
     pub fn when_conditions(&self) -> AstChildren<WhenCondition> { support::children(&self.syntax) }
     #[inline]
+    pub fn when_guard(&self) -> Option<WhenGuard> { support::child(&self.syntax) }
+    #[inline]
     pub fn arrow_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![->]) }
     #[inline]
     pub fn else_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![else]) }
@@ -2236,6 +2238,15 @@ impl WhenExpression {
     pub fn r_curl_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['}']) }
     #[inline]
     pub fn when_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![when]) }
+}
+pub struct WhenGuard {
+    pub(crate) syntax: SyntaxNode,
+}
+impl WhenGuard {
+    #[inline]
+    pub fn expression(&self) -> Option<Expression> { support::child(&self.syntax) }
+    #[inline]
+    pub fn if_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![if]) }
 }
 pub struct WhenSubject {
     pub(crate) syntax: SyntaxNode,
@@ -7514,6 +7525,38 @@ impl fmt::Debug for WhenExpression {
         f.debug_struct("WhenExpression").field("syntax", &self.syntax).finish()
     }
 }
+impl AstNode for WhenGuard {
+    #[inline]
+    fn kind() -> SyntaxKind
+    where
+        Self: Sized,
+    {
+        WHEN_GUARD
+    }
+    #[inline]
+    fn can_cast(kind: SyntaxKind) -> bool { kind == WHEN_GUARD }
+    #[inline]
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
+    }
+    #[inline]
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl hash::Hash for WhenGuard {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) { self.syntax.hash(state); }
+}
+impl Eq for WhenGuard {}
+impl PartialEq for WhenGuard {
+    fn eq(&self, other: &Self) -> bool { self.syntax == other.syntax }
+}
+impl Clone for WhenGuard {
+    fn clone(&self) -> Self { Self { syntax: self.syntax.clone() } }
+}
+impl fmt::Debug for WhenGuard {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("WhenGuard").field("syntax", &self.syntax).finish()
+    }
+}
 impl AstNode for WhenSubject {
     #[inline]
     fn kind() -> SyntaxKind
@@ -9684,6 +9727,11 @@ impl std::fmt::Display for WhenEntry {
     }
 }
 impl std::fmt::Display for WhenExpression {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for WhenGuard {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

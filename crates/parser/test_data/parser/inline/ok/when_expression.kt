@@ -11,6 +11,12 @@ val b = when (currentAge) {
 }
 fun processData(obj: Any): String = when (obj) {
     is String -> "String of length ${obj.length}"
-    is Int -> "Integer multiplied: ${obj * 2}"
+    is Int if obj > 0 -> "Integer multiplied: ${obj * 2}"
+    is Int -> "Integer addition: ${obj + 2}"
     else -> "Unknown type"
+}
+val c = when (val input = "yes") {
+    "yes" -> "You said yes"
+    "no" -> "You said no"
+    else -> "Unrecognized input: $input"
 }
