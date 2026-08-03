@@ -21,7 +21,7 @@ check pull requests or non-main branches.
 - [ ] LSP client (Requires at least AST Traversal API for .kt files)
 
 ## Why
-I want a Kotlin experience that is decoupled from IntelliJ. It should matter if I am developing in Emacs, Helix, Vs Code or Zed.
+I want a Kotlin experience that is decoupled from IntelliJ. It should not matter if I am developing in Emacs, Helix, Vs Code or Zed.
 It should just work, and work well (goal is to get as good as Rust Analyzer is to Rust). I should not have to know all grade/maven shenanigans (resolve dependencies on activation). And it should be fast. And don't break in a thousand different ways.
 
 ### Why not just contribute to the new LSP from JetBrains
