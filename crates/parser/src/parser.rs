@@ -40,7 +40,7 @@ pub(crate) struct Parser<'t> {
     allowed: HashSet<Allowed>,
 }
 
-#[derive(PartialEq, Eq, Hash)]
+#[derive(PartialEq, Eq, Hash, Clone)]
 pub(crate) enum Allowed {
     LinesBtwExpr,
     LambdaInCallSuffix,
@@ -59,6 +59,29 @@ impl<'t> Parser<'t> {
             dangling: VecDeque::new(),
             allowed: HashSet::from([Allowed::LambdaInCallSuffix]),
         }
+    }
+
+    /// WARN: this method is used to implement backtracking.
+    /// It can be expensive for performance, so it should be used with care.
+    /// Note that this does not pass dangling markers to the forked parser, as we do not yet see a use case for that.  
+    pub(crate) fn fork(&self) -> Parser<'t> {
+        Parser {
+            inp: self.inp,
+            pos: self.pos,
+            events: Vec::with_capacity(self.events.capacity() - self.events.len()),
+            errors: Vec::new(),
+            steps: Cell::new(0),
+            dangling: VecDeque::new(),
+            allowed: self.allowed.clone(),
+        }
+    }
+
+    /// Merge a forked parser into the current one.
+    pub(crate) fn merge(&mut self, other: Parser<'t>) {
+        self.pos = other.pos;
+        self.events.extend(other.events);
+        self.errors.extend(other.errors);
+        self.dangling.extend(other.dangling);
     }
 
     pub(crate) fn finish(self) -> (Vec<Event>, Vec<String>) {

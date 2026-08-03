@@ -11,8 +11,8 @@ use super::class_members::{
 };
 use super::classes::{class_body, delegation_specifiers, type_constraints};
 use super::identifiers::{is_simple_identifier, simple_identifier};
-use super::statements::{block, control_structure_body, label, semi, statement, statements};
-use super::types::{RecvType, UserType, receiver_type, ty, type_projection};
+use super::statements::{block, label, semi, single_stmt_control_structure_body, statements};
+use super::types::{RecvType, UserType, receiver_type, strict_type_arguments, ty, type_arguments};
 use crate::{CompletedMarker, Parser};
 
 macro_rules! define_operator {
@@ -525,7 +525,26 @@ fn starts_call_suffix(parser: &mut Parser<'_>) -> bool {
 
 fn call_suffix(parser: &mut Parser<'_>, res: CallSuffix) -> Option<CompletedMarker> {
     let m = parser.start();
-    let ta = type_arguments(parser);
+    // HGKIC: It is impossible to differentiate between a type argument and a less than operator, so using backtracking here
+    let ta = if parser.at(T![<]) {
+        let next = parser.nth(1);
+        // Early exit if the next token is a literal or a string literal, as it is impossible for it to be a type argument.
+        if next.is_literal() || next == QUOTE || next == TRIPLE_QUOTE {
+            m.abandon(parser);
+            return None;
+        }
+
+        let mut fork = parser.fork();
+        if let Some(ta) = strict_type_arguments(&mut fork) {
+            parser.merge(fork);
+            Some(ta)
+        } else {
+            // Then it is a less than operator
+            return None;
+        }
+    } else {
+        None
+    };
     let va = value_arguments(parser);
 
     if parser.is_lambda_in_call_suffix_allowed() {
@@ -566,21 +585,6 @@ fn annotated_lambda(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
         return None;
     }
     Some(m.complete(parser, ANNOTATED_LAMBDA))
-}
-
-fn type_arguments(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    if !parser.at(T![<]) {
-        return None;
-    }
-    let m = parser.start();
-    parser.bump(T![<]);
-    if type_projection(parser).is_some() {
-        while parser.eat(T![,]) && type_projection(parser).is_some() {}
-    }
-    if !parser.eat(T![>]) {
-        parser.error("expected `>`");
-    }
-    Some(m.complete(parser, TYPE_ARGUMENTS))
 }
 
 pub(crate) fn value_arguments(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
@@ -1058,10 +1062,10 @@ fn if_expression(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
         parser.error("expected `)`");
     }
 
-    control_structure_body(parser);
+    single_stmt_control_structure_body(parser);
     parser.eat(T![;]);
     if parser.eat(T![else]) && !parser.eat(T![;]) {
-        control_structure_body(parser);
+        single_stmt_control_structure_body(parser);
     }
     Some(m.complete(parser, IF_EXPRESSION))
 }
@@ -1130,15 +1134,13 @@ fn when_entry(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     let m = parser.start();
     if parser.at(T![else]) {
         parser.bump(T![else]);
-        // HKGIC: This is supposed to be control_structure_body(parser);
-        // but it would parse multiple statements, which is not allowed in a when entry.
-        if parser.eat(T![->]) && block(parser).or_else(|| statement(parser)).is_none() {
+        if parser.eat(T![->]) && single_stmt_control_structure_body(parser).is_none() {
             parser.error("expected a statement or block");
         }
         semi(parser);
     } else if when_condition(parser).is_some() {
         while parser.eat(T![,]) && when_condition(parser).is_some() {}
-        if parser.eat(T![->]) && block(parser).or_else(|| statement(parser)).is_none() {
+        if parser.eat(T![->]) && single_stmt_control_structure_body(parser).is_none() {
             parser.error("expected a statement or block");
         }
         semi(parser);
