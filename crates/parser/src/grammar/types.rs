@@ -269,7 +269,18 @@ pub(crate) fn type_projection(parser: &mut Parser<'_>) -> Option<CompletedMarker
     }
 }
 
+pub(crate) fn strict_type_arguments(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    base_type_arguments(parser, true)
+}
+
 pub(crate) fn type_arguments(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    base_type_arguments(parser, false)
+}
+
+pub(crate) fn base_type_arguments(
+    parser: &mut Parser<'_>,
+    strict: bool,
+) -> Option<CompletedMarker> {
     if !parser.at(T![<]) {
         return None;
     }
@@ -288,9 +299,18 @@ pub(crate) fn type_arguments(parser: &mut Parser<'_>) -> Option<CompletedMarker>
     }
 
     if parsed == 0 {
+        if strict {
+            m.abandon(parser);
+            return None;
+        }
         parser.error("expected type projection");
     }
+
     if !parser.eat(T![>]) {
+        if strict {
+            m.abandon(parser);
+            return None;
+        }
         // TODO: recover
         parser.error("expected `>`");
     }

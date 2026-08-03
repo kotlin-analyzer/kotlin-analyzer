@@ -188,6 +188,15 @@ pub(crate) fn control_structure_body(parser: &mut Parser<'_>) -> Option<Complete
     block(parser).or_else(|| statements(parser))
 }
 
+pub(crate) fn single_stmt_control_structure_body(
+    parser: &mut Parser<'_>,
+) -> Option<CompletedMarker> {
+    // HKGIC: This is supposed to be control_structure_body(parser);
+    // but it would parse multiple statements, which is not allowed in a when entry.
+    block(parser)
+        .or_else(|| statement(parser).map(|cm| cm.precede(parser).complete(parser, STATEMENTS)))
+}
+
 pub(crate) fn block(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     if parser.at(T!['{']) {
         let m = parser.start();
