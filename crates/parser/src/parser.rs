@@ -5,7 +5,7 @@ use crate::T;
 use crate::grammar::annotations::annotation;
 use crate::grammar::modifiers::modifiers;
 use crate::version::KtVersion;
-use ::std::collections::VecDeque;
+use ::std::collections::{HashSet, VecDeque};
 use ::std::mem;
 use drop_bomb::DropBomb;
 use std::cell::Cell;
@@ -37,6 +37,13 @@ pub(crate) struct Parser<'t> {
     errors: Vec<String>,
     steps: Cell<u32>,
     pub(crate) dangling: VecDeque<DanglingMarker>,
+    allowed: HashSet<Allowed>,
+}
+
+#[derive(PartialEq, Eq, Hash, Clone)]
+pub(crate) enum Allowed {
+    LinesBtwExpr,
+    LambdaInCallSuffix,
 }
 
 const PARSER_STEP_LIMIT: usize = if cfg!(debug_assertions) { 150_000 } else { 15_000_000 };
@@ -50,7 +57,31 @@ impl<'t> Parser<'t> {
             errors: Vec::new(),
             steps: Cell::new(0),
             dangling: VecDeque::new(),
+            allowed: HashSet::from([Allowed::LambdaInCallSuffix]),
         }
+    }
+
+    /// WARN: this method is used to implement backtracking.
+    /// It can be expensive for performance, so it should be used with care.
+    /// Note that this does not pass dangling markers to the forked parser, as we do not yet see a use case for that.  
+    pub(crate) fn fork(&self) -> Parser<'t> {
+        Parser {
+            inp: self.inp,
+            pos: self.pos,
+            events: Vec::with_capacity(self.events.capacity() - self.events.len()),
+            errors: Vec::new(),
+            steps: Cell::new(0),
+            dangling: VecDeque::new(),
+            allowed: self.allowed.clone(),
+        }
+    }
+
+    /// Merge a forked parser into the current one.
+    pub(crate) fn merge(&mut self, other: Parser<'t>) {
+        self.pos = other.pos;
+        self.events.extend(other.events);
+        self.errors.extend(other.errors);
+        self.dangling.extend(other.dangling);
     }
 
     pub(crate) fn finish(self) -> (Vec<Event>, Vec<String>) {
@@ -337,6 +368,24 @@ impl<'t> Parser<'t> {
 
     pub(crate) fn current_version(&self) -> KtVersion {
         self.inp.version(self.pos)
+    }
+}
+
+impl<'t> Parser<'t> {
+    pub(crate) fn allow(&mut self, allowed: Allowed) {
+        self.allowed.insert(allowed);
+    }
+
+    pub(crate) fn disallow(&mut self, allowed: Allowed) {
+        self.allowed.remove(&allowed);
+    }
+
+    pub(crate) fn is_lines_btw_expr_allowed(&self) -> bool {
+        self.allowed.contains(&Allowed::LinesBtwExpr)
+    }
+
+    pub(crate) fn is_lambda_in_call_suffix_allowed(&self) -> bool {
+        self.allowed.contains(&Allowed::LambdaInCallSuffix)
     }
 }
 

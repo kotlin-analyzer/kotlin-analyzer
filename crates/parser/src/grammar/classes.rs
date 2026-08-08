@@ -1,9 +1,9 @@
-use crate::{SyntaxKind::*, T, TokenSet};
+use crate::{Allowed, SyntaxKind::*, T, TokenSet};
 
 use super::annotations::annotation;
 use super::class_members::class_member_declarations;
 use super::enum_classes::{BodyResult, enum_class_body};
-use super::expressions::{DisAllowed, expression, flex_expression, value_arguments};
+use super::expressions::{expression, value_arguments};
 use super::identifiers::simple_identifier;
 use super::modifiers::type_parameter_modifiers;
 use super::types::{TypeResult, ty, unclosed_ty};
@@ -235,9 +235,11 @@ fn explicit_delegation(
         let m = ty_marker.precede(parser);
         parser.eat(T![by]);
 
-        if flex_expression(parser, Some(DisAllowed::CallSuffix)).is_none() {
+        parser.disallow(Allowed::LambdaInCallSuffix);
+        if expression(parser).is_none() {
             parser.error("expected an expression :#6");
         }
+        parser.allow(Allowed::LambdaInCallSuffix);
         Some(m.complete(parser, EXPLICIT_DELEGATION))
     } else {
         None

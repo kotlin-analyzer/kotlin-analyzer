@@ -11,8 +11,8 @@ use super::class_members::{
 };
 use super::classes::{class_body, delegation_specifiers, type_constraints};
 use super::identifiers::{is_simple_identifier, simple_identifier};
-use super::statements::{block, control_structure_body, label, semi, statements};
-use super::types::{RecvType, UserType, receiver_type, ty, type_projection};
+use super::statements::{block, label, semi, single_stmt_control_structure_body, statements};
+use super::types::{RecvType, UserType, receiver_type, strict_type_arguments, ty, type_arguments};
 use crate::{CompletedMarker, Parser};
 
 macro_rules! define_operator {
@@ -37,20 +37,8 @@ macro_rules! define_operator {
     };
 }
 
-#[derive(Clone, Copy)]
-pub(super) enum DisAllowed {
-    CallSuffix,
-}
-
-pub(crate) fn expression(parser: &mut Parser<'_>) -> Option<Expression> {
-    flex_expression(parser, None)
-}
-
-pub(super) fn flex_expression(
-    parser: &mut Parser<'_>,
-    dis_allowed: Option<DisAllowed>,
-) -> Option<Expression> {
-    if let Some(ex) = disjunction(parser, dis_allowed) {
+pub(super) fn expression(parser: &mut Parser<'_>) -> Option<Expression> {
+    if let Some(ex) = disjunction(parser) {
         let res = match ex {
             Expression::Affixed(AffixedExpression::Postfix(cm)) => Expression::Affixed(
                 AffixedExpression::Postfix(cm.precede(parser).complete(parser, EXPRESSION)),
@@ -68,12 +56,12 @@ pub(super) fn flex_expression(
     }
 }
 
-fn disjunction(parser: &mut Parser<'_>, dis_allowed: Option<DisAllowed>) -> Option<Expression> {
-    if let Some(ex) = conjunction(parser, dis_allowed) {
+fn disjunction(parser: &mut Parser<'_>) -> Option<Expression> {
+    if let Some(ex) = conjunction(parser) {
         if parser.at(T![&&]) {
             let m = ex.marker().precede(parser);
             while parser.eat(T![||]) {
-                if conjunction(parser, dis_allowed).is_none() {
+                if conjunction(parser).is_none() {
                     parser.error("expected an expression :#DE");
                     break;
                 }
@@ -87,12 +75,12 @@ fn disjunction(parser: &mut Parser<'_>, dis_allowed: Option<DisAllowed>) -> Opti
     }
 }
 
-fn conjunction(parser: &mut Parser<'_>, dis_allowed: Option<DisAllowed>) -> Option<Expression> {
-    if let Some(ex) = equality(parser, dis_allowed) {
+fn conjunction(parser: &mut Parser<'_>) -> Option<Expression> {
+    if let Some(ex) = equality(parser) {
         if parser.at(T![&&]) {
             let m = ex.marker().precede(parser);
             while parser.eat(T![&&]) {
-                if equality(parser, dis_allowed).is_none() {
+                if equality(parser).is_none() {
                     parser.error("expected an expression :#CE");
                     break;
                 }
@@ -106,12 +94,12 @@ fn conjunction(parser: &mut Parser<'_>, dis_allowed: Option<DisAllowed>) -> Opti
     }
 }
 
-fn equality(parser: &mut Parser<'_>, dis_allowed: Option<DisAllowed>) -> Option<Expression> {
-    if let Some(ex) = comparison(parser, dis_allowed) {
+fn equality(parser: &mut Parser<'_>) -> Option<Expression> {
+    if let Some(ex) = comparison(parser) {
         if equality_operator::is(parser) {
             let m = ex.marker().precede(parser);
             while equality_operator::parse(parser).is_some() {
-                if comparison(parser, dis_allowed).is_none() {
+                if comparison(parser).is_none() {
                     parser.error("expected an expression :#EE");
                     break;
                 }
@@ -125,12 +113,12 @@ fn equality(parser: &mut Parser<'_>, dis_allowed: Option<DisAllowed>) -> Option<
     }
 }
 
-fn comparison(parser: &mut Parser<'_>, dis_allowed: Option<DisAllowed>) -> Option<Expression> {
-    if let Some(ex) = generic_call_like_comparison(parser, dis_allowed) {
+fn comparison(parser: &mut Parser<'_>) -> Option<Expression> {
+    if let Some(ex) = generic_call_like_comparison(parser) {
         if comparison_operator::is(parser) {
             let m = ex.marker().precede(parser);
             while comparison_operator::parse(parser).is_some() {
-                if generic_call_like_comparison(parser, dis_allowed).is_none() {
+                if generic_call_like_comparison(parser).is_none() {
                     parser.error("expected an expression :#CCE");
                     break;
                 }
@@ -145,14 +133,11 @@ fn comparison(parser: &mut Parser<'_>, dis_allowed: Option<DisAllowed>) -> Optio
 }
 
 #[allow(clippy::nonminimal_bool)]
-fn generic_call_like_comparison(
-    parser: &mut Parser<'_>,
-    dis_allowed: Option<DisAllowed>,
-) -> Option<Expression> {
+fn generic_call_like_comparison(parser: &mut Parser<'_>) -> Option<Expression> {
     let m = parser.start();
-    if let Some(ex) = infix_operation(parser, dis_allowed) {
+    if let Some(ex) = infix_operation(parser) {
         let mut index = 1;
-        while !matches!(dis_allowed, Some(DisAllowed::CallSuffix))
+        while parser.is_lambda_in_call_suffix_allowed()
             && !(parser.has_nl_before() && index % 2 == 1)
             && call_suffix(parser, CallSuffix::Full).is_some()
         {
@@ -170,11 +155,11 @@ fn generic_call_like_comparison(
     }
 }
 
-fn infix_operation(parser: &mut Parser<'_>, dis_allowed: Option<DisAllowed>) -> Option<Expression> {
-    if let Some(cm) = elvis_expression(parser, dis_allowed) {
-        if is_operator::is(parser) || in_operator::is(parser) {
+fn infix_operation(parser: &mut Parser<'_>) -> Option<Expression> {
+    if let Some(cm) = elvis_expression(parser) {
+        if !parser.has_nl_before() && (is_operator::is(parser) || in_operator::is(parser)) {
             let m = cm.marker().precede(parser);
-            while is_or_in_operator_expr(parser, dis_allowed) {}
+            while is_or_in_operator_expr(parser) {}
             Some(Expression::Other(m.complete(parser, INFIX_OPERATION)))
         } else {
             Some(cm)
@@ -184,15 +169,17 @@ fn infix_operation(parser: &mut Parser<'_>, dis_allowed: Option<DisAllowed>) -> 
     }
 }
 
-fn is_or_in_operator_expr(parser: &mut Parser<'_>, dis_allowed: Option<DisAllowed>) -> bool {
+fn is_or_in_operator_expr(parser: &mut Parser<'_>) -> bool {
     if is_operator::is(parser) {
+        is_operator::parse(parser);
         if ty(parser).is_none() {
             parser.error("expected a type");
         } else {
             return true;
         }
     } else if in_operator::is(parser) {
-        if elvis_expression(parser, dis_allowed).is_none() {
+        in_operator::parse(parser);
+        if elvis_expression(parser).is_none() {
             parser.error("expected an expression :#IOE");
         } else {
             return true;
@@ -201,15 +188,12 @@ fn is_or_in_operator_expr(parser: &mut Parser<'_>, dis_allowed: Option<DisAllowe
     false
 }
 
-fn elvis_expression(
-    parser: &mut Parser<'_>,
-    dis_allowed: Option<DisAllowed>,
-) -> Option<Expression> {
-    if let Some(cm) = infix_function_call(parser, dis_allowed) {
+fn elvis_expression(parser: &mut Parser<'_>) -> Option<Expression> {
+    if let Some(cm) = infix_function_call(parser) {
         if is_elvis(parser) {
             let m = cm.marker().precede(parser);
             while elvis(parser).is_some() {
-                if infix_function_call(parser, dis_allowed).is_none() {
+                if infix_function_call(parser).is_none() {
                     parser.error("expected an expression :#ElvE");
                     break;
                 }
@@ -238,17 +222,14 @@ fn elvis(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     }
 }
 
-fn infix_function_call(
-    parser: &mut Parser<'_>,
-    dis_allowed: Option<DisAllowed>,
-) -> Option<Expression> {
-    if let Some(cm) = range_expression(parser, dis_allowed) {
+fn infix_function_call(parser: &mut Parser<'_>) -> Option<Expression> {
+    if let Some(cm) = range_expression(parser) {
         if !parser.has_nl_before() && is_simple_identifier(parser) {
             let m = cm.marker().precede(parser);
             let mut seen = 1;
             while !(parser.has_nl_before() && seen % 2 == 1) && simple_identifier(parser).is_some()
             {
-                if range_expression(parser, dis_allowed).is_none() {
+                if range_expression(parser).is_none() {
                     parser.error("expected an expression :#IFC");
                     break;
                 }
@@ -264,15 +245,12 @@ fn infix_function_call(
     }
 }
 
-fn range_expression(
-    parser: &mut Parser<'_>,
-    dis_allowed: Option<DisAllowed>,
-) -> Option<Expression> {
-    if let Some(cm) = additive_expression(parser, dis_allowed) {
+fn range_expression(parser: &mut Parser<'_>) -> Option<Expression> {
+    if let Some(cm) = additive_expression(parser) {
         if range_operator::is(parser) {
             let m = cm.marker().precede(parser);
             while range_operator::parse(parser) {
-                if additive_expression(parser, dis_allowed).is_none() {
+                if additive_expression(parser).is_none() {
                     parser.error("expected an expression :#RE");
                     break;
                 }
@@ -286,15 +264,12 @@ fn range_expression(
     }
 }
 
-fn additive_expression(
-    parser: &mut Parser<'_>,
-    dis_allowed: Option<DisAllowed>,
-) -> Option<Expression> {
-    if let Some(cm) = multiplicative_expression(parser, dis_allowed) {
+fn additive_expression(parser: &mut Parser<'_>) -> Option<Expression> {
+    if let Some(cm) = multiplicative_expression(parser) {
         if additive_operator::is(parser) {
             let m = cm.marker().precede(parser);
             while additive_operator::parse(parser).is_some() {
-                if multiplicative_expression(parser, dis_allowed).is_none() {
+                if multiplicative_expression(parser).is_none() {
                     parser.error("expected an expression :#AE");
                     break;
                 }
@@ -308,15 +283,12 @@ fn additive_expression(
     }
 }
 
-fn multiplicative_expression(
-    parser: &mut Parser<'_>,
-    dis_allowed: Option<DisAllowed>,
-) -> Option<Expression> {
-    if let Some(cm) = as_expression(parser, dis_allowed) {
+fn multiplicative_expression(parser: &mut Parser<'_>) -> Option<Expression> {
+    if let Some(cm) = as_expression(parser) {
         if multiplicative_operator::is(parser) {
             let m = cm.marker().precede(parser);
             while multiplicative_operator::parse(parser).is_some() {
-                if as_expression(parser, dis_allowed).is_none() {
+                if as_expression(parser).is_none() {
                     parser.error("expected an expression :#ME");
                     break;
                 }
@@ -330,8 +302,8 @@ fn multiplicative_expression(
     }
 }
 
-fn as_expression(parser: &mut Parser<'_>, dis_allowed: Option<DisAllowed>) -> Option<Expression> {
-    if let Some(cm) = prefix_unary_expression(parser, dis_allowed) {
+fn as_expression(parser: &mut Parser<'_>) -> Option<Expression> {
+    if let Some(cm) = prefix_unary_expression(parser) {
         if as_operator::is(parser) {
             let m = cm.marker().precede(parser);
             while as_operator::parse(parser).is_some() {
@@ -367,7 +339,7 @@ fn parenthesized_directly_assignable_expression(
 }
 
 fn directly_assignable_expression(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    postfix_unary_expression(parser, None)
+    postfix_unary_expression(parser)
         .map(|cm| {
             let m = cm.marker().precede(parser);
             assignable_suffix(parser); // record error if none
@@ -397,7 +369,7 @@ fn parenthesized_assignable_expression(parser: &mut Parser<'_>) -> Option<Comple
 
 fn assignable_expression(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     parenthesized_assignable_expression(parser)
-        .or_else(|| prefix_unary_expression(parser, None).map(|pue| pue.marker()))
+        .or_else(|| prefix_unary_expression(parser).map(|pue| pue.marker()))
 }
 
 pub(crate) enum AffixedExpression {
@@ -427,10 +399,7 @@ impl Expression {
     }
 }
 
-pub(super) fn prefix_unary_expression(
-    parser: &mut Parser<'_>,
-    dis_allowed: Option<DisAllowed>,
-) -> Option<AffixedExpression> {
+pub(super) fn prefix_unary_expression(parser: &mut Parser<'_>) -> Option<AffixedExpression> {
     let mut has_prefix = false;
     let m = {
         if !parser.has_nl_before() {
@@ -448,7 +417,7 @@ pub(super) fn prefix_unary_expression(
         has_prefix = true;
     }
 
-    let postfix = postfix_unary_expression(parser, dis_allowed);
+    let postfix = postfix_unary_expression(parser);
 
     if postfix.is_some() {
         if has_prefix {
@@ -477,10 +446,7 @@ fn unary_prefix(parser: &mut Parser<'_>) -> Option<DanglingMarker> {
     }
 }
 
-fn postfix_unary_expression(
-    parser: &mut Parser<'_>,
-    dis_allowed: Option<DisAllowed>,
-) -> Option<AffixedExpression> {
+fn postfix_unary_expression(parser: &mut Parser<'_>) -> Option<AffixedExpression> {
     if let Some(pm) = primary_expression(parser) {
         let m = pm.precede(parser);
         if parser.has_nl_before() {
@@ -489,8 +455,7 @@ fn postfix_unary_expression(
         let mut index = 1;
         // HGKIC: we want to allow postfix unary operators on a new line iff they are the first postfix unary operator.
         // This is how the Kotlin compiler behaves.
-        while !(parser.has_nl_before() && index % 2 == 1)
-            && postfix_unary_suffix(parser, dis_allowed).is_some()
+        while !(parser.has_nl_before() && index % 2 == 1) && postfix_unary_suffix(parser).is_some()
         {
             index += 1;
         }
@@ -500,20 +465,11 @@ fn postfix_unary_expression(
     }
 }
 
-fn postfix_unary_suffix(
-    parser: &mut Parser<'_>,
-    dis_allowed: Option<DisAllowed>,
-) -> Option<CompletedMarker> {
-    if matches!(dis_allowed, Some(DisAllowed::CallSuffix)) {
-        postfix_unary_operator::parse(parser)
-            .or_else(|| indexing_suffix(parser))
-            .or_else(|| navigation_suffix(parser))
-    } else {
-        call_suffix(parser, CallSuffix::AcceptTypeArguments)
-            .or_else(|| postfix_unary_operator::parse(parser))
-            .or_else(|| indexing_suffix(parser))
-            .or_else(|| navigation_suffix(parser))
-    }
+fn postfix_unary_suffix(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    call_suffix(parser, CallSuffix::AcceptTypeArguments)
+        .or_else(|| postfix_unary_operator::parse(parser))
+        .or_else(|| indexing_suffix(parser))
+        .or_else(|| navigation_suffix(parser))
 }
 
 pub(crate) fn assignable_suffix(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
@@ -569,20 +525,53 @@ fn starts_call_suffix(parser: &mut Parser<'_>) -> bool {
 
 fn call_suffix(parser: &mut Parser<'_>, res: CallSuffix) -> Option<CompletedMarker> {
     let m = parser.start();
-    let ta = type_arguments(parser);
-    let va = value_arguments(parser);
-    let lambda = annotated_lambda(parser);
+    // HGKIC: It is impossible to differentiate between a type argument and a less than operator, so using backtracking here
+    let ta = if parser.at(T![<]) {
+        let next = parser.nth(1);
+        // Early exit if the next token is a literal or a string literal, as it is impossible for it to be a type argument.
+        if next.is_literal() || next == QUOTE || next == TRIPLE_QUOTE {
+            m.abandon(parser);
+            return None;
+        }
 
-    match (va.is_none(), lambda.is_none(), res) {
-        (true, true, CallSuffix::AcceptTypeArguments) => {
-            m.abandon(parser);
-            ta // it is valid to have just type arguments.
+        let mut fork = parser.fork();
+        if let Some(ta) = strict_type_arguments(&mut fork) {
+            parser.merge(fork);
+            Some(ta)
+        } else {
+            // Then it is a less than operator
+            return None;
         }
-        (true, true, _) => {
-            m.abandon(parser);
-            None
+    } else {
+        None
+    };
+    let va = value_arguments(parser);
+
+    if parser.is_lambda_in_call_suffix_allowed() {
+        let lambda = annotated_lambda(parser);
+        match (va.is_none(), lambda.is_none(), res) {
+            (true, true, CallSuffix::AcceptTypeArguments) => {
+                m.abandon(parser);
+                ta // it is valid to have just type arguments.
+            }
+            (true, true, _) => {
+                m.abandon(parser);
+                None
+            }
+            (_, _, _) => Some(m.complete(parser, CALL_SUFFIX)),
         }
-        (_, _, _) => Some(m.complete(parser, CALL_SUFFIX)),
+    } else {
+        match (va.is_none(), res) {
+            (true, CallSuffix::AcceptTypeArguments) => {
+                m.abandon(parser);
+                ta // it is valid to have just type arguments.
+            }
+            (true, _) => {
+                m.abandon(parser);
+                None
+            }
+            (_, _) => Some(m.complete(parser, CALL_SUFFIX)),
+        }
     }
 }
 
@@ -596,21 +585,6 @@ fn annotated_lambda(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
         return None;
     }
     Some(m.complete(parser, ANNOTATED_LAMBDA))
-}
-
-fn type_arguments(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
-    if !parser.at(T![<]) {
-        return None;
-    }
-    let m = parser.start();
-    parser.bump(T![<]);
-    if type_projection(parser).is_some() {
-        while parser.eat(T![,]) && type_projection(parser).is_some() {}
-    }
-    if !parser.eat(T![>]) {
-        parser.error("expected `>`");
-    }
-    Some(m.complete(parser, TYPE_ARGUMENTS))
 }
 
 pub(crate) fn value_arguments(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
@@ -1000,7 +974,19 @@ fn anonymous_function(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     function_body(parser);
     Some(m.complete(parser, ANONYMOUS_FUNCTION))
 }
-
+// test object_literal
+// val user = object {
+//     val name = "Alice"
+//     val age = 28
+// }
+// val customListener = object : ClickListener {
+//     override fun onClick() {
+//         println("Button clicked!")
+//     }
+// }
+// val dataObject = data object : DataInterface by DataImplementation(), DataMarker {
+//     val data = "Some data"
+// }
 fn object_literal(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     if !(parser.at(T![object]) || (parser.at(T![data]) && parser.nth_at(1, T![object]))) {
         return None;
@@ -1055,6 +1041,11 @@ fn super_expression(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     }
 }
 
+// test if_expression
+// val a = if (x > 0) { println("positive") } else { println("non-positive") }
+// val b = if (num1 > num2) num1 else num2
+// val c = if (func() === MyEnum.VALUE) { println("enum value") }
+// val d = if (x > 0) { println("positive") } else if (x < 0) { println("negative") } else { println("zero") }
 fn if_expression(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     if !parser.at(T![if]) {
         return None;
@@ -1065,19 +1056,43 @@ fn if_expression(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
         parser.error("expected `(`");
     }
     if expression(parser).is_none() {
-        parser.error("expected an expression :#IFE");
+        parser.error("expected an if condition expression");
     }
     if !parser.eat(T![')']) {
         parser.error("expected `)`");
     }
 
-    control_structure_body(parser);
+    single_stmt_control_structure_body(parser);
     parser.eat(T![;]);
     if parser.eat(T![else]) && !parser.eat(T![;]) {
-        control_structure_body(parser);
+        single_stmt_control_structure_body(parser);
     }
     Some(m.complete(parser, IF_EXPRESSION))
 }
+
+// test when_expression
+// val a = when (x) {
+//  1 -> println("one")
+//  2 -> println("two")
+//  else -> println("other")
+// }
+// val b = when (currentAge) {
+//     in 0..12 -> "Child"
+//     in 13..19 -> "Teenager"
+//     in 20..64 -> "Adult"
+//     else -> "Senior"
+// }
+// fun processData(obj: Any): String = when (obj) {
+//     is String -> "String of length ${obj.length}"
+//     is Int if obj > 0 -> "Integer multiplied: ${obj * 2}"
+//     is Int -> "Integer addition: ${obj + 2}"
+//     else -> "Unknown type"
+// }
+// val c = when (val input = "yes") {
+//     "yes" -> "You said yes"
+//     "no" -> "You said no"
+//     else -> "Unrecognized input: $input"
+// }
 
 fn when_expression(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     if !parser.at(T![when]) {
@@ -1126,14 +1141,15 @@ fn when_entry(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     let m = parser.start();
     if parser.at(T![else]) {
         parser.bump(T![else]);
-        if parser.eat(T![->]) {
-            control_structure_body(parser);
+        if parser.eat(T![->]) && single_stmt_control_structure_body(parser).is_none() {
+            parser.error("expected a statement or block");
         }
         semi(parser);
     } else if when_condition(parser).is_some() {
         while parser.eat(T![,]) && when_condition(parser).is_some() {}
-        if parser.eat(T![->]) {
-            control_structure_body(parser);
+        when_guard(parser);
+        if parser.eat(T![->]) && single_stmt_control_structure_body(parser).is_none() {
+            parser.error("expected a statement or block");
         }
         semi(parser);
     } else {
@@ -1141,6 +1157,20 @@ fn when_entry(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
         return None;
     }
     Some(m.complete(parser, WHEN_ENTRY))
+}
+
+fn when_guard(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
+    if !parser.at(T![if]) {
+        return None;
+    }
+    let m = parser.start();
+
+    parser.bump(T![if]);
+    if expression(parser).is_none() {
+        parser.error("expected an expression :#WG");
+    }
+
+    Some(m.complete(parser, WHEN_GUARD))
 }
 
 fn when_condition(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
@@ -1165,7 +1195,7 @@ fn type_test(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     if let Some(cm) = is_operator::parse(parser) {
         let m = cm.precede(parser);
         if ty(parser).is_none() {
-            parser.error("expected a type");
+            parser.error("expected a type: #TTE");
         }
         Some(m.complete(parser, TYPE_TEST))
     } else {

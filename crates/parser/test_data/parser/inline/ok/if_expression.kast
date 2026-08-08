@@ -1,0 +1,314 @@
+KOTLIN_FILE
+  PROPERTY_DECLARATION
+    VAL_KW "val"
+    WHITESPACE " "
+    VARIABLE_DECLARATION
+      SIMPLE_IDENTIFIER
+        IDENT "a"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    EXPRESSION
+      POSTFIX_UNARY_EXPRESSION
+        IF_EXPRESSION
+          IF_KW "if"
+          WHITESPACE " "
+          L_PAREN "("
+          EXPRESSION
+            COMPARISON
+              POSTFIX_UNARY_EXPRESSION
+                SIMPLE_IDENTIFIER
+                  IDENT "x"
+              WHITESPACE " "
+              COMPARISON_OPERATOR
+                R_ANGLE ">"
+              WHITESPACE " "
+              POSTFIX_UNARY_EXPRESSION
+                LITERAL_CONSTANT
+                  INT "0"
+          R_PAREN ")"
+          WHITESPACE " "
+          BLOCK
+            L_CURL "{"
+            WHITESPACE " "
+            STATEMENTS
+              STATEMENT
+                EXPRESSION
+                  POSTFIX_UNARY_EXPRESSION
+                    SIMPLE_IDENTIFIER
+                      IDENT "println"
+                    CALL_SUFFIX
+                      VALUE_ARGUMENTS
+                        L_PAREN "("
+                        VALUE_ARGUMENT
+                          EXPRESSION
+                            POSTFIX_UNARY_EXPRESSION
+                              LINE_STRING_LITERAL
+                                QUOTE "\""
+                                LINE_STRING_CONTENT
+                                  TEXT "positive"
+                                QUOTE "\""
+                        R_PAREN ")"
+            WHITESPACE " "
+            R_CURL "}"
+          WHITESPACE " "
+          ELSE_KW "else"
+          WHITESPACE " "
+          BLOCK
+            L_CURL "{"
+            WHITESPACE " "
+            STATEMENTS
+              STATEMENT
+                EXPRESSION
+                  POSTFIX_UNARY_EXPRESSION
+                    SIMPLE_IDENTIFIER
+                      IDENT "println"
+                    CALL_SUFFIX
+                      VALUE_ARGUMENTS
+                        L_PAREN "("
+                        VALUE_ARGUMENT
+                          EXPRESSION
+                            POSTFIX_UNARY_EXPRESSION
+                              LINE_STRING_LITERAL
+                                QUOTE "\""
+                                LINE_STRING_CONTENT
+                                  TEXT "non-positive"
+                                QUOTE "\""
+                        R_PAREN ")"
+            WHITESPACE " "
+            R_CURL "}"
+  NEWLINE "\n"
+  PROPERTY_DECLARATION
+    VAL_KW "val"
+    WHITESPACE " "
+    VARIABLE_DECLARATION
+      SIMPLE_IDENTIFIER
+        IDENT "b"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    EXPRESSION
+      POSTFIX_UNARY_EXPRESSION
+        IF_EXPRESSION
+          IF_KW "if"
+          WHITESPACE " "
+          L_PAREN "("
+          EXPRESSION
+            COMPARISON
+              POSTFIX_UNARY_EXPRESSION
+                SIMPLE_IDENTIFIER
+                  IDENT "num1"
+              WHITESPACE " "
+              COMPARISON_OPERATOR
+                R_ANGLE ">"
+              WHITESPACE " "
+              POSTFIX_UNARY_EXPRESSION
+                SIMPLE_IDENTIFIER
+                  IDENT "num2"
+          R_PAREN ")"
+          WHITESPACE " "
+          STATEMENTS
+            STATEMENT
+              EXPRESSION
+                POSTFIX_UNARY_EXPRESSION
+                  SIMPLE_IDENTIFIER
+                    IDENT "num1"
+          WHITESPACE " "
+          ELSE_KW "else"
+          WHITESPACE " "
+          STATEMENTS
+            STATEMENT
+              EXPRESSION
+                POSTFIX_UNARY_EXPRESSION
+                  SIMPLE_IDENTIFIER
+                    IDENT "num2"
+  NEWLINE "\n"
+  PROPERTY_DECLARATION
+    VAL_KW "val"
+    WHITESPACE " "
+    VARIABLE_DECLARATION
+      SIMPLE_IDENTIFIER
+        IDENT "c"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    EXPRESSION
+      POSTFIX_UNARY_EXPRESSION
+        IF_EXPRESSION
+          IF_KW "if"
+          WHITESPACE " "
+          L_PAREN "("
+          EXPRESSION
+            EQUALITY
+              POSTFIX_UNARY_EXPRESSION
+                SIMPLE_IDENTIFIER
+                  IDENT "func"
+                CALL_SUFFIX
+                  VALUE_ARGUMENTS
+                    L_PAREN "("
+                    R_PAREN ")"
+              WHITESPACE " "
+              EQUALITY_OPERATOR
+                EQ_EQ_EQ "==="
+              WHITESPACE " "
+              POSTFIX_UNARY_EXPRESSION
+                SIMPLE_IDENTIFIER
+                  IDENT "MyEnum"
+                NAVIGATION_SUFFIX
+                  MEMBER_ACCESS_OPERATOR
+                    DOT "."
+                  SIMPLE_IDENTIFIER
+                    IDENT "VALUE"
+          R_PAREN ")"
+          WHITESPACE " "
+          BLOCK
+            L_CURL "{"
+            WHITESPACE " "
+            STATEMENTS
+              STATEMENT
+                EXPRESSION
+                  POSTFIX_UNARY_EXPRESSION
+                    SIMPLE_IDENTIFIER
+                      IDENT "println"
+                    CALL_SUFFIX
+                      VALUE_ARGUMENTS
+                        L_PAREN "("
+                        VALUE_ARGUMENT
+                          EXPRESSION
+                            POSTFIX_UNARY_EXPRESSION
+                              LINE_STRING_LITERAL
+                                QUOTE "\""
+                                LINE_STRING_CONTENT
+                                  TEXT "enum value"
+                                QUOTE "\""
+                        R_PAREN ")"
+            WHITESPACE " "
+            R_CURL "}"
+  NEWLINE "\n"
+  PROPERTY_DECLARATION
+    VAL_KW "val"
+    WHITESPACE " "
+    VARIABLE_DECLARATION
+      SIMPLE_IDENTIFIER
+        IDENT "d"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    EXPRESSION
+      POSTFIX_UNARY_EXPRESSION
+        IF_EXPRESSION
+          IF_KW "if"
+          WHITESPACE " "
+          L_PAREN "("
+          EXPRESSION
+            COMPARISON
+              POSTFIX_UNARY_EXPRESSION
+                SIMPLE_IDENTIFIER
+                  IDENT "x"
+              WHITESPACE " "
+              COMPARISON_OPERATOR
+                R_ANGLE ">"
+              WHITESPACE " "
+              POSTFIX_UNARY_EXPRESSION
+                LITERAL_CONSTANT
+                  INT "0"
+          R_PAREN ")"
+          WHITESPACE " "
+          BLOCK
+            L_CURL "{"
+            WHITESPACE " "
+            STATEMENTS
+              STATEMENT
+                EXPRESSION
+                  POSTFIX_UNARY_EXPRESSION
+                    SIMPLE_IDENTIFIER
+                      IDENT "println"
+                    CALL_SUFFIX
+                      VALUE_ARGUMENTS
+                        L_PAREN "("
+                        VALUE_ARGUMENT
+                          EXPRESSION
+                            POSTFIX_UNARY_EXPRESSION
+                              LINE_STRING_LITERAL
+                                QUOTE "\""
+                                LINE_STRING_CONTENT
+                                  TEXT "positive"
+                                QUOTE "\""
+                        R_PAREN ")"
+            WHITESPACE " "
+            R_CURL "}"
+          WHITESPACE " "
+          ELSE_KW "else"
+          WHITESPACE " "
+          STATEMENTS
+            STATEMENT
+              EXPRESSION
+                POSTFIX_UNARY_EXPRESSION
+                  IF_EXPRESSION
+                    IF_KW "if"
+                    WHITESPACE " "
+                    L_PAREN "("
+                    EXPRESSION
+                      COMPARISON
+                        POSTFIX_UNARY_EXPRESSION
+                          SIMPLE_IDENTIFIER
+                            IDENT "x"
+                        WHITESPACE " "
+                        COMPARISON_OPERATOR
+                          L_ANGLE "<"
+                        WHITESPACE " "
+                        POSTFIX_UNARY_EXPRESSION
+                          LITERAL_CONSTANT
+                            INT "0"
+                    R_PAREN ")"
+                    WHITESPACE " "
+                    BLOCK
+                      L_CURL "{"
+                      WHITESPACE " "
+                      STATEMENTS
+                        STATEMENT
+                          EXPRESSION
+                            POSTFIX_UNARY_EXPRESSION
+                              SIMPLE_IDENTIFIER
+                                IDENT "println"
+                              CALL_SUFFIX
+                                VALUE_ARGUMENTS
+                                  L_PAREN "("
+                                  VALUE_ARGUMENT
+                                    EXPRESSION
+                                      POSTFIX_UNARY_EXPRESSION
+                                        LINE_STRING_LITERAL
+                                          QUOTE "\""
+                                          LINE_STRING_CONTENT
+                                            TEXT "negative"
+                                          QUOTE "\""
+                                  R_PAREN ")"
+                      WHITESPACE " "
+                      R_CURL "}"
+                    WHITESPACE " "
+                    ELSE_KW "else"
+                    WHITESPACE " "
+                    BLOCK
+                      L_CURL "{"
+                      WHITESPACE " "
+                      STATEMENTS
+                        STATEMENT
+                          EXPRESSION
+                            POSTFIX_UNARY_EXPRESSION
+                              SIMPLE_IDENTIFIER
+                                IDENT "println"
+                              CALL_SUFFIX
+                                VALUE_ARGUMENTS
+                                  L_PAREN "("
+                                  VALUE_ARGUMENT
+                                    EXPRESSION
+                                      POSTFIX_UNARY_EXPRESSION
+                                        LINE_STRING_LITERAL
+                                          QUOTE "\""
+                                          LINE_STRING_CONTENT
+                                            TEXT "zero"
+                                          QUOTE "\""
+                                  R_PAREN ")"
+                      WHITESPACE " "
+                      R_CURL "}"
+  NEWLINE "\n"

@@ -1,0 +1,564 @@
+KOTLIN_FILE
+  PROPERTY_DECLARATION
+    VAL_KW "val"
+    WHITESPACE " "
+    VARIABLE_DECLARATION
+      SIMPLE_IDENTIFIER
+        IDENT "a"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    EXPRESSION
+      POSTFIX_UNARY_EXPRESSION
+        WHEN_EXPRESSION
+          WHEN_KW "when"
+          WHITESPACE " "
+          WHEN_SUBJECT
+            L_PAREN "("
+            EXPRESSION
+              POSTFIX_UNARY_EXPRESSION
+                SIMPLE_IDENTIFIER
+                  IDENT "x"
+            R_PAREN ")"
+          WHITESPACE " "
+          L_CURL "{"
+          NEWLINE "\n"
+          WHITESPACE " "
+          WHEN_ENTRY
+            EXPRESSION
+              POSTFIX_UNARY_EXPRESSION
+                LITERAL_CONSTANT
+                  INT "1"
+            WHITESPACE " "
+            ARROW "->"
+            WHITESPACE " "
+            STATEMENTS
+              STATEMENT
+                EXPRESSION
+                  POSTFIX_UNARY_EXPRESSION
+                    SIMPLE_IDENTIFIER
+                      IDENT "println"
+                    CALL_SUFFIX
+                      VALUE_ARGUMENTS
+                        L_PAREN "("
+                        VALUE_ARGUMENT
+                          EXPRESSION
+                            POSTFIX_UNARY_EXPRESSION
+                              LINE_STRING_LITERAL
+                                QUOTE "\""
+                                LINE_STRING_CONTENT
+                                  TEXT "one"
+                                QUOTE "\""
+                        R_PAREN ")"
+          NEWLINE "\n"
+          WHITESPACE " "
+          WHEN_ENTRY
+            EXPRESSION
+              POSTFIX_UNARY_EXPRESSION
+                LITERAL_CONSTANT
+                  INT "2"
+            WHITESPACE " "
+            ARROW "->"
+            WHITESPACE " "
+            STATEMENTS
+              STATEMENT
+                EXPRESSION
+                  POSTFIX_UNARY_EXPRESSION
+                    SIMPLE_IDENTIFIER
+                      IDENT "println"
+                    CALL_SUFFIX
+                      VALUE_ARGUMENTS
+                        L_PAREN "("
+                        VALUE_ARGUMENT
+                          EXPRESSION
+                            POSTFIX_UNARY_EXPRESSION
+                              LINE_STRING_LITERAL
+                                QUOTE "\""
+                                LINE_STRING_CONTENT
+                                  TEXT "two"
+                                QUOTE "\""
+                        R_PAREN ")"
+          NEWLINE "\n"
+          WHITESPACE " "
+          WHEN_ENTRY
+            ELSE_KW "else"
+            WHITESPACE " "
+            ARROW "->"
+            WHITESPACE " "
+            STATEMENTS
+              STATEMENT
+                EXPRESSION
+                  POSTFIX_UNARY_EXPRESSION
+                    SIMPLE_IDENTIFIER
+                      IDENT "println"
+                    CALL_SUFFIX
+                      VALUE_ARGUMENTS
+                        L_PAREN "("
+                        VALUE_ARGUMENT
+                          EXPRESSION
+                            POSTFIX_UNARY_EXPRESSION
+                              LINE_STRING_LITERAL
+                                QUOTE "\""
+                                LINE_STRING_CONTENT
+                                  TEXT "other"
+                                QUOTE "\""
+                        R_PAREN ")"
+          NEWLINE "\n"
+          R_CURL "}"
+  NEWLINE "\n"
+  PROPERTY_DECLARATION
+    VAL_KW "val"
+    WHITESPACE " "
+    VARIABLE_DECLARATION
+      SIMPLE_IDENTIFIER
+        IDENT "b"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    EXPRESSION
+      POSTFIX_UNARY_EXPRESSION
+        WHEN_EXPRESSION
+          WHEN_KW "when"
+          WHITESPACE " "
+          WHEN_SUBJECT
+            L_PAREN "("
+            EXPRESSION
+              POSTFIX_UNARY_EXPRESSION
+                SIMPLE_IDENTIFIER
+                  IDENT "currentAge"
+            R_PAREN ")"
+          WHITESPACE " "
+          L_CURL "{"
+          NEWLINE "\n"
+          WHITESPACE " "
+          WHITESPACE " "
+          WHITESPACE " "
+          WHITESPACE " "
+          WHEN_ENTRY
+            RANGE_TEST
+              IN_OPERATOR
+                IN_KW "in"
+              WHITESPACE " "
+              EXPRESSION
+                RANGE_EXPRESSION
+                  POSTFIX_UNARY_EXPRESSION
+                    LITERAL_CONSTANT
+                      INT "0"
+                  RANGE ".."
+                  POSTFIX_UNARY_EXPRESSION
+                    LITERAL_CONSTANT
+                      INT "12"
+            WHITESPACE " "
+            ARROW "->"
+            WHITESPACE " "
+            STATEMENTS
+              STATEMENT
+                EXPRESSION
+                  POSTFIX_UNARY_EXPRESSION
+                    LINE_STRING_LITERAL
+                      QUOTE "\""
+                      LINE_STRING_CONTENT
+                        TEXT "Child"
+                      QUOTE "\""
+          NEWLINE "\n"
+          WHITESPACE " "
+          WHITESPACE " "
+          WHITESPACE " "
+          WHITESPACE " "
+          WHEN_ENTRY
+            RANGE_TEST
+              IN_OPERATOR
+                IN_KW "in"
+              WHITESPACE " "
+              EXPRESSION
+                RANGE_EXPRESSION
+                  POSTFIX_UNARY_EXPRESSION
+                    LITERAL_CONSTANT
+                      INT "13"
+                  RANGE ".."
+                  POSTFIX_UNARY_EXPRESSION
+                    LITERAL_CONSTANT
+                      INT "19"
+            WHITESPACE " "
+            ARROW "->"
+            WHITESPACE " "
+            STATEMENTS
+              STATEMENT
+                EXPRESSION
+                  POSTFIX_UNARY_EXPRESSION
+                    LINE_STRING_LITERAL
+                      QUOTE "\""
+                      LINE_STRING_CONTENT
+                        TEXT "Teenager"
+                      QUOTE "\""
+          NEWLINE "\n"
+          WHITESPACE " "
+          WHITESPACE " "
+          WHITESPACE " "
+          WHITESPACE " "
+          WHEN_ENTRY
+            RANGE_TEST
+              IN_OPERATOR
+                IN_KW "in"
+              WHITESPACE " "
+              EXPRESSION
+                RANGE_EXPRESSION
+                  POSTFIX_UNARY_EXPRESSION
+                    LITERAL_CONSTANT
+                      INT "20"
+                  RANGE ".."
+                  POSTFIX_UNARY_EXPRESSION
+                    LITERAL_CONSTANT
+                      INT "64"
+            WHITESPACE " "
+            ARROW "->"
+            WHITESPACE " "
+            STATEMENTS
+              STATEMENT
+                EXPRESSION
+                  POSTFIX_UNARY_EXPRESSION
+                    LINE_STRING_LITERAL
+                      QUOTE "\""
+                      LINE_STRING_CONTENT
+                        TEXT "Adult"
+                      QUOTE "\""
+          NEWLINE "\n"
+          WHITESPACE " "
+          WHITESPACE " "
+          WHITESPACE " "
+          WHITESPACE " "
+          WHEN_ENTRY
+            ELSE_KW "else"
+            WHITESPACE " "
+            ARROW "->"
+            WHITESPACE " "
+            STATEMENTS
+              STATEMENT
+                EXPRESSION
+                  POSTFIX_UNARY_EXPRESSION
+                    LINE_STRING_LITERAL
+                      QUOTE "\""
+                      LINE_STRING_CONTENT
+                        TEXT "Senior"
+                      QUOTE "\""
+          NEWLINE "\n"
+          R_CURL "}"
+  NEWLINE "\n"
+  FUNCTION_DECLARATION
+    FUN_KW "fun"
+    WHITESPACE " "
+    SIMPLE_IDENTIFIER
+      IDENT "processData"
+    FUNCTION_VALUE_PARAMETERS
+      L_PAREN "("
+      FUNCTION_VALUE_PARAMETER
+        PARAMETER
+          SIMPLE_IDENTIFIER
+            IDENT "obj"
+          COLON ":"
+          WHITESPACE " "
+          TYPE
+            TYPE_REFERENCE
+              USER_TYPE
+                SIMPLE_USER_TYPE
+                  SIMPLE_IDENTIFIER
+                    IDENT "Any"
+      R_PAREN ")"
+    COLON ":"
+    WHITESPACE " "
+    TYPE
+      TYPE_REFERENCE
+        USER_TYPE
+          SIMPLE_USER_TYPE
+            SIMPLE_IDENTIFIER
+              IDENT "String"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    EXPRESSION
+      POSTFIX_UNARY_EXPRESSION
+        WHEN_EXPRESSION
+          WHEN_KW "when"
+          WHITESPACE " "
+          WHEN_SUBJECT
+            L_PAREN "("
+            EXPRESSION
+              POSTFIX_UNARY_EXPRESSION
+                SIMPLE_IDENTIFIER
+                  IDENT "obj"
+            R_PAREN ")"
+          WHITESPACE " "
+          L_CURL "{"
+          NEWLINE "\n"
+          WHITESPACE " "
+          WHITESPACE " "
+          WHITESPACE " "
+          WHITESPACE " "
+          WHEN_ENTRY
+            TYPE_TEST
+              IS_OPERATOR
+                IS_KW "is"
+              WHITESPACE " "
+              TYPE
+                TYPE_REFERENCE
+                  USER_TYPE
+                    SIMPLE_USER_TYPE
+                      SIMPLE_IDENTIFIER
+                        IDENT "String"
+            WHITESPACE " "
+            ARROW "->"
+            WHITESPACE " "
+            STATEMENTS
+              STATEMENT
+                EXPRESSION
+                  POSTFIX_UNARY_EXPRESSION
+                    LINE_STRING_LITERAL
+                      QUOTE "\""
+                      LINE_STRING_CONTENT
+                        TEXT "String of length "
+                      LINE_STRING_EXPRESSION
+                        STR_EXPR_START "${"
+                        EXPRESSION
+                          POSTFIX_UNARY_EXPRESSION
+                            SIMPLE_IDENTIFIER
+                              IDENT "obj"
+                            NAVIGATION_SUFFIX
+                              MEMBER_ACCESS_OPERATOR
+                                DOT "."
+                              SIMPLE_IDENTIFIER
+                                IDENT "length"
+                        R_CURL "}"
+                      QUOTE "\""
+          NEWLINE "\n"
+          WHITESPACE " "
+          WHITESPACE " "
+          WHITESPACE " "
+          WHITESPACE " "
+          WHEN_ENTRY
+            TYPE_TEST
+              IS_OPERATOR
+                IS_KW "is"
+              WHITESPACE " "
+              TYPE
+                TYPE_REFERENCE
+                  USER_TYPE
+                    SIMPLE_USER_TYPE
+                      SIMPLE_IDENTIFIER
+                        IDENT "Int"
+            WHITESPACE " "
+            WHEN_GUARD
+              IF_KW "if"
+              WHITESPACE " "
+              EXPRESSION
+                COMPARISON
+                  POSTFIX_UNARY_EXPRESSION
+                    SIMPLE_IDENTIFIER
+                      IDENT "obj"
+                  WHITESPACE " "
+                  COMPARISON_OPERATOR
+                    R_ANGLE ">"
+                  WHITESPACE " "
+                  POSTFIX_UNARY_EXPRESSION
+                    LITERAL_CONSTANT
+                      INT "0"
+            WHITESPACE " "
+            ARROW "->"
+            WHITESPACE " "
+            STATEMENTS
+              STATEMENT
+                EXPRESSION
+                  POSTFIX_UNARY_EXPRESSION
+                    LINE_STRING_LITERAL
+                      QUOTE "\""
+                      LINE_STRING_CONTENT
+                        TEXT "Integer multiplied: "
+                      LINE_STRING_EXPRESSION
+                        STR_EXPR_START "${"
+                        EXPRESSION
+                          MULTIPLICATIVE_EXPRESSION
+                            POSTFIX_UNARY_EXPRESSION
+                              SIMPLE_IDENTIFIER
+                                IDENT "obj"
+                            WHITESPACE " "
+                            MULTIPLICATIVE_OPERATOR
+                              MULT "*"
+                            WHITESPACE " "
+                            POSTFIX_UNARY_EXPRESSION
+                              LITERAL_CONSTANT
+                                INT "2"
+                        R_CURL "}"
+                      QUOTE "\""
+          NEWLINE "\n"
+          WHITESPACE " "
+          WHITESPACE " "
+          WHITESPACE " "
+          WHITESPACE " "
+          WHEN_ENTRY
+            TYPE_TEST
+              IS_OPERATOR
+                IS_KW "is"
+              WHITESPACE " "
+              TYPE
+                TYPE_REFERENCE
+                  USER_TYPE
+                    SIMPLE_USER_TYPE
+                      SIMPLE_IDENTIFIER
+                        IDENT "Int"
+            WHITESPACE " "
+            ARROW "->"
+            WHITESPACE " "
+            STATEMENTS
+              STATEMENT
+                EXPRESSION
+                  POSTFIX_UNARY_EXPRESSION
+                    LINE_STRING_LITERAL
+                      QUOTE "\""
+                      LINE_STRING_CONTENT
+                        TEXT "Integer addition: "
+                      LINE_STRING_EXPRESSION
+                        STR_EXPR_START "${"
+                        EXPRESSION
+                          ADDITIVE_EXPRESSION
+                            POSTFIX_UNARY_EXPRESSION
+                              SIMPLE_IDENTIFIER
+                                IDENT "obj"
+                            WHITESPACE " "
+                            ADDITIVE_OPERATOR
+                              ADD "+"
+                            WHITESPACE " "
+                            POSTFIX_UNARY_EXPRESSION
+                              LITERAL_CONSTANT
+                                INT "2"
+                        R_CURL "}"
+                      QUOTE "\""
+          NEWLINE "\n"
+          WHITESPACE " "
+          WHITESPACE " "
+          WHITESPACE " "
+          WHITESPACE " "
+          WHEN_ENTRY
+            ELSE_KW "else"
+            WHITESPACE " "
+            ARROW "->"
+            WHITESPACE " "
+            STATEMENTS
+              STATEMENT
+                EXPRESSION
+                  POSTFIX_UNARY_EXPRESSION
+                    LINE_STRING_LITERAL
+                      QUOTE "\""
+                      LINE_STRING_CONTENT
+                        TEXT "Unknown type"
+                      QUOTE "\""
+          NEWLINE "\n"
+          R_CURL "}"
+    NEWLINE "\n"
+    FUNCTION_BODY
+  PROPERTY_DECLARATION
+    VAL_KW "val"
+    WHITESPACE " "
+    VARIABLE_DECLARATION
+      SIMPLE_IDENTIFIER
+        IDENT "c"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    EXPRESSION
+      POSTFIX_UNARY_EXPRESSION
+        WHEN_EXPRESSION
+          WHEN_KW "when"
+          WHITESPACE " "
+          WHEN_SUBJECT
+            L_PAREN "("
+            VAL_KW "val"
+            WHITESPACE " "
+            VARIABLE_DECLARATION
+              SIMPLE_IDENTIFIER
+                IDENT "input"
+            WHITESPACE " "
+            EQ "="
+            WHITESPACE " "
+            EXPRESSION
+              POSTFIX_UNARY_EXPRESSION
+                LINE_STRING_LITERAL
+                  QUOTE "\""
+                  LINE_STRING_CONTENT
+                    TEXT "yes"
+                  QUOTE "\""
+            R_PAREN ")"
+          WHITESPACE " "
+          L_CURL "{"
+          NEWLINE "\n"
+          WHITESPACE " "
+          WHITESPACE " "
+          WHITESPACE " "
+          WHITESPACE " "
+          WHEN_ENTRY
+            EXPRESSION
+              POSTFIX_UNARY_EXPRESSION
+                LINE_STRING_LITERAL
+                  QUOTE "\""
+                  LINE_STRING_CONTENT
+                    TEXT "yes"
+                  QUOTE "\""
+            WHITESPACE " "
+            ARROW "->"
+            WHITESPACE " "
+            STATEMENTS
+              STATEMENT
+                EXPRESSION
+                  POSTFIX_UNARY_EXPRESSION
+                    LINE_STRING_LITERAL
+                      QUOTE "\""
+                      LINE_STRING_CONTENT
+                        TEXT "You said yes"
+                      QUOTE "\""
+          NEWLINE "\n"
+          WHITESPACE " "
+          WHITESPACE " "
+          WHITESPACE " "
+          WHITESPACE " "
+          WHEN_ENTRY
+            EXPRESSION
+              POSTFIX_UNARY_EXPRESSION
+                LINE_STRING_LITERAL
+                  QUOTE "\""
+                  LINE_STRING_CONTENT
+                    TEXT "no"
+                  QUOTE "\""
+            WHITESPACE " "
+            ARROW "->"
+            WHITESPACE " "
+            STATEMENTS
+              STATEMENT
+                EXPRESSION
+                  POSTFIX_UNARY_EXPRESSION
+                    LINE_STRING_LITERAL
+                      QUOTE "\""
+                      LINE_STRING_CONTENT
+                        TEXT "You said no"
+                      QUOTE "\""
+          NEWLINE "\n"
+          WHITESPACE " "
+          WHITESPACE " "
+          WHITESPACE " "
+          WHITESPACE " "
+          WHEN_ENTRY
+            ELSE_KW "else"
+            WHITESPACE " "
+            ARROW "->"
+            WHITESPACE " "
+            STATEMENTS
+              STATEMENT
+                EXPRESSION
+                  POSTFIX_UNARY_EXPRESSION
+                    LINE_STRING_LITERAL
+                      QUOTE "\""
+                      LINE_STRING_CONTENT
+                        TEXT "Unrecognized input: "
+                      LINE_STRING_CONTENT
+                        STR_REF "$input"
+                      QUOTE "\""
+          NEWLINE "\n"
+          R_CURL "}"
+  NEWLINE "\n"

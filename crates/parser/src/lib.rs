@@ -55,6 +55,7 @@ impl TopEntryPoint {
         };
         let mut p = parser::Parser::new(input);
         entry_point(&mut p);
+        // TODO: assert that this is always empty
         let danglings = p.dangling.drain(..).collect::<Vec<_>>();
 
         for dangling in danglings {
