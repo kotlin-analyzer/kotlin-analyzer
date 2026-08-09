@@ -12,12 +12,11 @@ KOTLIN_FILE
         L_PAREN "("
         VALUE_ARGUMENT
           EXPRESSION
-            POSTFIX_UNARY_EXPRESSION
-              LINE_STRING_LITERAL
-                QUOTE "\""
-                LINE_STRING_CONTENT
-                  TEXT "Foo"
-                QUOTE "\""
+            LINE_STRING_LITERAL
+              QUOTE "\""
+              LINE_STRING_CONTENT
+                TEXT "Foo"
+              QUOTE "\""
         R_PAREN ")"
   NEWLINE "\n"
   FILE_ANNOTATION
@@ -34,12 +33,11 @@ KOTLIN_FILE
         L_PAREN "("
         VALUE_ARGUMENT
           EXPRESSION
-            POSTFIX_UNARY_EXPRESSION
-              LINE_STRING_LITERAL
-                QUOTE "\""
-                LINE_STRING_CONTENT
-                  TEXT "Foo"
-                QUOTE "\""
+            LINE_STRING_LITERAL
+              QUOTE "\""
+              LINE_STRING_CONTENT
+                TEXT "Foo"
+              QUOTE "\""
         R_PAREN ")"
     WHITESPACE " "
     USER_TYPE

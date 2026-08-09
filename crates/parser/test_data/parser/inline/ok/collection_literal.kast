@@ -9,49 +9,42 @@ KOTLIN_FILE
     EQ "="
     WHITESPACE " "
     EXPRESSION
-      POSTFIX_UNARY_EXPRESSION
-        COLLECTION_LITERAL
-          L_SQUARE "["
-          EXPRESSION
-            POSTFIX_UNARY_EXPRESSION
-              LITERAL_CONSTANT
-                INT "1"
-          COMMA ","
-          WHITESPACE " "
-          EXPRESSION
-            POSTFIX_UNARY_EXPRESSION
-              LITERAL_CONSTANT
-                INT "2"
-          COMMA ","
-          WHITESPACE " "
-          EXPRESSION
-            POSTFIX_UNARY_EXPRESSION
-              LITERAL_CONSTANT
-                INT "3"
-          COMMA ","
-          WHITESPACE " "
-          EXPRESSION
-            POSTFIX_UNARY_EXPRESSION
+      COLLECTION_LITERAL
+        L_SQUARE "["
+        EXPRESSION
+          LITERAL_CONSTANT
+            INT "1"
+        COMMA ","
+        WHITESPACE " "
+        EXPRESSION
+          LITERAL_CONSTANT
+            INT "2"
+        COMMA ","
+        WHITESPACE " "
+        EXPRESSION
+          LITERAL_CONSTANT
+            INT "3"
+        COMMA ","
+        WHITESPACE " "
+        EXPRESSION
+          LINE_STRING_LITERAL
+            QUOTE "\""
+            LINE_STRING_CONTENT
+              TEXT "four"
+            QUOTE "\""
+        COMMA ","
+        WHITESPACE " "
+        EXPRESSION
+          PARENTHESIZED_EXPRESSION
+            L_PAREN "("
+            EXPRESSION
               LINE_STRING_LITERAL
                 QUOTE "\""
                 LINE_STRING_CONTENT
-                  TEXT "four"
+                  TEXT "five"
                 QUOTE "\""
-          COMMA ","
-          WHITESPACE " "
-          EXPRESSION
-            POSTFIX_UNARY_EXPRESSION
-              PARENTHESIZED_EXPRESSION
-                L_PAREN "("
-                EXPRESSION
-                  POSTFIX_UNARY_EXPRESSION
-                    LINE_STRING_LITERAL
-                      QUOTE "\""
-                      LINE_STRING_CONTENT
-                        TEXT "five"
-                      QUOTE "\""
-                R_PAREN ")"
-          R_SQUARE "]"
+            R_PAREN ")"
+        R_SQUARE "]"
   NEWLINE "\n"
   PROPERTY_DECLARATION
     VAL_KW "val"
@@ -67,21 +60,18 @@ KOTLIN_FILE
         COLLECTION_LITERAL
           L_SQUARE "["
           EXPRESSION
-            POSTFIX_UNARY_EXPRESSION
-              LITERAL_CONSTANT
-                INT "1"
+            LITERAL_CONSTANT
+              INT "1"
           COMMA ","
           WHITESPACE " "
           EXPRESSION
-            POSTFIX_UNARY_EXPRESSION
-              LITERAL_CONSTANT
-                INT "2"
+            LITERAL_CONSTANT
+              INT "2"
           COMMA ","
           WHITESPACE " "
           EXPRESSION
-            POSTFIX_UNARY_EXPRESSION
-              LITERAL_CONSTANT
-                INT "3"
+            LITERAL_CONSTANT
+              INT "3"
           R_SQUARE "]"
         NAVIGATION_SUFFIX
           MEMBER_ACCESS_OPERATOR
@@ -98,16 +88,14 @@ KOTLIN_FILE
                 STATEMENT
                   EXPRESSION
                     MULTIPLICATIVE_EXPRESSION
-                      POSTFIX_UNARY_EXPRESSION
-                        SIMPLE_IDENTIFIER
-                          IDENT "it"
+                      SIMPLE_IDENTIFIER
+                        IDENT "it"
                       WHITESPACE " "
                       MULTIPLICATIVE_OPERATOR
                         MULT "*"
                       WHITESPACE " "
-                      POSTFIX_UNARY_EXPRESSION
-                        LITERAL_CONSTANT
-                          INT "2"
+                      LITERAL_CONSTANT
+                        INT "2"
               WHITESPACE " "
               R_CURL "}"
   NEWLINE "\n"
@@ -121,24 +109,20 @@ KOTLIN_FILE
     EQ "="
     WHITESPACE " "
     EXPRESSION
-      POSTFIX_UNARY_EXPRESSION
-        COLLECTION_LITERAL
-          L_SQUARE "["
-          EXPRESSION
-            POSTFIX_UNARY_EXPRESSION
-              SIMPLE_IDENTIFIER
-                IDENT "a"
-          COMMA ","
-          NEWLINE "\n"
-          EXPRESSION
-            POSTFIX_UNARY_EXPRESSION
-              SIMPLE_IDENTIFIER
-                IDENT "b"
-          COMMA ","
-          WHITESPACE " "
-          EXPRESSION
-            POSTFIX_UNARY_EXPRESSION
-              SIMPLE_IDENTIFIER
-                IDENT "c"
-          R_SQUARE "]"
+      COLLECTION_LITERAL
+        L_SQUARE "["
+        EXPRESSION
+          SIMPLE_IDENTIFIER
+            IDENT "a"
+        COMMA ","
+        NEWLINE "\n"
+        EXPRESSION
+          SIMPLE_IDENTIFIER
+            IDENT "b"
+        COMMA ","
+        WHITESPACE " "
+        EXPRESSION
+          SIMPLE_IDENTIFIER
+            IDENT "c"
+        R_SQUARE "]"
   NEWLINE "\n"

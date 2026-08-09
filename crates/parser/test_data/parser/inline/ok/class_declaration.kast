@@ -117,9 +117,8 @@ KOTLIN_FILE
             BY_KW "by"
             WHITESPACE " "
             EXPRESSION
-              POSTFIX_UNARY_EXPRESSION
-                SIMPLE_IDENTIFIER
-                  IDENT "baz"
+              SIMPLE_IDENTIFIER
+                IDENT "baz"
   NEWLINE "\n"
   CLASS_DECLARATION
     CLASS_KW "class"

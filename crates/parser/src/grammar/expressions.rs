@@ -448,10 +448,11 @@ fn unary_prefix(parser: &mut Parser<'_>) -> Option<DanglingMarker> {
 
 fn postfix_unary_expression(parser: &mut Parser<'_>) -> Option<AffixedExpression> {
     if let Some(pm) = primary_expression(parser) {
-        let m = pm.precede(parser);
-        if parser.has_nl_before() {
-            return Some(AffixedExpression::Postfix(m.complete(parser, POSTFIX_UNARY_EXPRESSION)));
+        if parser.has_nl_before() || !starts_postfix_unary_suffix(parser) {
+            return Some(AffixedExpression::Postfix(pm));
         }
+
+        let m = pm.precede(parser);
         let mut index = 1;
         // HGKIC: we want to allow postfix unary operators on a new line iff they are the first postfix unary operator.
         // This is how the Kotlin compiler behaves.
@@ -463,6 +464,15 @@ fn postfix_unary_expression(parser: &mut Parser<'_>) -> Option<AffixedExpression
     } else {
         None
     }
+}
+
+fn starts_postfix_unary_suffix(parser: &mut Parser<'_>) -> bool {
+    starts_call_suffix(parser)
+        || postfix_unary_operator::is(parser)
+        || parser.at(T!['['])
+        || parser.at(T![.])
+        || parser.at(T![::])
+        || (parser.at(T![?]) && !parser.nth_at(1, T![.]))
 }
 
 fn postfix_unary_suffix(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
@@ -643,7 +653,8 @@ fn primary_expression(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
         .or_else(|| try_expression(parser))
         .or_else(|| jump_expression(parser))
         .or_else(|| {
-            // HGKIC: this is to prevent this from matching callable references, which also start with a simple identifier, but require a `::` after them.
+            // HGKIC: this is to prevent this from matching callable references,
+            // which also start with a simple identifier, but require a `::` after them.
             if is_simple_identifier(parser) && !parser.nth_at(1, T![::]) {
                 simple_identifier(parser)
             } else {
