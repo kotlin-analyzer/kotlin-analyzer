@@ -5,7 +5,7 @@ members = ["crates/*", "libs/*", "xtask/"]
 [workspace.package]
 version = "0.0.1"
 edition = "2024"
-rust-version = "1.96.0"
+rust-version = "1.98.0"
 repository = "https://github.com/kotlin-analyzer/kotlin-analyzer"
 license = "MIT OR Apache-2.0"
 
@@ -27,18 +27,18 @@ either = "1.15.0"
 expect-test = "1.5.1"
 inflector-plus = "0.11.7"
 insta = { version = "1.37.0", features = ["ron"] }
-itertools = "0.14.0"
+itertools = "0.15.0"
 nonempty = "0.12.0"
 panic-context = "0.1.0"
 pretty_assertions = "1.4.1"
-prettyplease = "0.2.25"
+prettyplease = "0.3.0"
 proc-macro2 = "1.0.92"
 quote = "1.0.37"
-ron = "0.12"
-rowan = "0.16.1"
+ron = "0.12.0"
+rowan = "0.17.0"
 rstest = "0.26.1"
 serde = { version = "1", features = ["derive"] }
-syn = "2.0.90"
+syn = "3.0.4"
 tracing = "0.1.44"
 xshell = "0.2.7"
 
