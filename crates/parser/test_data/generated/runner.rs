@@ -79,6 +79,10 @@ mod ok {
         run_and_expect_no_errors("test_data/parser/inline/ok/single_annotation.kt");
     }
     #[test]
+    fn try_expression() {
+        run_and_expect_no_errors("test_data/parser/inline/ok/try_expression.kt");
+    }
+    #[test]
     fn when_expression() {
         run_and_expect_no_errors("test_data/parser/inline/ok/when_expression.kt");
     }
@@ -89,4 +93,6 @@ mod err {
     fn file_annotation() {
         run_and_expect_errors("test_data/parser/inline/err/file_annotation.kt");
     }
+    #[test]
+    fn try_expression() { run_and_expect_errors("test_data/parser/inline/err/try_expression.kt"); }
 }

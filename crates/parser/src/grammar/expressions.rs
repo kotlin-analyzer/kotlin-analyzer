@@ -1219,6 +1219,10 @@ enum CallableReference {
     Full(CompletedMarker),
 }
 
+// test try_expression
+// val a = try { println("try block") } catch (e: Exception) {} finally {}
+// val b = try { println("try block") } catch (e: Exception) {} catch (t: Throwable) {}
+// val c = try { println("try block") } finally {}
 fn try_expression(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     if !parser.at(T![try]) {
         return None;
@@ -1234,6 +1238,8 @@ fn try_expression(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
         catch_or_finally += 1;
     }
     finally_block(parser).inspect(|_| catch_or_finally += 1);
+    // test_err try_expression
+    // val a = try { println("try block") }
     if catch_or_finally == 0 {
         parser.error("expected at least one `catch` or `finally` block");
     }
@@ -1248,7 +1254,7 @@ fn catch_block(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     parser.bump(T![catch]);
 
     if !parser.eat(T!['(']) {
-        parser.error("expected `(`");
+        parser.err_recover("expected `(`", TokenSet::EMPTY);
     } else {
         while annotation(parser).is_some() {}
         if simple_identifier(parser).is_some() {
