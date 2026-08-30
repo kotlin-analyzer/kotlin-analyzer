@@ -1,0 +1,81 @@
+KOTLIN_FILE
+  PROPERTY_DECLARATION
+    VAL_KW "val"
+    WHITESPACE " "
+    VARIABLE_DECLARATION
+      SIMPLE_IDENTIFIER
+        IDENT "a"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    EXPRESSION
+      CALLABLE_REFERENCE
+        COLON_COLON "::"
+        SIMPLE_IDENTIFIER
+          IDENT "functionName"
+  NEWLINE "\n"
+  PROPERTY_DECLARATION
+    VAL_KW "val"
+    WHITESPACE " "
+    VARIABLE_DECLARATION
+      SIMPLE_IDENTIFIER
+        IDENT "b"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    EXPRESSION
+      CALLABLE_REFERENCE
+        RECEIVER_TYPE
+          TYPE_REFERENCE
+            USER_TYPE
+              SIMPLE_USER_TYPE
+                SIMPLE_IDENTIFIER
+                  IDENT "ClassName"
+        COLON_COLON "::"
+        SIMPLE_IDENTIFIER
+          IDENT "functionName"
+  NEWLINE "\n"
+  PROPERTY_DECLARATION
+    VAL_KW "val"
+    WHITESPACE " "
+    VARIABLE_DECLARATION
+      SIMPLE_IDENTIFIER
+        IDENT "c"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    EXPRESSION
+      CALLABLE_REFERENCE
+        RECEIVER_TYPE
+          TYPE_REFERENCE
+            USER_TYPE
+              SIMPLE_USER_TYPE
+                SIMPLE_IDENTIFIER
+                  IDENT "ClassName"
+        COLON_COLON "::"
+        CLASS_KW "class"
+  NEWLINE "\n"
+  PROPERTY_DECLARATION
+    VAL_KW "val"
+    WHITESPACE " "
+    VARIABLE_DECLARATION
+      SIMPLE_IDENTIFIER
+        IDENT "d"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    EXPRESSION
+      POSTFIX_UNARY_EXPRESSION
+        SIMPLE_IDENTIFIER
+          IDENT "Module"
+        NAVIGATION_SUFFIX
+          MEMBER_ACCESS_OPERATOR
+            DOT "."
+          SIMPLE_IDENTIFIER
+            IDENT "ClassName"
+        NAVIGATION_SUFFIX
+          MEMBER_ACCESS_OPERATOR
+            COLON_COLON "::"
+          SIMPLE_IDENTIFIER
+            IDENT "functionName"
+  NEWLINE "\n"

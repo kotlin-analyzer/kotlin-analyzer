@@ -5,6 +5,10 @@ mod ok {
         run_and_expect_no_errors("test_data/parser/inline/ok/anonymous_function.kt");
     }
     #[test]
+    fn callable_reference() {
+        run_and_expect_no_errors("test_data/parser/inline/ok/callable_reference.kt");
+    }
+    #[test]
     fn class_declaration() {
         run_and_expect_no_errors("test_data/parser/inline/ok/class_declaration.kt");
     }

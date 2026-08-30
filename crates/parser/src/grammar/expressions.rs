@@ -545,12 +545,10 @@ fn call_suffix(parser: &mut Parser<'_>, res: CallSuffix) -> Option<CompletedMark
         }
 
         let mut fork = parser.fork();
-        if let Some(ta) = strict_type_arguments(&mut fork) {
+        {
+            let ta = strict_type_arguments(&mut fork)?;
             parser.merge(fork);
             Some(ta)
-        } else {
-            // Then it is a less than operator
-            return None;
         }
     } else {
         None
@@ -1214,11 +1212,6 @@ fn type_test(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     }
 }
 
-enum CallableReference {
-    Partial(CompletedMarker),
-    Full(CompletedMarker),
-}
-
 // test try_expression
 // val a = try { println("try block") } catch (e: Exception) {} finally {}
 // val b = try { println("try block") } catch (e: Exception) {} catch (t: Throwable) {}
@@ -1314,6 +1307,14 @@ fn jump_expression(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     Some(m.complete(parser, JUMP_EXPRESSION))
 }
 
+const ALLOWED_AFTER_IDENT_IN_CALLABLE_REFERENCE: TokenSet =
+    TokenSet::new(&[T![.], T![::], T![<], T![?]]);
+
+// test callable_reference
+// val a = ::functionName
+// val b = ClassName::functionName
+// val c = ClassName::class
+// val d = Module.ClassName::functionName
 fn callable_reference(parser: &mut Parser<'_>) -> Option<CompletedMarker> {
     let m = parser.start();
     let recv = receiver_type(parser, RecvType::NotDotted(UserType::All));
