@@ -1,0 +1,38 @@
+KOTLIN_FILE
+  PROPERTY_DECLARATION
+    VAL_KW "val"
+    WHITESPACE " "
+    VARIABLE_DECLARATION
+      SIMPLE_IDENTIFIER
+        IDENT "a"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    EXPRESSION
+      TRY_EXPRESSION
+        TRY_KW "try"
+        WHITESPACE " "
+        BLOCK
+          L_CURL "{"
+          WHITESPACE " "
+          STATEMENTS
+            STATEMENT
+              EXPRESSION
+                POSTFIX_UNARY_EXPRESSION
+                  SIMPLE_IDENTIFIER
+                    IDENT "println"
+                  CALL_SUFFIX
+                    VALUE_ARGUMENTS
+                      L_PAREN "("
+                      VALUE_ARGUMENT
+                        EXPRESSION
+                          LINE_STRING_LITERAL
+                            QUOTE "\""
+                            LINE_STRING_CONTENT
+                              TEXT "try block"
+                            QUOTE "\""
+                      R_PAREN ")"
+          WHITESPACE " "
+          R_CURL "}"
+  NEWLINE "\n"
+error 36: expected at least one `catch` or `finally` block

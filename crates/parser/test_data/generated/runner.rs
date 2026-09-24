@@ -5,6 +5,10 @@ mod ok {
         run_and_expect_no_errors("test_data/parser/inline/ok/anonymous_function.kt");
     }
     #[test]
+    fn callable_reference() {
+        run_and_expect_no_errors("test_data/parser/inline/ok/callable_reference.kt");
+    }
+    #[test]
     fn class_declaration() {
         run_and_expect_no_errors("test_data/parser/inline/ok/class_declaration.kt");
     }
@@ -24,6 +28,8 @@ mod ok {
     fn fn_declaration() {
         run_and_expect_no_errors("test_data/parser/inline/ok/fn_declaration.kt");
     }
+    #[test]
+    fn if_expression() { run_and_expect_no_errors("test_data/parser/inline/ok/if_expression.kt"); }
     #[test]
     fn import_list() { run_and_expect_no_errors("test_data/parser/inline/ok/import_list.kt"); }
     #[test]
@@ -51,6 +57,10 @@ mod ok {
         run_and_expect_no_errors("test_data/parser/inline/ok/object_declaration.kt");
     }
     #[test]
+    fn object_literal() {
+        run_and_expect_no_errors("test_data/parser/inline/ok/object_literal.kt");
+    }
+    #[test]
     fn package_header() {
         run_and_expect_no_errors("test_data/parser/inline/ok/package_header.kt");
     }
@@ -72,6 +82,14 @@ mod ok {
     fn single_annotation() {
         run_and_expect_no_errors("test_data/parser/inline/ok/single_annotation.kt");
     }
+    #[test]
+    fn try_expression() {
+        run_and_expect_no_errors("test_data/parser/inline/ok/try_expression.kt");
+    }
+    #[test]
+    fn when_expression() {
+        run_and_expect_no_errors("test_data/parser/inline/ok/when_expression.kt");
+    }
 }
 mod err {
     use crate::tests::*;
@@ -79,4 +97,6 @@ mod err {
     fn file_annotation() {
         run_and_expect_errors("test_data/parser/inline/err/file_annotation.kt");
     }
+    #[test]
+    fn try_expression() { run_and_expect_errors("test_data/parser/inline/err/try_expression.kt"); }
 }

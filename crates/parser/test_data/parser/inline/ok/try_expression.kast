@@ -1,0 +1,183 @@
+KOTLIN_FILE
+  PROPERTY_DECLARATION
+    VAL_KW "val"
+    WHITESPACE " "
+    VARIABLE_DECLARATION
+      SIMPLE_IDENTIFIER
+        IDENT "a"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    EXPRESSION
+      TRY_EXPRESSION
+        TRY_KW "try"
+        WHITESPACE " "
+        BLOCK
+          L_CURL "{"
+          WHITESPACE " "
+          STATEMENTS
+            STATEMENT
+              EXPRESSION
+                POSTFIX_UNARY_EXPRESSION
+                  SIMPLE_IDENTIFIER
+                    IDENT "println"
+                  CALL_SUFFIX
+                    VALUE_ARGUMENTS
+                      L_PAREN "("
+                      VALUE_ARGUMENT
+                        EXPRESSION
+                          LINE_STRING_LITERAL
+                            QUOTE "\""
+                            LINE_STRING_CONTENT
+                              TEXT "try block"
+                            QUOTE "\""
+                      R_PAREN ")"
+          WHITESPACE " "
+          R_CURL "}"
+        WHITESPACE " "
+        CATCH_BLOCK
+          CATCH_KW "catch"
+          WHITESPACE " "
+          L_PAREN "("
+          SIMPLE_IDENTIFIER
+            IDENT "e"
+          COLON ":"
+          WHITESPACE " "
+          TYPE
+            TYPE_REFERENCE
+              USER_TYPE
+                SIMPLE_USER_TYPE
+                  SIMPLE_IDENTIFIER
+                    IDENT "Exception"
+          R_PAREN ")"
+          WHITESPACE " "
+          BLOCK
+            L_CURL "{"
+            R_CURL "}"
+        WHITESPACE " "
+        FINALLY_BLOCK
+          FINALLY_KW "finally"
+          WHITESPACE " "
+          BLOCK
+            L_CURL "{"
+            R_CURL "}"
+  NEWLINE "\n"
+  PROPERTY_DECLARATION
+    VAL_KW "val"
+    WHITESPACE " "
+    VARIABLE_DECLARATION
+      SIMPLE_IDENTIFIER
+        IDENT "b"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    EXPRESSION
+      TRY_EXPRESSION
+        TRY_KW "try"
+        WHITESPACE " "
+        BLOCK
+          L_CURL "{"
+          WHITESPACE " "
+          STATEMENTS
+            STATEMENT
+              EXPRESSION
+                POSTFIX_UNARY_EXPRESSION
+                  SIMPLE_IDENTIFIER
+                    IDENT "println"
+                  CALL_SUFFIX
+                    VALUE_ARGUMENTS
+                      L_PAREN "("
+                      VALUE_ARGUMENT
+                        EXPRESSION
+                          LINE_STRING_LITERAL
+                            QUOTE "\""
+                            LINE_STRING_CONTENT
+                              TEXT "try block"
+                            QUOTE "\""
+                      R_PAREN ")"
+          WHITESPACE " "
+          R_CURL "}"
+        WHITESPACE " "
+        CATCH_BLOCK
+          CATCH_KW "catch"
+          WHITESPACE " "
+          L_PAREN "("
+          SIMPLE_IDENTIFIER
+            IDENT "e"
+          COLON ":"
+          WHITESPACE " "
+          TYPE
+            TYPE_REFERENCE
+              USER_TYPE
+                SIMPLE_USER_TYPE
+                  SIMPLE_IDENTIFIER
+                    IDENT "Exception"
+          R_PAREN ")"
+          WHITESPACE " "
+          BLOCK
+            L_CURL "{"
+            R_CURL "}"
+        WHITESPACE " "
+        CATCH_BLOCK
+          CATCH_KW "catch"
+          WHITESPACE " "
+          L_PAREN "("
+          SIMPLE_IDENTIFIER
+            IDENT "t"
+          COLON ":"
+          WHITESPACE " "
+          TYPE
+            TYPE_REFERENCE
+              USER_TYPE
+                SIMPLE_USER_TYPE
+                  SIMPLE_IDENTIFIER
+                    IDENT "Throwable"
+          R_PAREN ")"
+          WHITESPACE " "
+          BLOCK
+            L_CURL "{"
+            R_CURL "}"
+  NEWLINE "\n"
+  PROPERTY_DECLARATION
+    VAL_KW "val"
+    WHITESPACE " "
+    VARIABLE_DECLARATION
+      SIMPLE_IDENTIFIER
+        IDENT "c"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    EXPRESSION
+      TRY_EXPRESSION
+        TRY_KW "try"
+        WHITESPACE " "
+        BLOCK
+          L_CURL "{"
+          WHITESPACE " "
+          STATEMENTS
+            STATEMENT
+              EXPRESSION
+                POSTFIX_UNARY_EXPRESSION
+                  SIMPLE_IDENTIFIER
+                    IDENT "println"
+                  CALL_SUFFIX
+                    VALUE_ARGUMENTS
+                      L_PAREN "("
+                      VALUE_ARGUMENT
+                        EXPRESSION
+                          LINE_STRING_LITERAL
+                            QUOTE "\""
+                            LINE_STRING_CONTENT
+                              TEXT "try block"
+                            QUOTE "\""
+                      R_PAREN ")"
+          WHITESPACE " "
+          R_CURL "}"
+        WHITESPACE " "
+        FINALLY_BLOCK
+          FINALLY_KW "finally"
+          WHITESPACE " "
+          BLOCK
+            L_CURL "{"
+            R_CURL "}"
+  NEWLINE "\n"

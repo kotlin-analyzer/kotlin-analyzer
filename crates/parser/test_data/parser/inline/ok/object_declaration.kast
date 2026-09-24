@@ -25,9 +25,8 @@ KOTLIN_FILE
             BY_KW "by"
             WHITESPACE " "
             EXPRESSION
-              POSTFIX_UNARY_EXPRESSION
-                SIMPLE_IDENTIFIER
-                  IDENT "baz"
+              SIMPLE_IDENTIFIER
+                IDENT "baz"
   NEWLINE "\n"
   OBJECT_DECLARATION
     OBJECT_KW "object"
@@ -93,9 +92,8 @@ KOTLIN_FILE
             BY_KW "by"
             WHITESPACE " "
             EXPRESSION
-              POSTFIX_UNARY_EXPRESSION
-                SIMPLE_IDENTIFIER
-                  IDENT "Bae"
+              SIMPLE_IDENTIFIER
+                IDENT "Bae"
       COMMA ","
       WHITESPACE " "
       ANNOTATED_DELEGATION_SPECIFIER

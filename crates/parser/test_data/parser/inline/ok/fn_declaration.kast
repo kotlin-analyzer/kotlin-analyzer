@@ -62,9 +62,8 @@ KOTLIN_FILE
         EQ "="
         WHITESPACE " "
         EXPRESSION
-          POSTFIX_UNARY_EXPRESSION
-            LITERAL_CONSTANT
-              INT "2"
+          LITERAL_CONSTANT
+            INT "2"
       COMMA ","
       WHITESPACE " "
       FUNCTION_VALUE_PARAMETER
@@ -97,10 +96,9 @@ KOTLIN_FILE
         EQ "="
         WHITESPACE " "
         EXPRESSION
-          POSTFIX_UNARY_EXPRESSION
-            LINE_STRING_LITERAL
-              QUOTE "\""
-              QUOTE "\""
+          LINE_STRING_LITERAL
+            QUOTE "\""
+            QUOTE "\""
       R_PAREN ")"
     WHITESPACE " "
     FUNCTION_BODY
@@ -427,15 +425,13 @@ KOTLIN_FILE
     WHITESPACE " "
     EXPRESSION
       MULTIPLICATIVE_EXPRESSION
-        POSTFIX_UNARY_EXPRESSION
-          SIMPLE_IDENTIFIER
-            IDENT "x"
+        SIMPLE_IDENTIFIER
+          IDENT "x"
         WHITESPACE " "
         MULTIPLICATIVE_OPERATOR
           MULT "*"
         WHITESPACE " "
-        POSTFIX_UNARY_EXPRESSION
-          LITERAL_CONSTANT
-            INT "2"
+        LITERAL_CONSTANT
+          INT "2"
     NEWLINE "\n"
     FUNCTION_BODY
